@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: postgres_db_project1
+    environment:
+      POSTGRES_DB: cookshare_db
+      POSTGRES_USER: project1
+      POSTGRES_PASSWORD: pass_project1
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./dump-db_project1.sql:/docker-entrypoint-initdb.d/dump-db_project1.sql
+    networks:
+      - db_network
+    restart: unless-stopped
+volumes:
+  postgres_data:
+
+networks:
+  db_network:
+ 
