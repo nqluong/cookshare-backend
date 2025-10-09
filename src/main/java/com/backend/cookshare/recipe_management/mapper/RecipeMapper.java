@@ -18,6 +18,7 @@ public interface RecipeMapper {
     // Cập nhật entity từ DTO mà không đổi recipeId và userId
     default void updateRecipeFromDto(RecipeRequest dto, @MappingTarget Recipe entity) {
         if (dto.getTitle() != null) entity.setTitle(dto.getTitle());
+        if (dto.getSlug() != null) entity.setSlug(dto.getSlug());
         if (dto.getDescription() != null) entity.setDescription(dto.getDescription());
         if (dto.getPrepTime() != null) entity.setPrepTime(dto.getPrepTime());
         if (dto.getCookTime() != null) entity.setCookTime(dto.getCookTime());

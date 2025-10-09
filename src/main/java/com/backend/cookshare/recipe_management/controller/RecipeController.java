@@ -4,6 +4,7 @@ import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.recipe_management.dto.RecipeRequest;
 import com.backend.cookshare.recipe_management.dto.RecipeResponse;
 import com.backend.cookshare.recipe_management.service.RecipeService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,8 +28,9 @@ public class RecipeController {
      * ➤ Tạo mới công thức nấu ăn
      */
     @PostMapping
-    public ResponseEntity<RecipeResponse> createRecipe(@RequestBody RecipeRequest request) {
-        return ResponseEntity.ok(recipeService.createRecipe(request));
+    public ResponseEntity<RecipeResponse> createRecipe(@Valid @RequestBody RecipeRequest request) {
+        RecipeResponse response = recipeService.createRecipe(request);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -37,7 +39,8 @@ public class RecipeController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<RecipeResponse> getRecipeById(@PathVariable UUID id) {
-        return ResponseEntity.ok(recipeService.getRecipeById(id));
+        RecipeResponse response = recipeService.getRecipeById(id);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -45,8 +48,12 @@ public class RecipeController {
      * ➤ Cập nhật công thức hiện có
      */
     @PutMapping("/{id}")
-    public ResponseEntity<RecipeResponse> updateRecipe(@PathVariable UUID id, @RequestBody RecipeRequest request) {
-        return ResponseEntity.ok(recipeService.updateRecipe(id, request));
+    public ResponseEntity<RecipeResponse> updateRecipe(
+            @PathVariable UUID id,
+            @Valid @RequestBody RecipeRequest request
+    ) {
+        RecipeResponse response = recipeService.updateRecipe(id, request);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -66,8 +73,8 @@ public class RecipeController {
     @GetMapping
     public ResponseEntity<PageResponse<RecipeResponse>> getAllRecipes(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-
+            @RequestParam(defaultValue = "10") int size
+    ) {
         Page<RecipeResponse> recipePage = recipeService.getAllRecipes(PageRequest.of(page, size));
 
         PageResponse<RecipeResponse> response = PageResponse.<RecipeResponse>builder()
@@ -79,6 +86,8 @@ public class RecipeController {
                 .first(recipePage.isFirst())
                 .last(recipePage.isLast())
                 .empty(recipePage.isEmpty())
+                .numberOfElements(recipePage.getNumberOfElements())
+                .sorted(recipePage.getSort().isSorted())
                 .build();
 
         return ResponseEntity.ok(response);

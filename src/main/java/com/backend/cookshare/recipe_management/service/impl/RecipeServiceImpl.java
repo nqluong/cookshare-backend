@@ -1,5 +1,7 @@
 package com.backend.cookshare.recipe_management.service.impl;
 
+import com.backend.cookshare.common.exception.CustomException;
+import com.backend.cookshare.common.exception.ErrorCode;
 import com.backend.cookshare.recipe_management.dto.RecipeRequest;
 import com.backend.cookshare.recipe_management.dto.RecipeResponse;
 import com.backend.cookshare.recipe_management.entity.Recipe;
@@ -13,6 +15,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+/**
+ * Triển khai các chức năng CRUD cho Recipe
+ */
 @Service
 @RequiredArgsConstructor
 public class RecipeServiceImpl implements RecipeService {
@@ -36,14 +41,20 @@ public class RecipeServiceImpl implements RecipeService {
     @Override
     public RecipeResponse getRecipeById(UUID id) {
         Recipe recipe = recipeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Recipe không tồn tại: " + id));
+                .orElseThrow(() -> new CustomException(
+                        ErrorCode.RECIPE_NOT_FOUND,
+                        "Recipe không tồn tại với id: " + id
+                ));
         return recipeMapper.toResponse(recipe);
     }
 
     @Override
     public RecipeResponse updateRecipe(UUID id, RecipeRequest request) {
         Recipe recipe = recipeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Recipe không tồn tại: " + id));
+                .orElseThrow(() -> new CustomException(
+                        ErrorCode.RECIPE_NOT_FOUND,
+                        "Recipe không tồn tại với id: " + id
+                ));
 
         recipeMapper.updateRecipeFromDto(request, recipe);
 
@@ -58,7 +69,7 @@ public class RecipeServiceImpl implements RecipeService {
     @Override
     public void deleteRecipe(UUID id) {
         if (!recipeRepository.existsById(id)) {
-            throw new RuntimeException("Recipe không tồn tại: " + id);
+            throw new CustomException(ErrorCode.RECIPE_NOT_FOUND, "Recipe không tồn tại với id: " + id);
         }
         recipeRepository.deleteById(id);
     }
@@ -70,6 +81,8 @@ public class RecipeServiceImpl implements RecipeService {
     }
 
     private String generateSlug(String title) {
-        return title.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
+        return title.toLowerCase()
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("(^-|-$)", "");
     }
 }
