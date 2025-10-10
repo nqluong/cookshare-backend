@@ -36,4 +36,7 @@ public class RecipeIngredient {
 
     @Column(name = "order_index")
     Integer orderIndex;
+    @ManyToOne
+    @JoinColumn(name = "ingredient_id", insertable = false, updatable = false)
+    private Ingredient ingredient;
 }

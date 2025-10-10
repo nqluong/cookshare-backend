@@ -10,6 +10,7 @@ import org.hibernate.annotations.GenericGenerator;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -107,7 +108,9 @@ public class Recipe {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
-
+    @OneToMany
+    @JoinColumn(name = "recipe_id")
+    private List<RecipeIngredient> recipeIngredients;
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();

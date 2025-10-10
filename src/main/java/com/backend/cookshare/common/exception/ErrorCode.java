@@ -8,7 +8,13 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 
 public enum ErrorCode {
-    INTERNAL_SERVER_ERROR(9999, "Lỗi hệ thống", HttpStatus.INTERNAL_SERVER_ERROR);
+    INTERNAL_SERVER_ERROR(9999, "Lỗi hệ thống", HttpStatus.INTERNAL_SERVER_ERROR),
+    RECIPE_NOT_FOUND(1001, "Không tìm thấy công thức", HttpStatus.NOT_FOUND),
+    SEARCH_QUERY_TOO_SHORT(3002, "Từ khóa tìm kiếm quá ngắn (tối thiểu 2 ký tự)", HttpStatus.BAD_REQUEST),
+    SEARCH_QUERY_TOO_LONG(3003, "Từ khóa tìm kiếm quá dài (tối đa 100 ký tự)", HttpStatus.BAD_REQUEST),
+    SEARCH_QUERY_EMPTY(3004, "Từ khóa tìm kiếm không được để trống", HttpStatus.BAD_REQUEST),
+    INVALID_CHARACTERS(31005, "Từ khóa tìm kiếm chứa ký tự không hợp lệ", HttpStatus.BAD_REQUEST)
+    ;
 
     private final int code;
     private final String message;

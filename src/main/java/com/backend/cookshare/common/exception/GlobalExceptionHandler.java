@@ -21,6 +21,16 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
+    @ExceptionHandler(CustomException.class)
+    public ResponseEntity<ErrorResponse> handleCustomException(CustomException ex, WebRequest request) {
+        ErrorCode code = ex.getErrorCode();
+        ErrorResponse response = ErrorResponse.builder()
+                .code(code.getCode())
+                .message(code.getMessage())
+                .path(extractPath(request))
+                .build();
+        return ResponseEntity.status(code.getHttpStatus()).body(response);
+    }
 
 
     private String extractPath(WebRequest request) {
