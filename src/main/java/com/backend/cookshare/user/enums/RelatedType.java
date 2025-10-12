@@ -1,8 +1,8 @@
 package com.backend.cookshare.user.enums;
 
 public enum RelatedType {
-    RECIPE,
+    record ,
     user,
-    COMMENT,
-    COLLECTION
+    comment,
+    collection
 }
