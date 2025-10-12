@@ -2,14 +2,17 @@ server:
   port: 8080
   username-admin: admin
   password-admin: admin
+
 spring:
   datasource:
-    url: "jdbc:postgresql://localhost:5433/cookshare_db"
+    url: jdbc:postgresql://localhost:5433/cookshare_db?options=-c%20TimeZone=Asia/Ho_Chi_Minh
     username: project1
     password: pass_project1
-    driver-class-name: "org.postgresql.Driver"
+    driver-class-name: org.postgresql.Driver
+
   application:
     name: cookshare
+
   jpa:
     hibernate:
       ddl-auto: none
@@ -19,6 +22,3 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         use_sql_comments: true
-
-
-
