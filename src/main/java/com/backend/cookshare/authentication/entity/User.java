@@ -39,7 +39,9 @@ public class User {
     @Column(name = "bio", columnDefinition = "TEXT")
     String bio;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "role", length = 50)
+    @Builder.Default
     UserRole role = UserRole.USER;
 
     @Column(name = "google_id", unique = true, length = 100)
@@ -62,6 +64,10 @@ public class User {
 
     @Column(name = "following_count")
     Integer followingCount = 0;
+
+    //Thêm trường friengd_count
+//    @Column(name = "friend_count")
+//    Integer friendCount = 0;
 
     @Column(name = "recipe_count")
     Integer recipeCount = 0;
