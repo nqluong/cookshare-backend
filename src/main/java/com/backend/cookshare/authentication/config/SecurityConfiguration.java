@@ -46,7 +46,7 @@ public class SecurityConfiguration {
                 .cors(Customizer.withDefaults()) // Enable CORS
                 .authorizeHttpRequests(
                         authz -> authz
-                                .requestMatchers("/", "/login", "/register", "/api/recipes/**").permitAll()
+                                .requestMatchers("/", "/login", "/register").permitAll()
                                 .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults()))
