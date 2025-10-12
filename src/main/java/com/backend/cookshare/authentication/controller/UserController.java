@@ -3,7 +3,6 @@ package com.backend.cookshare.authentication.controller;
 import com.backend.cookshare.authentication.dto.request.UserRequest;
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.service.UserService;
-import com.backend.cookshare.authentication.service.impl.UserServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
