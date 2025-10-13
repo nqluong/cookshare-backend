@@ -44,7 +44,8 @@ public class SearchController {
     }
     @GetMapping("/ingredient")
     public ApiResponse<PageResponse<SearchReponse>> searchIngredients(
-            @RequestParam String ingredient,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) List<String> ingredients,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "title") String sortBy,
@@ -55,7 +56,7 @@ public class SearchController {
                 : Sort.Direction.ASC;
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
 
-        PageResponse<SearchReponse> results = searchService.searchRecipesByIngredient(ingredient, pageable);
+        PageResponse<SearchReponse> results = searchService.searchRecipesByIngredient(title, ingredients, pageable);
         return ApiResponse.<PageResponse<SearchReponse>>builder()
                 .result(results)
                 .build();
