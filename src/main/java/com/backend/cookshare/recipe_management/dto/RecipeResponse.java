@@ -6,11 +6,9 @@ import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
-/**
- * DTO trả về khi client gọi API Recipe
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -31,11 +29,16 @@ public class RecipeResponse {
     Difficulty difficulty;
 
     String featuredImage;
-    String instructions;
+
+    // 🔥 Thêm chi tiết liên quan
+    List<RecipeStepResponse> steps;
+    List<RecipeIngredientResponse> ingredients;
+    List<TagResponse> tags;
+    List<CategoryResponse> categories;
+
     String notes;
     String nutritionInfo;
 
-    // Các thông tin hệ thống hiển thị cho client
     Integer viewCount;
     Integer saveCount;
     Integer likeCount;
@@ -51,4 +54,50 @@ public class RecipeResponse {
 
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
+
+    // 🔸 Các class con gọn gàng
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RecipeStepResponse {
+        Integer stepNumber;
+        String instruction;
+        String imageUrl;
+        String videoUrl;
+        Integer estimatedTime;
+        String tips;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RecipeIngredientResponse {
+        UUID ingredientId;
+        String name;
+        String quantity;
+        String unit;
+        String notes;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TagResponse {
+        UUID tagId;
+        String name;
+        String color;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CategoryResponse {
+        UUID categoryId;
+        String name;
+        String iconUrl;
+    }
 }
