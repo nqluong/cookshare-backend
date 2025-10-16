@@ -9,5 +9,5 @@ import java.util.List;
 public interface SearchService {
 
     PageResponse<SearchReponse> searchRecipesByName(String title ,Pageable pageable) ;
-    PageResponse<SearchReponse>searchRecipesByIngredient(String ingredient,Pageable pageable);
+    PageResponse<SearchReponse>searchRecipesByIngredient(String title,List<String> ingredients,Pageable pageable);
 }
