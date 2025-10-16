@@ -74,7 +74,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         validateLimit(limit);
         
         try {
-            Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt"));
+            Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "updatedAt"));
 
             List<Recipe> recipes = recipeRepository.findAll(pageable)
                     .stream()
