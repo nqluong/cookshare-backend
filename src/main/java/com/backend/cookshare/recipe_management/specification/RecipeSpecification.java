@@ -6,6 +6,9 @@ import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
+
+import java.util.List;
+
 public class RecipeSpecification {
     public static Specification<Recipe> hasNameLike(String name) {
         return (root, query, cb) -> {
@@ -24,21 +27,41 @@ public class RecipeSpecification {
             return predicate;
         };
     }
-    public static Specification<Recipe> hasRecipesByIngredient(String ingredient) {
+    public static Specification<Recipe> hasRecipesByIngredients(String title, List<String> ingredientNames) {
         return (root, query, criteriaBuilder) -> {
-            if (ingredient == null || ingredient.trim().isEmpty()) {
-                return criteriaBuilder.conjunction();
-            }
-            Join<Recipe, RecipeIngredient> recipeIngredientJoin = root.join("recipeIngredients", JoinType.INNER);
-            Join<RecipeIngredient, Ingredient> ingredientJoin = recipeIngredientJoin.join("ingredient", JoinType.INNER);
-            String[] keywords = ingredient.trim().toLowerCase().split("\\s+");
+            query.distinct(true);
+
             Predicate predicate = criteriaBuilder.conjunction();
-            for (String keyword: keywords) {
-                predicate = criteriaBuilder.and(
-                        predicate,
-                        criteriaBuilder.like(criteriaBuilder.lower(ingredientJoin.get("name")), "%" + keyword + "%")
-                );
+
+            // Lọc theo title nếu có
+            if (title != null && !title.trim().isEmpty()) {
+                String[] keywords = title.trim().toLowerCase().split("\\s+");
+                for (String keyword : keywords) {
+                    predicate = criteriaBuilder.and(
+                            predicate,
+                            criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), "%" + keyword + "%")
+                    );
+                }
             }
+
+            // Lọc theo danh sách ingredients nếu có
+            if (ingredientNames != null && !ingredientNames.isEmpty()) {
+                for (String ingredientName : ingredientNames) {
+                    if (ingredientName != null && !ingredientName.trim().isEmpty()) {
+                        Join<Recipe, RecipeIngredient> recipeIngredientJoin = root.join("recipeIngredients", JoinType.INNER);
+                        Join<RecipeIngredient, Ingredient> ingredientJoin = recipeIngredientJoin.join("ingredient", JoinType.INNER);
+
+                        predicate = criteriaBuilder.and(
+                                predicate,
+                                criteriaBuilder.like(
+                                        criteriaBuilder.lower(ingredientJoin.get("name")),
+                                        "%" + ingredientName.trim().toLowerCase() + "%"
+                                )
+                        );
+                    }
+                }
+            }
+
             return predicate;
         };
     }

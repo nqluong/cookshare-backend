@@ -54,24 +54,26 @@ public class SearchServiceImpl implements SearchService {
         return buildPageResponse(recipePage, content);
     }
    @Override
-    public PageResponse<SearchReponse> searchRecipesByIngredient(String keyword,Pageable pageable) {
-       if (keyword== null || keyword.trim().isEmpty()) {
+    public PageResponse<SearchReponse> searchRecipesByIngredient(String title, List<String> ingredientNames, Pageable pageable) {
+       if (title== null || title.trim().isEmpty()) {
            throw new CustomException(ErrorCode.SEARCH_QUERY_EMPTY,"");
        }
-       if(keyword.trim().length() < 2) {
+       if(title.trim().length() < 2) {
            throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_SHORT,"");
        }
-       if(keyword.trim().length() > 80) {
+       if(title.trim().length() > 80) {
            throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_LONG,"");
        }
-       if (!keyword.trim().matches("^[\\p{L}\\p{N}\\s\\-']+$")) {
+       if (!title.trim().matches("^[\\p{L}\\p{N}\\s\\-']+$")) {
            throw new CustomException(ErrorCode.INVALID_CHARACTERS,"");
        }
-       Specification<Recipe> spec = RecipeSpecification.hasRecipesByIngredient(keyword);
+       Specification<Recipe> spec = RecipeSpecification.hasRecipesByIngredients(title, ingredientNames);
        Page<Recipe> recipePage = recipeRepository.findAll(spec, pageable);
+
        List<SearchReponse> content = recipePage.getContent().stream()
                .map(searchMapper::toSearchRecipeResponse)
                .toList();
+
        return buildPageResponse(recipePage, content);
     }
     private <T> PageResponse<T> buildPageResponse(Page<?> page, List<T> content) {
