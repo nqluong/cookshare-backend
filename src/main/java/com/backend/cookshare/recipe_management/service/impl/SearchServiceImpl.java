@@ -3,7 +3,10 @@ package com.backend.cookshare.recipe_management.service.impl;
 import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
+import com.backend.cookshare.recipe_management.dto.ApiResponse;
+import com.backend.cookshare.recipe_management.dto.response.IngredientResponse;
 import com.backend.cookshare.recipe_management.dto.response.SearchReponse;
+import com.backend.cookshare.recipe_management.entity.Ingredient;
 import com.backend.cookshare.recipe_management.entity.Recipe;
 import com.backend.cookshare.recipe_management.mapper.SearchMapper;
 import com.backend.cookshare.recipe_management.repository.IngredientRepository;
@@ -89,6 +92,14 @@ public class SearchServiceImpl implements SearchService {
                 .numberOfElements(page.getNumberOfElements())
                 .sorted(page.getSort().isSorted())
                 .build();
+    }
+    @Override
+    public List<IngredientResponse> top10MostUsedIngredients() {
+        List<IngredientResponse> ingredients = ingredientRepository.findTop10MostUsedIngredients()
+                .stream()
+                .map(searchMapper::toIngredientResponseFromArray)
+                .toList();
+        return ingredients;
     }
 
 }

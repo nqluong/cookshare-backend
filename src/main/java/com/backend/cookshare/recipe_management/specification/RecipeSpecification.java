@@ -7,44 +7,76 @@ import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.text.Normalizer;
 import java.util.List;
 
 public class RecipeSpecification {
+
+    /**
+     * Remove Vietnamese diacritics (ă, â, ê, ô, ơ, ư, đ etc.)
+     * Example: "Cơm" -> "Com", "Phở" -> "Pho"
+     */
+    public static String removeAccents(String str) {
+        if (str == null) {
+            return null;
+        }
+        String nfd = Normalizer.normalize(str, Normalizer.Form.NFD);
+        return nfd.replaceAll("\\p{M}", "").toLowerCase();
+    }
+
     public static Specification<Recipe> hasNameLike(String name) {
         return (root, query, cb) -> {
             if (name == null || name.trim().isEmpty()) {
                 return cb.conjunction();
             }
-            String[] keywords = name.trim().toLowerCase().split("\\s+");
+
+            String unaccentedName = removeAccents(name.trim());
+            String[] keywords = unaccentedName.split("\\s+");
 
             Predicate predicate = cb.conjunction();
             for (String keyword : keywords) {
+                // Compare unaccented slug with unaccented keyword
                 predicate = cb.and(
                         predicate,
-                        cb.like(cb.lower(root.get("title")), "%" + keyword + "%")
+                        cb.like(
+                                cb.function("replace", String.class,
+                                        cb.function("lower", String.class, root.get("slug")),
+                                        cb.literal("-"),
+                                        cb.literal(" ")
+                                ),
+                                "%" + keyword + "%"
+                        )
                 );
             }
             return predicate;
         };
     }
+
     public static Specification<Recipe> hasRecipesByIngredients(String title, List<String> ingredientNames) {
         return (root, query, criteriaBuilder) -> {
             query.distinct(true);
 
             Predicate predicate = criteriaBuilder.conjunction();
 
-            // Lọc theo title nếu có
+            // Lọc theo slug nếu có
             if (title != null && !title.trim().isEmpty()) {
-                String[] keywords = title.trim().toLowerCase().split("\\s+");
+                String unaccentedTitle = removeAccents(title.trim());
+                String[] keywords = unaccentedTitle.split("\\s+");
                 for (String keyword : keywords) {
                     predicate = criteriaBuilder.and(
                             predicate,
-                            criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), "%" + keyword + "%")
+                            criteriaBuilder.like(
+                                    criteriaBuilder.function("replace", String.class,
+                                            criteriaBuilder.function("lower", String.class, root.get("slug")),
+                                            criteriaBuilder.literal("-"),
+                                            criteriaBuilder.literal(" ")
+                                    ),
+                                    "%" + keyword + "%"
+                            )
                     );
                 }
             }
 
-            // Lọc theo danh sách ingredients nếu có
             if (ingredientNames != null && !ingredientNames.isEmpty()) {
                 for (String ingredientName : ingredientNames) {
                     if (ingredientName != null && !ingredientName.trim().isEmpty()) {
