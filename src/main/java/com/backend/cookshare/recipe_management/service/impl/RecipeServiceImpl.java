@@ -26,12 +26,12 @@ public class RecipeServiceImpl implements RecipeService {
     private final RecipeCategoryRepository categoryRepository;
     private final RecipeMapper recipeMapper;
 
-
+    // ================= CREATE =================
     @Override
     public RecipeResponse createRecipe(RecipeRequest request) {
         Recipe recipe = recipeMapper.toEntity(request);
 
-        // Generate slug
+        // ✅ Generate slug nếu chưa có
         if (recipe.getSlug() == null || recipe.getSlug().isEmpty()) {
             recipe.setSlug(generateSlug(recipe.getTitle()));
         }
@@ -39,11 +39,12 @@ public class RecipeServiceImpl implements RecipeService {
         Recipe saved = recipeRepository.save(recipe);
 
         // ✅ Lưu step, ingredient, tag, category
-        saveRelations(saved.getRecipeId(), request);
+        saveRelations(saved, request);
 
         return getRecipeById(saved.getRecipeId());
     }
 
+    // ================= READ =================
     @Override
     public RecipeResponse getRecipeById(UUID id) {
         Recipe recipe = recipeRepository.findById(id)
@@ -51,30 +52,38 @@ public class RecipeServiceImpl implements RecipeService {
 
         RecipeResponse response = recipeMapper.toResponse(recipe);
 
-        // ✅ Lấy dữ liệu liên quan
-        response.setSteps(stepRepository.findByRecipeId(id).stream().map(
-                s -> RecipeResponse.RecipeStepResponse.builder()
-                        .stepNumber(s.getStepNumber())
-                        .instruction(s.getInstruction())
-                        .imageUrl(s.getImageUrl())
-                        .videoUrl(s.getVideoUrl())
-                        .estimatedTime(s.getEstimatedTime())
-                        .tips(s.getTips())
-                        .build()
-        ).toList());
+        // ✅ Map Steps
+        response.setSteps(
+                stepRepository.findByRecipe_RecipeId(id)
+                        .stream()
+                        .map(s -> RecipeResponse.RecipeStepResponse.builder()
+                                .stepNumber(s.getStepNumber())
+                                .instruction(s.getInstruction())
+                                .imageUrl(s.getImageUrl())
+                                .videoUrl(s.getVideoUrl())
+                                .estimatedTime(s.getEstimatedTime())
+                                .tips(s.getTips())
+                                .build())
+                        .toList()
+        );
 
-        response.setIngredients(ingredientRepository.findByRecipeId(id).stream().map(
-                i -> RecipeResponse.RecipeIngredientResponse.builder()
-                        .ingredientId(i.getIngredientId())
-                        .quantity(i.getQuantity())
-                        .unit(i.getUnit())
-                        .notes(i.getNotes())
-                        .build()
-        ).toList());
+        // ✅ Map Ingredients
+        response.setIngredients(
+                ingredientRepository.findByRecipe_RecipeId(id)
+                        .stream()
+                        .map(i -> RecipeResponse.RecipeIngredientResponse.builder()
+                                .ingredientId(i.getIngredientId())
+                                .quantity(i.getQuantity())
+                                .unit(i.getUnit())
+                                .notes(i.getNotes())
+                                .build())
+                        .toList()
+        );
 
         return response;
     }
 
+    // ================= UPDATE =================
     @Override
     public RecipeResponse updateRecipe(UUID id, RecipeRequest request) {
         Recipe recipe = recipeRepository.findById(id)
@@ -83,16 +92,34 @@ public class RecipeServiceImpl implements RecipeService {
         recipeMapper.updateRecipeFromDto(request, recipe);
         Recipe updated = recipeRepository.save(recipe);
 
-        // ✅ Cập nhật lại liên kết
-        stepRepository.deleteAll(stepRepository.findByRecipeId(id));
-        ingredientRepository.deleteAll(ingredientRepository.findByRecipeId(id));
-        tagRepository.deleteAll(tagRepository.findByRecipeId(id));
-        categoryRepository.deleteAll(categoryRepository.findByRecipeId(id));
+        // ✅ Xóa hết dữ liệu liên kết cũ
+        stepRepository.deleteAll(stepRepository.findByRecipe_RecipeId(id));
+        ingredientRepository.deleteAll(ingredientRepository.findByRecipe_RecipeId(id));
+        tagRepository.deleteAll(tagRepository.findByRecipe_RecipeId(id));
+        categoryRepository.deleteAll(categoryRepository.findByRecipe_RecipeId(id));
 
-        saveRelations(id, request);
+        // ✅ Lưu lại liên kết mới
+        saveRelations(updated, request);
 
         return getRecipeById(updated.getRecipeId());
     }
+
+    // ================= DELETE =================
+    @Override
+    public void deleteRecipe(UUID id) {
+        if (!recipeRepository.existsById(id)) {
+            throw new CustomException(ErrorCode.RECIPE_NOT_FOUND, "Không tìm thấy công thức để xóa");
+        }
+
+        stepRepository.deleteAll(stepRepository.findByRecipe_RecipeId(id));
+        ingredientRepository.deleteAll(ingredientRepository.findByRecipe_RecipeId(id));
+        tagRepository.deleteAll(tagRepository.findByRecipe_RecipeId(id));
+        categoryRepository.deleteAll(categoryRepository.findByRecipe_RecipeId(id));
+
+        recipeRepository.deleteById(id);
+    }
+
+    // ================= USER RECIPES =================
     @Override
     public List<RecipeResponse> getRecipesByUserId(UUID userId) {
         List<Recipe> recipes = recipeRepository.findByUserId(userId);
@@ -102,44 +129,57 @@ public class RecipeServiceImpl implements RecipeService {
         return recipeMapper.toResponseList(recipes);
     }
 
-    @Override
-    public void deleteRecipe(UUID id) {
-        if (!recipeRepository.existsById(id)) {
-            throw new CustomException(ErrorCode.RECIPE_NOT_FOUND, "Không tìm thấy công thức để xóa");
-        }
-
-        stepRepository.deleteAll(stepRepository.findByRecipeId(id));
-        ingredientRepository.deleteAll(ingredientRepository.findByRecipeId(id));
-        tagRepository.deleteAll(tagRepository.findByRecipeId(id));
-        categoryRepository.deleteAll(categoryRepository.findByRecipeId(id));
-
-        recipeRepository.deleteById(id);
-    }
-
+    // ================= PAGINATION =================
     @Override
     public Page<RecipeResponse> getAllRecipes(Pageable pageable) {
-        return recipeRepository.findAll(pageable)
-                .map(recipeMapper::toResponse);
+        return recipeRepository.findAll(pageable).map(recipeMapper::toResponse);
     }
 
-    private void saveRelations(UUID recipeId, RecipeRequest request) {
-        if (request.getSteps() != null) {
-            List<RecipeStep> steps = recipeMapper.toStepEntities(request.getSteps(), recipeId);
+    // ================= HELPER METHODS =================
+    private void saveRelations(Recipe recipe, RecipeRequest request) {
+        UUID recipeId = recipe.getRecipeId();
+
+        // ✅ Step
+        if (request.getSteps() != null && !request.getSteps().isEmpty()) {
+            List<RecipeStep> steps = recipeMapper.toStepEntities(request.getSteps(), recipe);
             stepRepository.saveAll(steps);
         }
-        if (request.getIngredients() != null) {
-            List<RecipeIngredient> ingredients = recipeMapper.toIngredientEntities(request.getIngredients(), recipeId);
+
+        // ✅ Ingredient
+        if (request.getIngredients() != null && !request.getIngredients().isEmpty()) {
+            List<RecipeIngredient> ingredients = request.getIngredients().stream()
+                    .map(dto -> RecipeIngredient.builder()
+                            .recipeId(recipeId)
+                            .ingredientId(dto.getIngredientId())
+                            .quantity(dto.getQuantity())
+                            .unit(dto.getUnit())
+                            .notes(dto.getNotes())
+                            .orderIndex(dto.getOrderIndex())
+                            .build())
+                    .toList();
             ingredientRepository.saveAll(ingredients);
         }
-        if (request.getTagIds() != null) {
-            tagRepository.saveAll(request.getTagIds().stream()
-                    .map(tagId -> RecipeTag.builder().recipeId(recipeId).tagId(tagId).build())
-                    .toList());
+
+        // ✅ Tag
+        if (request.getTagIds() != null && !request.getTagIds().isEmpty()) {
+            List<RecipeTag> tags = request.getTagIds().stream()
+                    .map(tagId -> RecipeTag.builder()
+                            .recipeId(recipeId)
+                            .tagId(tagId)
+                            .build())
+                    .toList();
+            tagRepository.saveAll(tags);
         }
-        if (request.getCategoryIds() != null) {
-            categoryRepository.saveAll(request.getCategoryIds().stream()
-                    .map(catId -> RecipeCategory.builder().recipeId(recipeId).categoryId(catId).build())
-                    .toList());
+
+        // ✅ Category
+        if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
+            List<RecipeCategory> categories = request.getCategoryIds().stream()
+                    .map(catId -> RecipeCategory.builder()
+                            .recipeId(recipeId)
+                            .categoryId(catId)
+                            .build())
+                    .toList();
+            categoryRepository.saveAll(categories);
         }
     }
 

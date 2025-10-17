@@ -24,4 +24,12 @@ public class RecipeTag {
     @Id
     @Column(name = "tag_id", columnDefinition = "uuid")
     private UUID tagId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recipe_id", insertable = false, updatable = false)
+    private Recipe recipe;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tag_id", insertable = false, updatable = false)
+    private Tag tag;
 }

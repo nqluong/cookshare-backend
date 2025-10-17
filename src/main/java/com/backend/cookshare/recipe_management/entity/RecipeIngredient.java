@@ -25,6 +25,14 @@ public class RecipeIngredient {
     @Column(name = "ingredient_id", columnDefinition = "uuid")
     UUID ingredientId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recipe_id", insertable = false, updatable = false)
+    Recipe recipe;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ingredient_id", insertable = false, updatable = false)
+    Ingredient ingredient;
+
     @Column(name = "quantity", length = 50)
     String quantity;
 

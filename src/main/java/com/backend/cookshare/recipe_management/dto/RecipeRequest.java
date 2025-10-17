@@ -60,4 +60,5 @@ public class RecipeRequest {
 
     String metaKeywords;
     String seasonalTags;
+    String instruction;
 }

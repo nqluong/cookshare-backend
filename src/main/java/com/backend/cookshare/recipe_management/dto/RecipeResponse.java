@@ -30,7 +30,7 @@ public class RecipeResponse {
 
     String featuredImage;
 
-    // 🔥 Thêm chi tiết liên quan
+    // 🔥 Chi tiết công thức
     List<RecipeStepResponse> steps;
     List<RecipeIngredientResponse> ingredients;
     List<TagResponse> tags;
@@ -55,11 +55,12 @@ public class RecipeResponse {
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 
-    // 🔸 Các class con gọn gàng
+    // 🔹 Nested DTOs
+
     @Data
     @Builder
-    @NoArgsConstructor
     @AllArgsConstructor
+    @NoArgsConstructor
     public static class RecipeStepResponse {
         Integer stepNumber;
         String instruction;
@@ -71,33 +72,46 @@ public class RecipeResponse {
 
     @Data
     @Builder
-    @NoArgsConstructor
     @AllArgsConstructor
+    @NoArgsConstructor
     public static class RecipeIngredientResponse {
         UUID ingredientId;
         String name;
+        String slug;
+        String description;
+
         String quantity;
         String unit;
         String notes;
+        Integer orderIndex;
     }
 
     @Data
     @Builder
-    @NoArgsConstructor
     @AllArgsConstructor
+    @NoArgsConstructor
     public static class TagResponse {
         UUID tagId;
         String name;
+        String slug;
         String color;
+        Integer usageCount;
+        Boolean isTrending;
+        LocalDateTime createdAt;
     }
 
     @Data
     @Builder
-    @NoArgsConstructor
     @AllArgsConstructor
+    @NoArgsConstructor
     public static class CategoryResponse {
         UUID categoryId;
         String name;
+        String slug;
+        String description;
         String iconUrl;
+        UUID parentId;
+        Boolean isActive;
+        LocalDateTime createdAt;
     }
 }

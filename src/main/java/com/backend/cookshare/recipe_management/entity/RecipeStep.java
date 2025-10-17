@@ -22,8 +22,9 @@ public class RecipeStep {
     @Column(name = "step_id", columnDefinition = "uuid")
     UUID stepId;
 
-    @Column(name = "recipe_id", nullable = false, columnDefinition = "uuid")
-    UUID recipeId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recipe_id", nullable = false)
+    Recipe recipe;
 
     @Column(name = "step_number", nullable = false)
     Integer stepNumber;

@@ -2,12 +2,10 @@ package com.backend.cookshare.recipe_management.mapper;
 
 import com.backend.cookshare.recipe_management.dto.*;
 import com.backend.cookshare.recipe_management.entity.*;
-import org.mapstruct.Mapper;
-import org.mapstruct.MappingTarget;
+import org.mapstruct.*;
 import org.mapstruct.factory.Mappers;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring")
@@ -15,14 +13,20 @@ public interface RecipeMapper {
 
     RecipeMapper INSTANCE = Mappers.getMapper(RecipeMapper.class);
 
+    // ============================================
+    // 🔹 ENTITY <-> DTO CHÍNH
+    // ============================================
     Recipe toEntity(RecipeRequest dto);
-
     RecipeResponse toResponse(Recipe entity);
-
-    // ✅ Thêm để map danh sách công thức → danh sách response
     List<RecipeResponse> toResponseList(List<Recipe> entities);
 
+    // ============================================
+    // 🔹 CẬP NHẬT ENTITY TỪ DTO
+    // ============================================
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     default void updateRecipeFromDto(RecipeRequest dto, @MappingTarget Recipe entity) {
+        if (dto == null) return;
+
         if (dto.getTitle() != null) entity.setTitle(dto.getTitle());
         if (dto.getDescription() != null) entity.setDescription(dto.getDescription());
         if (dto.getPrepTime() != null) entity.setPrepTime(dto.getPrepTime());
@@ -38,10 +42,13 @@ public interface RecipeMapper {
         if (dto.getSeasonalTags() != null) entity.setSeasonalTags(dto.getSeasonalTags());
     }
 
-    // ✅ Convert Step DTO → Entity
-    default RecipeStep toStepEntity(RecipeStepRequest dto, UUID recipeId) {
+    // ============================================
+    // 🔹 MAPPING CHO STEP
+    // ============================================
+    default RecipeStep toStepEntity(RecipeStepRequest dto, Recipe recipe) {
+        if (dto == null) return null;
         return RecipeStep.builder()
-                .recipeId(recipeId)
+                .recipe(recipe)
                 .stepNumber(dto.getStepNumber())
                 .instruction(dto.getInstruction())
                 .imageUrl(dto.getImageUrl())
@@ -51,29 +58,102 @@ public interface RecipeMapper {
                 .build();
     }
 
-    // ✅ Convert Ingredient DTO → Entity
-    default RecipeIngredient toIngredientEntity(RecipeIngredientRequest dto, UUID recipeId) {
-        return RecipeIngredient.builder()
-                .recipeId(recipeId)
-                .ingredientId(dto.getIngredientId())
-                .quantity(dto.getQuantity())
-                .unit(dto.getUnit())
-                .notes(dto.getNotes())
-                .orderIndex(dto.getOrderIndex())
+    default List<RecipeStep> toStepEntities(List<RecipeStepRequest> dtos, Recipe recipe) {
+        if (dtos == null) return Collections.emptyList();
+        return dtos.stream()
+                .map(dto -> toStepEntity(dto, recipe))
+                .collect(Collectors.toList());
+    }
+
+    // ============================================
+    // 🔹 MAPPING CHO INGREDIENT
+    // ============================================
+    default RecipeResponse.RecipeIngredientResponse toIngredientResponse(RecipeIngredient entity) {
+        if (entity == null) return null;
+        Ingredient ingredient = entity.getIngredient();
+
+        return RecipeResponse.RecipeIngredientResponse.builder()
+                .ingredientId(ingredient != null ? ingredient.getIngredientId() : null)
+                .name(ingredient != null ? ingredient.getName() : null)
+                .description(ingredient != null ? ingredient.getDescription() : null)
+                .quantity(entity.getQuantity())
+                .unit(entity.getUnit())
+                .notes(entity.getNotes())
+                .orderIndex(entity.getOrderIndex())
                 .build();
     }
 
-    // ✅ Convert List Step DTO → Entity
-    default List<RecipeStep> toStepEntities(List<RecipeStepRequest> list, UUID recipeId) {
-        return list.stream()
-                .map(s -> toStepEntity(s, recipeId))
+    default List<RecipeResponse.RecipeIngredientResponse> toIngredientResponses(List<RecipeIngredient> entities) {
+        if (entities == null) return Collections.emptyList();
+        return entities.stream()
+                .map(this::toIngredientResponse)
                 .collect(Collectors.toList());
     }
 
-    // ✅ Convert List Ingredient DTO → Entity
-    default List<RecipeIngredient> toIngredientEntities(List<RecipeIngredientRequest> list, UUID recipeId) {
-        return list.stream()
-                .map(i -> toIngredientEntity(i, recipeId))
+
+    // ============================================
+    // 🔹 MAPPING CHO TAG
+    // ============================================
+    default List<RecipeTag> toTagEntities(List<UUID> tagIds, UUID recipeId) {
+        if (tagIds == null) return Collections.emptyList();
+        return tagIds.stream()
+                .map(tagId -> RecipeTag.builder()
+                        .recipeId(recipeId)
+                        .tagId(tagId)
+                        .build())
                 .collect(Collectors.toList());
+    }
+
+    // ============================================
+    // 🔹 MAPPING CHO CATEGORY
+    // ============================================
+    default List<RecipeCategory> toCategoryEntities(List<UUID> categoryIds, UUID recipeId) {
+        if (categoryIds == null) return Collections.emptyList();
+        return categoryIds.stream()
+                .map(categoryId -> RecipeCategory.builder()
+                        .recipeId(recipeId)
+                        .categoryId(categoryId)
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    // ============================================
+    // 🔹 RESPONSE CHO TAG & CATEGORY
+    // ============================================
+    default RecipeResponse.TagResponse toTagResponse(Tag tag) {
+        if (tag == null) return null;
+        return RecipeResponse.TagResponse.builder()
+                .tagId(tag.getTagId())
+                .name(tag.getName())
+                .slug(tag.getSlug())
+                .color(tag.getColor())
+                .usageCount(tag.getUsageCount())
+                .isTrending(tag.getIsTrending())
+                .createdAt(tag.getCreatedAt())
+                .build();
+    }
+
+    default RecipeResponse.CategoryResponse toCategoryResponse(Category category) {
+        if (category == null) return null;
+        return RecipeResponse.CategoryResponse.builder()
+                .categoryId(category.getCategoryId())
+                .name(category.getName())
+                .slug(category.getSlug())
+                .description(category.getDescription())
+                .iconUrl(category.getIconUrl())
+                .parentId(category.getParentId())
+                .isActive(category.getIsActive())
+                .createdAt(category.getCreatedAt())
+                .build();
+    }
+
+    default List<RecipeResponse.TagResponse> toTagResponses(List<Tag> tags) {
+        if (tags == null) return Collections.emptyList();
+        return tags.stream().map(this::toTagResponse).collect(Collectors.toList());
+    }
+
+    default List<RecipeResponse.CategoryResponse> toCategoryResponses(List<Category> categories) {
+        if (categories == null) return Collections.emptyList();
+        return categories.stream().map(this::toCategoryResponse).collect(Collectors.toList());
     }
 }
