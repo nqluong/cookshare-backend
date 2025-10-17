@@ -3,6 +3,7 @@ package com.backend.cookshare.authentication.controller;
 import com.backend.cookshare.authentication.dto.LoginDTO;
 import com.backend.cookshare.authentication.dto.response.LoginResponseDTO;
 import com.backend.cookshare.authentication.dto.request.UserRequest;
+import com.backend.cookshare.authentication.dto.request.ChangePasswordRequest;
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.service.UserService;
 import com.backend.cookshare.authentication.service.TokenBlacklistService;
@@ -238,5 +239,22 @@ public class AuthController {
         } catch (Exception e) {
             throw new CustomException(ErrorCode.INVALID_ACCESS_TOKEN);
         }
+    }
+
+    @PostMapping("/auth/change-password")
+    public ResponseEntity<String> changePassword(@Valid @RequestBody ChangePasswordRequest request) throws CustomException {
+        // Lấy username từ JWT token
+        String username = SecurityUtil.getCurrentUserLogin()
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_ACCESS_TOKEN));
+
+        // Kiểm tra mật khẩu mới và xác nhận mật khẩu có khớp không
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
+        }
+
+        // Gọi service để đổi mật khẩu
+        userService.changePassword(username, request.getCurrentPassword(), request.getNewPassword());
+
+        return ResponseEntity.ok("Đổi mật khẩu thành công");
     }
 }

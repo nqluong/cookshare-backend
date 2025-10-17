@@ -33,4 +33,6 @@ public interface UserService {
     void updateUserToken(String token, String username);
 
     User getUserByRefreshTokenAndUsername(String token, String username);
+
+    void changePassword(String username, String currentPassword, String newPassword);
 }
