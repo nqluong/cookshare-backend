@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -91,5 +92,15 @@ public class RecipeController {
                 .build();
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * [GET] /api/recipes/user/{userId}
+     * ➤ Lấy danh sách công thức theo ID người dùng
+     */
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<RecipeResponse>> getAllRecipesByUserId(@PathVariable UUID userId) {
+        List<RecipeResponse> recipes = recipeService.getAllRecipesByUserId(userId);
+        return ResponseEntity.ok(recipes);
     }
 }

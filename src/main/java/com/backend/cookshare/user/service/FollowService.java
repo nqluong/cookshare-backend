@@ -129,7 +129,7 @@ public class FollowService {
                 .map(followerId -> {
                     User user = userRepository.findById(followerId).orElse(null);
                     if (user != null) {
-                        return mapToUserFollowDto(user, null);
+                        return mapToUserFollowDto(user, userId);
                     }
                     return null;
                 })
@@ -151,7 +151,7 @@ public class FollowService {
                 .map(followingId -> {
                     User user = userRepository.findById(followingId).orElse(null);
                     if (user != null) {
-                        return mapToUserFollowDto(user, null);
+                        return mapToUserFollowDto(user, userId);
                     }
                     return null;
                 })
