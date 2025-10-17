@@ -65,10 +65,6 @@ public class User {
     @Column(name = "following_count")
     Integer followingCount = 0;
 
-    //Thêm trường friengd_count
-//    @Column(name = "friend_count")
-//    Integer friendCount = 0;
-
     @Column(name = "recipe_count")
     Integer recipeCount = 0;
 
