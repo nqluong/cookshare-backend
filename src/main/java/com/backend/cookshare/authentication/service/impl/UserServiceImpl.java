@@ -90,4 +90,17 @@ public class UserServiceImpl implements UserService {
             userRepository.save(user);
         });
     }
+
+    @Override
+    public void updateUserToken(String token, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setRefreshToken(token);
+        this.userRepository.save(user);
+    }
+
+    @Override
+    public User getUserByRefreshTokenAndUsername(String token, String username) {
+        return this.userRepository.findByRefreshTokenAndUsername(token, username);
+    }
 }

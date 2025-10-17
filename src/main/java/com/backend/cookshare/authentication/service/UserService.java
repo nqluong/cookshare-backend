@@ -29,4 +29,8 @@ public interface UserService {
     boolean existsByEmail(String email);
 
     void updateLastActive(UUID userId);
+
+    void updateUserToken(String token, String username);
+
+    User getUserByRefreshTokenAndUsername(String token, String username);
 }

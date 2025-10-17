@@ -25,7 +25,10 @@ public enum ErrorCode {
 
 
     USER_NOT_FOUND(4001, "Người dùng không tồn tại", HttpStatus.NOT_FOUND),
-    USER_NOT_ACTIVE(4002, "Tài khoản người dùng không hoạt động", HttpStatus.BAD_REQUEST)
+    USER_NOT_ACTIVE(4002, "Tài khoản người dùng không hoạt động", HttpStatus.BAD_REQUEST),
+    INVALID_REFRESH_TOKEN(4003, "refresh token không hợp lệ", HttpStatus.UNAUTHORIZED),
+    INVALID_ACCESS_TOKEN(4004, "access token không hợp lệ", HttpStatus.UNAUTHORIZED)
+
     ;
 
 
