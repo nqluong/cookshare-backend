@@ -12,6 +12,7 @@ import com.backend.cookshare.recommendation.dto.response.RecipeRecommendationRes
 import com.backend.cookshare.recommendation.service.RecommendationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -23,6 +24,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,6 +37,9 @@ public class RecommendationServiceImpl implements RecommendationService {
     
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
+    
+    // Thread pool for parallel processing
+    private final Executor executor = Executors.newFixedThreadPool(5);
 
     private static final int DEFAULT_LIMIT = 10;
     private static final int MIN_LIMIT = 1;
@@ -44,11 +51,32 @@ public class RecommendationServiceImpl implements RecommendationService {
         log.info("Bắt đầu lấy tất cả gợi ý công thức cho trang chủ");
         
         try {
-            List<RecipeRecommendationResponse> featured = getFeaturedRecipes(DEFAULT_LIMIT);
-            List<RecipeRecommendationResponse> popular = getPopularRecipes(DEFAULT_LIMIT);
-            List<RecipeRecommendationResponse> newest = getNewestRecipes(DEFAULT_LIMIT);
-            List<RecipeRecommendationResponse> topRated = getTopRatedRecipes(DEFAULT_LIMIT);
-            List<RecipeRecommendationResponse> trending = getTrendingRecipes(DEFAULT_LIMIT);
+            // Sử dụng đa luồng để lấy tất cả recommendations song song
+            CompletableFuture<List<RecipeRecommendationResponse>> featuredFuture = 
+                CompletableFuture.supplyAsync(() -> getFeaturedRecipes(DEFAULT_LIMIT), executor);
+            
+            CompletableFuture<List<RecipeRecommendationResponse>> popularFuture = 
+                CompletableFuture.supplyAsync(() -> getPopularRecipes(DEFAULT_LIMIT), executor);
+            
+            CompletableFuture<List<RecipeRecommendationResponse>> newestFuture = 
+                CompletableFuture.supplyAsync(() -> getNewestRecipes(DEFAULT_LIMIT), executor);
+            
+            CompletableFuture<List<RecipeRecommendationResponse>> topRatedFuture = 
+                CompletableFuture.supplyAsync(() -> getTopRatedRecipes(DEFAULT_LIMIT), executor);
+            
+            CompletableFuture<List<RecipeRecommendationResponse>> trendingFuture = 
+                CompletableFuture.supplyAsync(() -> getTrendingRecipes(DEFAULT_LIMIT), executor);
+
+            CompletableFuture<Void> allFutures = CompletableFuture.allOf(
+                featuredFuture, popularFuture, newestFuture, topRatedFuture, trendingFuture);
+            
+            allFutures.join();
+            
+            List<RecipeRecommendationResponse> featured = featuredFuture.join();
+            List<RecipeRecommendationResponse> popular = popularFuture.join();
+            List<RecipeRecommendationResponse> newest = newestFuture.join();
+            List<RecipeRecommendationResponse> topRated = topRatedFuture.join();
+            List<RecipeRecommendationResponse> trending = trendingFuture.join();
             
             log.info("Đã lấy thành công tất cả gợi ý: {} featured, {} popular, {} newest, {} topRated, {} trending",
                     featured.size(), popular.size(), newest.size(), topRated.size(), trending.size());
@@ -74,14 +102,8 @@ public class RecommendationServiceImpl implements RecommendationService {
         validateLimit(limit);
         
         try {
-            Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "updatedAt"));
-
-            List<Recipe> recipes = recipeRepository.findAll(pageable)
-                    .stream()
-                    .filter(recipe -> Boolean.TRUE.equals(recipe.getIsPublished()) && 
-                                     Boolean.TRUE.equals(recipe.getIsFeatured()))
-                    .limit(limit)
-                    .collect(Collectors.toList());
+            Pageable pageable = PageRequest.of(0, limit);
+            List<Recipe> recipes = recipeRepository.findFeaturedRecipes(pageable).getContent();
             
             log.info("Tìm thấy {} công thức nổi bật", recipes.size());
             
@@ -100,25 +122,12 @@ public class RecommendationServiceImpl implements RecommendationService {
         validateLimit(limit);
         
         try {
-            List<Recipe> recipes = recipeRepository.findAll()
-                    .stream()
-                    .filter(recipe -> Boolean.TRUE.equals(recipe.getIsPublished()))
-                    .collect(Collectors.toList());
+            Pageable pageable = PageRequest.of(0, limit);
+            List<Recipe> recipes = recipeRepository.findPopularRecipes(pageable).getContent();
             
-            // Tính điểm phổ biến và sắp xếp
-            // Công thức: popularityScore = (likeCount * 2) + (viewCount * 0.5) + (saveCount * 1.5)
-            List<Recipe> popularRecipes = recipes.stream()
-                    .sorted((r1, r2) -> {
-                        double score1 = calculatePopularityScore(r1);
-                        double score2 = calculatePopularityScore(r2);
-                        return Double.compare(score2, score1);
-                    })
-                    .limit(limit)
-                    .collect(Collectors.toList());
+            log.info("Tìm thấy {} công thức phổ biến", recipes.size());
             
-            log.info("Tìm thấy {} công thức phổ biến", popularRecipes.size());
-            
-            return convertToRecommendationResponses(popularRecipes);
+            return convertToRecommendationResponses(recipes);
             
         } catch (Exception e) {
             log.error("Lỗi khi lấy công thức phổ biến: {}", e.getMessage(), e);
@@ -133,13 +142,8 @@ public class RecommendationServiceImpl implements RecommendationService {
         validateLimit(limit);
         
         try {
-            Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt"));
-
-            List<Recipe> recipes = recipeRepository.findAll(pageable)
-                    .stream()
-                    .filter(recipe -> Boolean.TRUE.equals(recipe.getIsPublished()))
-                    .limit(limit)
-                    .collect(Collectors.toList());
+            Pageable pageable = PageRequest.of(0, limit);
+            List<Recipe> recipes = recipeRepository.findNewestRecipes(pageable).getContent();
             
             log.info("Tìm thấy {} công thức mới nhất", recipes.size());
             
@@ -158,27 +162,8 @@ public class RecommendationServiceImpl implements RecommendationService {
         validateLimit(limit);
         
         try {
-            // Lấy các công thức đã xuất bản và có đủ số lượt đánh giá
-            List<Recipe> recipes = recipeRepository.findAll()
-                    .stream()
-                    .filter(recipe -> Boolean.TRUE.equals(recipe.getIsPublished()) && 
-                                     recipe.getRatingCount() != null &&
-                                     recipe.getRatingCount() >= MIN_RATING_COUNT)
-                    .sorted((r1, r2) -> {
-                        BigDecimal rating1 = r1.getAverageRating() != null ? r1.getAverageRating() : BigDecimal.ZERO;
-                        BigDecimal rating2 = r2.getAverageRating() != null ? r2.getAverageRating() : BigDecimal.ZERO;
-                        int ratingCompare = rating2.compareTo(rating1);
-
-                        if (ratingCompare == 0) {
-                            return Integer.compare(
-                                r2.getRatingCount() != null ? r2.getRatingCount() : 0,
-                                r1.getRatingCount() != null ? r1.getRatingCount() : 0
-                            );
-                        }
-                        return ratingCompare;
-                    })
-                    .limit(limit)
-                    .collect(Collectors.toList());
+            Pageable pageable = PageRequest.of(0, limit);
+            List<Recipe> recipes = recipeRepository.findTopRatedRecipes(MIN_RATING_COUNT, pageable).getContent();
             
             log.info("Tìm thấy {} công thức đánh giá cao", recipes.size());
             
@@ -197,34 +182,12 @@ public class RecommendationServiceImpl implements RecommendationService {
         validateLimit(limit);
         
         try {
-            List<Recipe> recipes = recipeRepository.findAll()
-                    .stream()
-                    .filter(recipe -> Boolean.TRUE.equals(recipe.getIsPublished()))
-                    .collect(Collectors.toList());
+            Pageable pageable = PageRequest.of(0, limit);
+            List<Recipe> recipes = recipeRepository.findTrendingRecipes(pageable).getContent();
             
-            // Tính điểm trending
-            // Công thức: trendingScore = viewCount + (likeCount * 3) + (ratingCount * 2)
-            // Ưu tiên công thức mới hơn
-            List<Recipe> trendingRecipes = recipes.stream()
-                    .sorted((r1, r2) -> {
-                        double score1 = calculateTrendingScore(r1);
-                        double score2 = calculateTrendingScore(r2);
-                        
-                        int scoreCompare = Double.compare(score2, score1);
-
-                        if (scoreCompare == 0) {
-                            LocalDateTime time1 = r1.getCreatedAt() != null ? r1.getCreatedAt() : LocalDateTime.MIN;
-                            LocalDateTime time2 = r2.getCreatedAt() != null ? r2.getCreatedAt() : LocalDateTime.MIN;
-                            return time2.compareTo(time1);
-                        }
-                        return scoreCompare;
-                    })
-                    .limit(limit)
-                    .collect(Collectors.toList());
+            log.info("Tìm thấy {} công thức trending", recipes.size());
             
-            log.info("Tìm thấy {} công thức trending", trendingRecipes.size());
-            
-            return convertToRecommendationResponses(trendingRecipes);
+            return convertToRecommendationResponses(recipes);
             
         } catch (Exception e) {
             log.error("Lỗi khi lấy công thức trending: {}", e.getMessage(), e);
@@ -245,31 +208,14 @@ public class RecommendationServiceImpl implements RecommendationService {
         }
     }
     
-    /**
-     * Tính điểm phổ biến của công thức
-     * Công thức: (likeCount * 2) + (viewCount * 0.5) + (saveCount * 1.5)
-     */
-    private double calculatePopularityScore(Recipe recipe) {
-        int likeCount = recipe.getLikeCount() != null ? recipe.getLikeCount() : 0;
-        int viewCount = recipe.getViewCount() != null ? recipe.getViewCount() : 0;
-        int saveCount = recipe.getSaveCount() != null ? recipe.getSaveCount() : 0;
-        
-        return (likeCount * 2.0) + (viewCount * 0.5) + (saveCount * 1.5);
-    }
-    
-    /**
-     * Công thức: viewCount + (likeCount * 3) + (ratingCount * 2)
-     */
-    private double calculateTrendingScore(Recipe recipe) {
-        int viewCount = recipe.getViewCount() != null ? recipe.getViewCount() : 0;
-        int likeCount = recipe.getLikeCount() != null ? recipe.getLikeCount() : 0;
-        int ratingCount = recipe.getRatingCount() != null ? recipe.getRatingCount() : 0;
-        
-        return viewCount + (likeCount * 3.0) + (ratingCount * 2.0);
-    }
     
 
     private List<RecipeRecommendationResponse> convertToRecommendationResponses(List<Recipe> recipes) {
+        if (recipes.isEmpty()) {
+            return List.of();
+        }
+        
+        // Batch query để lấy user names
         List<UUID> userIds = recipes.stream()
                 .map(Recipe::getUserId)
                 .distinct()
@@ -279,6 +225,7 @@ public class RecommendationServiceImpl implements RecommendationService {
                 .stream()
                 .collect(Collectors.toMap(User::getUserId, User::getFullName));
 
+        // Convert recipes to response objects
         return recipes.stream()
                 .map(recipe -> RecipeRecommendationResponse.builder()
                         .recipeId(recipe.getRecipeId())
@@ -312,18 +259,10 @@ public class RecommendationServiceImpl implements RecommendationService {
         validatePaginationParams(page, size);
         
         try {
-            List<Recipe> allFeaturedRecipes = recipeRepository.findAll()
-                    .stream()
-                    .filter(recipe -> Boolean.TRUE.equals(recipe.getIsPublished()) && 
-                                     Boolean.TRUE.equals(recipe.getIsFeatured()))
-                    .sorted((r1, r2) -> {
-                        LocalDateTime time1 = r1.getCreatedAt() != null ? r1.getCreatedAt() : LocalDateTime.MIN;
-                        LocalDateTime time2 = r2.getCreatedAt() != null ? r2.getCreatedAt() : LocalDateTime.MIN;
-                        return time2.compareTo(time1);
-                    })
-                    .collect(Collectors.toList());
-
-            return createPageResponse(allFeaturedRecipes, page, size);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Recipe> recipePage = recipeRepository.findFeaturedRecipes(pageable);
+            
+            return createPageResponseFromPage(recipePage);
             
         } catch (Exception e) {
             log.error("Lỗi khi lấy công thức nổi bật với phân trang: {}", e.getMessage(), e);
@@ -338,17 +277,10 @@ public class RecommendationServiceImpl implements RecommendationService {
         validatePaginationParams(page, size);
         
         try {
-            List<Recipe> allPopularRecipes = recipeRepository.findAll()
-                    .stream()
-                    .filter(recipe -> Boolean.TRUE.equals(recipe.getIsPublished()))
-                    .sorted((r1, r2) -> {
-                        double score1 = calculatePopularityScore(r1);
-                        double score2 = calculatePopularityScore(r2);
-                        return Double.compare(score2, score1);
-                    })
-                    .collect(Collectors.toList());
-
-            return createPageResponse(allPopularRecipes, page, size);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Recipe> recipePage = recipeRepository.findPopularRecipes(pageable);
+            
+            return createPageResponseFromPage(recipePage);
             
         } catch (Exception e) {
             log.error("Lỗi khi lấy công thức phổ biến với phân trang: {}", e.getMessage(), e);
@@ -363,17 +295,10 @@ public class RecommendationServiceImpl implements RecommendationService {
         validatePaginationParams(page, size);
         
         try {
-            List<Recipe> allNewestRecipes = recipeRepository.findAll()
-                    .stream()
-                    .filter(recipe -> Boolean.TRUE.equals(recipe.getIsPublished()))
-                    .sorted((r1, r2) -> {
-                        LocalDateTime time1 = r1.getCreatedAt() != null ? r1.getCreatedAt() : LocalDateTime.MIN;
-                        LocalDateTime time2 = r2.getCreatedAt() != null ? r2.getCreatedAt() : LocalDateTime.MIN;
-                        return time2.compareTo(time1);
-                    })
-                    .collect(Collectors.toList());
-
-            return createPageResponse(allNewestRecipes, page, size);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Recipe> recipePage = recipeRepository.findNewestRecipes(pageable);
+            
+            return createPageResponseFromPage(recipePage);
             
         } catch (Exception e) {
             log.error("Lỗi khi lấy công thức mới nhất với phân trang: {}", e.getMessage(), e);
@@ -388,28 +313,10 @@ public class RecommendationServiceImpl implements RecommendationService {
         validatePaginationParams(page, size);
         
         try {
-            List<Recipe> allTopRatedRecipes = recipeRepository.findAll()
-                    .stream()
-                    .filter(recipe -> Boolean.TRUE.equals(recipe.getIsPublished()) && 
-                                     recipe.getRatingCount() != null &&
-                                     recipe.getRatingCount() >= MIN_RATING_COUNT)
-                    .sorted((r1, r2) -> {
-                        // Sắp xếp theo averageRating giảm dần
-                        BigDecimal rating1 = r1.getAverageRating() != null ? r1.getAverageRating() : BigDecimal.ZERO;
-                        BigDecimal rating2 = r2.getAverageRating() != null ? r2.getAverageRating() : BigDecimal.ZERO;
-                        int ratingCompare = rating2.compareTo(rating1);
-
-                        if (ratingCompare == 0) {
-                            return Integer.compare(
-                                r2.getRatingCount() != null ? r2.getRatingCount() : 0,
-                                r1.getRatingCount() != null ? r1.getRatingCount() : 0
-                            );
-                        }
-                        return ratingCompare;
-                    })
-                    .collect(Collectors.toList());
-
-            return createPageResponse(allTopRatedRecipes, page, size);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Recipe> recipePage = recipeRepository.findTopRatedRecipes(MIN_RATING_COUNT, pageable);
+            
+            return createPageResponseFromPage(recipePage);
             
         } catch (Exception e) {
             log.error("Lỗi khi lấy công thức đánh giá cao với phân trang: {}", e.getMessage(), e);
@@ -424,27 +331,10 @@ public class RecommendationServiceImpl implements RecommendationService {
         validatePaginationParams(page, size);
         
         try {
-            // Lấy tất cả công thức đã xuất bản và sắp xếp theo điểm trending
-            List<Recipe> allTrendingRecipes = recipeRepository.findAll()
-                    .stream()
-                    .filter(recipe -> Boolean.TRUE.equals(recipe.getIsPublished()))
-                    .sorted((r1, r2) -> {
-                        double score1 = calculateTrendingScore(r1);
-                        double score2 = calculateTrendingScore(r2);
-                        
-                        int scoreCompare = Double.compare(score2, score1);
-                        
-                        // Nếu điểm bằng nhau, ưu tiên công thức mới hơn
-                        if (scoreCompare == 0) {
-                            LocalDateTime time1 = r1.getCreatedAt() != null ? r1.getCreatedAt() : LocalDateTime.MIN;
-                            LocalDateTime time2 = r2.getCreatedAt() != null ? r2.getCreatedAt() : LocalDateTime.MIN;
-                            return time2.compareTo(time1);
-                        }
-                        return scoreCompare;
-                    })
-                    .collect(Collectors.toList());
-
-            return createPageResponse(allTrendingRecipes, page, size);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Recipe> recipePage = recipeRepository.findTrendingRecipes(pageable);
+            
+            return createPageResponseFromPage(recipePage);
             
         } catch (Exception e) {
             log.error("Lỗi khi lấy công thức trending với phân trang: {}", e.getMessage(), e);
@@ -492,6 +382,21 @@ public class RecommendationServiceImpl implements RecommendationService {
                 .hasPrevious(page > 0)
                 .isFirst(page == 0)
                 .isLast(page >= totalPages - 1)
+                .build();
+    }
+
+    private RecipeRecommendationPageResponse createPageResponseFromPage(Page<Recipe> recipePage) {
+        List<RecipeRecommendationResponse> content = convertToRecommendationResponses(recipePage.getContent());
+        return RecipeRecommendationPageResponse.builder()
+                .content(content)
+                .currentPage(recipePage.getNumber())
+                .pageSize(recipePage.getSize())
+                .totalElements(recipePage.getTotalElements())
+                .totalPages(recipePage.getTotalPages())
+                .hasNext(recipePage.hasNext())
+                .hasPrevious(recipePage.hasPrevious())
+                .isFirst(recipePage.isFirst())
+                .isLast(recipePage.isLast())
                 .build();
     }
 }
