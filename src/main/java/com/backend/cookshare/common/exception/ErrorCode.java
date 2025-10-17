@@ -28,7 +28,10 @@ public enum ErrorCode {
     USER_NOT_ACTIVE(4002, "Tài khoản người dùng không hoạt động", HttpStatus.BAD_REQUEST),
     INVALID_REFRESH_TOKEN(4003, "refresh token không hợp lệ", HttpStatus.UNAUTHORIZED),
     INVALID_ACCESS_TOKEN(4004, "access token không hợp lệ", HttpStatus.UNAUTHORIZED),
-    ACCESS_DENIED(4005, "Bạn không có quyền truy cập tài nguyên này", HttpStatus.FORBIDDEN)
+    ACCESS_DENIED(4005, "Bạn không có quyền truy cập tài nguyên này", HttpStatus.FORBIDDEN),
+    INVALID_CURRENT_PASSWORD(4006, "Mật khẩu hiện tại không đúng", HttpStatus.BAD_REQUEST),
+    PASSWORD_MISMATCH(4007, "Mật khẩu mới và xác nhận mật khẩu không khớp", HttpStatus.BAD_REQUEST),
+    SAME_PASSWORD(4008, "Mật khẩu mới không được trùng với mật khẩu hiện tại", HttpStatus.BAD_REQUEST)
     ;
 
 

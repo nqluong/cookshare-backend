@@ -103,4 +103,28 @@ public class UserServiceImpl implements UserService {
     public User getUserByRefreshTokenAndUsername(String token, String username) {
         return this.userRepository.findByRefreshTokenAndUsername(token, username);
     }
+
+    @Override
+    public void changePassword(String username, String currentPassword, String newPassword) {
+        // Tìm user theo username
+        User user = getUserByUsernameOrEmail(username)
+                .orElseThrow(() -> new com.backend.cookshare.common.exception.CustomException(
+                        com.backend.cookshare.common.exception.ErrorCode.USER_NOT_FOUND));
+
+        // Kiểm tra mật khẩu hiện tại có đúng không
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new com.backend.cookshare.common.exception.CustomException(
+                    com.backend.cookshare.common.exception.ErrorCode.INVALID_CURRENT_PASSWORD);
+        }
+
+        // Kiểm tra mật khẩu mới có trùng với mật khẩu hiện tại không
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw new com.backend.cookshare.common.exception.CustomException(
+                    com.backend.cookshare.common.exception.ErrorCode.SAME_PASSWORD);
+        }
+
+        // Cập nhật mật khẩu mới
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
 }
