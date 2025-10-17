@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/users")
 @RequiredArgsConstructor
 @Slf4j
 public class FollowController {
@@ -29,7 +29,7 @@ public class FollowController {
             @PathVariable UUID userId,
             @RequestBody @Valid FollowRequest request) {
 
-        log.info("POST /api/v1/users/{}/follow - Request: {}", userId, request);
+        log.info("POST /users/{}/follow - Request: {}", userId, request);
 
         FollowResponse response = followService.followUser(userId, request.getFollowingId());
 
@@ -47,7 +47,7 @@ public class FollowController {
             @PathVariable UUID userId,
             @PathVariable UUID followingId) {
 
-        log.info("DELETE /api/v1/users/{}/follow/{}", userId, followingId);
+        log.info("DELETE /users/{}/follow/{}", userId, followingId);
 
         followService.unfollowUser(userId, followingId);
 
@@ -64,7 +64,7 @@ public class FollowController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        log.info("GET /api/v1/users/{}/followers?page={}&size={}", userId, page, size);
+        log.info("GET /users/{}/followers?page={}&size={}", userId, page, size);
 
         PageResponse<UserFollowDto> followers = followService.getFollowers(userId, page, size);
 
@@ -82,7 +82,7 @@ public class FollowController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        log.info("GET /api/v1/users/{}/following?page={}&size={}", userId, page, size);
+        log.info("GET /users/{}/following?page={}&size={}", userId, page, size);
 
         PageResponse<UserFollowDto> following = followService.getFollowing(userId, page, size);
 
@@ -99,7 +99,7 @@ public class FollowController {
             @PathVariable UUID userId,
             @PathVariable UUID targetUserId) {
 
-        log.info("GET /api/v1/users/{}/follow/check/{}", userId, targetUserId);
+        log.info("GET /users/{}/follow/check/{}", userId, targetUserId);
 
         boolean isFollowing = followService.isFollowing(userId, targetUserId);
 
