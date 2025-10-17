@@ -28,7 +28,6 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
     @Query("SELECT r FROM Recipe r WHERE r.isPublished = true ORDER BY r.createdAt DESC")
     Page<Recipe> findNewestRecipes(Pageable pageable);
 
-    // Top rated recipes
     @Query("SELECT r FROM Recipe r WHERE r.isPublished = true AND r.ratingCount >= :minRatingCount " +
            "ORDER BY r.averageRating DESC, r.ratingCount DESC")
     Page<Recipe> findTopRatedRecipes(@Param("minRatingCount") int minRatingCount, Pageable pageable);
@@ -50,7 +49,8 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
     @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = true AND r.isFeatured = true")
     long countFeaturedRecipes();
 
-    // Count top rated recipes for pagination
     @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = true AND r.ratingCount >= :minRatingCount")
     long countTopRatedRecipes(@Param("minRatingCount") int minRatingCount);
+
+    List<Recipe> findByUserId(UUID userId);
 }
