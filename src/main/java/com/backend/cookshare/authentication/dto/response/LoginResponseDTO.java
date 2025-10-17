@@ -15,6 +15,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class LoginResponseDTO {
     private String accessToken;
+    private String refreshToken;
     private String tokenType = "Bearer";
     private Long expiresIn; // thời gian sống của token (seconds)
 
@@ -30,15 +31,8 @@ public class LoginResponseDTO {
         private String username;
         private String email;
         private String fullName;
-        private String avatarUrl;
-        private String bio;
         private UserRole role;
         private Boolean isActive;
         private Boolean emailVerified;
-        private LocalDateTime lastActive;
-        private Integer followerCount;
-        private Integer followingCount;
-        private Integer recipeCount;
-        private LocalDateTime createdAt;
     }
 }
