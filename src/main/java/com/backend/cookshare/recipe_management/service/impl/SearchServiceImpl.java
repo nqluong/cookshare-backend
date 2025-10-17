@@ -1,8 +1,14 @@
 package com.backend.cookshare.recipe_management.service.impl;
 
+import com.backend.cookshare.authentication.entity.User;
+import com.backend.cookshare.authentication.repository.UserRepository;
 import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
+import com.backend.cookshare.interaction.entity.SearchHistory;
+import com.backend.cookshare.interaction.entity.dto.response.SearchHistoryResponse;
+import com.backend.cookshare.interaction.entity.mapper.SearchHistoryMapper;
+import com.backend.cookshare.interaction.entity.repository.SearchHistoryRepository;
 import com.backend.cookshare.recipe_management.dto.ApiResponse;
 import com.backend.cookshare.recipe_management.dto.response.IngredientResponse;
 import com.backend.cookshare.recipe_management.dto.response.SearchReponse;
@@ -20,9 +26,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +41,9 @@ public class SearchServiceImpl implements SearchService {
     RecipeRepository recipeRepository;
     SearchMapper searchMapper;
     IngredientRepository ingredientRepository;
+    SearchHistoryRepository searchHistoryRepository;
+    UserRepository userRepository;
+    SearchHistoryMapper searchHistoryMapper;
     @Override
     public PageResponse<SearchReponse> searchRecipesByName(String keyword, Pageable pageable) {
         if (keyword== null || keyword.trim().isEmpty()) {
@@ -53,9 +65,10 @@ public class SearchServiceImpl implements SearchService {
         List<SearchReponse> content = recipePage.getContent().stream()
                 .map(searchMapper::toSearchRecipeResponse)
                 .toList();
-
+        saveSearchHistoryAsync(keyword,"recipe", recipePage.getTotalElements());
         return buildPageResponse(recipePage, content);
     }
+
    @Override
     public PageResponse<SearchReponse> searchRecipesByIngredient(String title, List<String> ingredientNames, Pageable pageable) {
        if (title== null || title.trim().isEmpty()) {
@@ -76,7 +89,13 @@ public class SearchServiceImpl implements SearchService {
        List<SearchReponse> content = recipePage.getContent().stream()
                .map(searchMapper::toSearchRecipeResponse)
                .toList();
+       if(!content.isEmpty()) {
+           var context=SecurityContextHolder.getContext();
+           String name= context.getAuthentication().getName();
+           log.info("name: {}", name);
+           saveSearchHistoryAsync(title,"ingredient", recipePage.getTotalElements());
 
+       }
        return buildPageResponse(recipePage, content);
     }
     private <T> PageResponse<T> buildPageResponse(Page<?> page, List<T> content) {
@@ -101,5 +120,32 @@ public class SearchServiceImpl implements SearchService {
                 .toList();
         return ingredients;
     }
+    private void saveSearchHistoryAsync(String query, String type, long resultCount) {
+        var context = SecurityContextHolder.getContext();
+        String name= context.getAuthentication().getName();
+        Optional<User> user= userRepository.findByUsername(name);
+        UUID userId=user.get().getUserId();
+        if (userId != null) {
+            SearchHistory history = SearchHistory.builder()
+                    .userId(userId)
+                    .searchQuery(query)
+                    .searchType(type)
+                    .resultCount((int) resultCount)
+                    .build();
+            searchHistoryRepository.save(history);
 
+        }
+    }
+    @Override
+    public List<SearchHistoryResponse> getSearchHistory() {
+        var context = SecurityContextHolder.getContext();
+        String name= context.getAuthentication().getName();
+        Optional<User> user= userRepository.findByUsername(name);
+        UUID userId=user.get().getUserId();
+        List<SearchHistoryResponse> historyResponses=searchHistoryRepository.findTop5ByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(searchHistoryMapper::toSearchHistoryResponse)
+                .toList();
+        return historyResponses;
+    }
 }
