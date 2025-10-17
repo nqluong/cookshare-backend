@@ -1,5 +1,6 @@
 package com.backend.cookshare.recipe_management.entity;
 
+import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.recipe_management.enums.Difficulty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -108,6 +109,9 @@ public class Recipe {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
+    @OneToOne
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    private User user;
     @OneToMany
     @JoinColumn(name = "recipe_id")
     private List<RecipeIngredient> recipeIngredients;

@@ -40,6 +40,7 @@ public class User {
     String bio;
 
     @Column(name = "role", length = 50)
+    @Enumerated(EnumType.STRING)
     UserRole role = UserRole.USER;
 
     @Column(name = "google_id", unique = true, length = 100)

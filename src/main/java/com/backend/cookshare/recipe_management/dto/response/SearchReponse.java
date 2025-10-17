@@ -14,8 +14,8 @@ public class SearchReponse {
     UUID recipeId;
     UUID userId;
     String title;
-    String description;
-    String username;
+    String slug;
+    String fullName;
     String avatarUrl;
     String featuredImage;
     Integer cookTime;

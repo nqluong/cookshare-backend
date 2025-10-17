@@ -2,6 +2,7 @@ package com.backend.cookshare.recipe_management.controller;
 
 import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.recipe_management.dto.ApiResponse;
+import com.backend.cookshare.recipe_management.dto.response.IngredientResponse;
 import com.backend.cookshare.recipe_management.dto.response.SearchReponse;
 import com.backend.cookshare.recipe_management.entity.Recipe;
 
@@ -42,7 +43,7 @@ public class SearchController {
                 .result(results)
                 .build();
     }
-    @GetMapping("/ingredient")
+    @GetMapping("/recipebyingredient")
     public ApiResponse<PageResponse<SearchReponse>> searchIngredients(
             @RequestParam(required = false) String title,
             @RequestParam(required = false) List<String> ingredients,
@@ -61,4 +62,11 @@ public class SearchController {
                 .result(results)
                 .build();
     }
+    @GetMapping("/ingredients")
+    public ApiResponse<List<IngredientResponse>> top10MostIngredients() {
+        return ApiResponse.<List<IngredientResponse>>builder()
+                .result(searchService.top10MostUsedIngredients())
+                .build();
+    }
+
 }
