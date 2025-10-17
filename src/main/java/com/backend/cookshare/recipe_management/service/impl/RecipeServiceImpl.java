@@ -13,6 +13,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -78,6 +80,24 @@ public class RecipeServiceImpl implements RecipeService {
     public Page<RecipeResponse> getAllRecipes(Pageable pageable) {
         return recipeRepository.findAll(pageable)
                 .map(recipeMapper::toResponse);
+    }
+
+    /**
+     * Lấy danh sách công thức theo ID người dùng
+     */
+    @Override
+    public List<RecipeResponse> getAllRecipesByUserId(UUID userId) {
+        List<Recipe> recipes = recipeRepository.findByUserId(userId);
+        if (recipes == null) {
+            throw new CustomException(
+                    ErrorCode.RECIPE_NOT_FOUND,
+                    "Không tìm thấy công thức nào cho userId: " + userId
+            );
+        }
+        if(recipes.isEmpty()){
+            return Collections.emptyList();
+        }
+        return recipes.stream().map(recipeMapper::toResponse).toList();
     }
 
     private String generateSlug(String title) {
