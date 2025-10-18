@@ -53,4 +53,50 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
     @Query("SELECT COALESCE(SUM(r.likeCount), 0) FROM Recipe r WHERE r.userId = :userId")
     Integer getTotalLikeCountByUserId(@Param("userId") UUID userId);
 
+    @Query(value = """
+SELECT
+    s.step_number,
+    s.instruction,
+    s.image_url,
+    s.video_url,
+    s.estimated_time,
+    s.tips,
+
+    i.ingredient_id,
+    i.name AS ingredient_name,
+    i.slug AS ingredient_slug,
+    i.description AS ingredient_description,
+    ri.quantity,
+    ri.unit,
+    ri.notes AS ingredient_notes,
+    ri.order_index,
+
+    t.tag_id,
+    t.name AS tag_name,
+    t.slug AS tag_slug,
+    t.color AS tag_color,
+    t.usage_count,
+    t.is_trending,
+    t.created_at AS tag_created_at,
+
+    c.category_id,
+    c.name AS category_name,
+    c.slug AS category_slug,
+    c.description AS category_description,
+    c.icon_url AS category_icon,
+    c.parent_id,
+    c.is_active,
+    c.created_at AS category_created_at
+
+FROM recipe_steps s
+LEFT JOIN recipe_ingredients ri ON s.recipe_id = ri.recipe_id
+LEFT JOIN ingredients i ON ri.ingredient_id = i.ingredient_id
+LEFT JOIN recipe_tags rt ON s.recipe_id = rt.recipe_id
+LEFT JOIN tags t ON rt.tag_id = t.tag_id
+LEFT JOIN recipe_categories rc ON s.recipe_id = rc.recipe_id
+LEFT JOIN categories c ON rc.category_id = c.category_id
+WHERE s.recipe_id = :recipeId
+""", nativeQuery = true)
+    List<Object[]> findRecipeDetailsById(@Param("recipeId") UUID recipeId);
+
 }

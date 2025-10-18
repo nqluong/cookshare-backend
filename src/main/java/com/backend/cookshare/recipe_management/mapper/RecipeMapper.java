@@ -1,36 +1,38 @@
 package com.backend.cookshare.recipe_management.mapper;
 
-import com.backend.cookshare.recipe_management.dto.RecipeRequest;
-import com.backend.cookshare.recipe_management.dto.RecipeResponse;
+import com.backend.cookshare.recipe_management.dto.*;
 import com.backend.cookshare.recipe_management.entity.Recipe;
-import org.mapstruct.Mapper;
-import org.mapstruct.MappingTarget;
+import com.backend.cookshare.recipe_management.entity.RecipeIngredient;
+import com.backend.cookshare.recipe_management.entity.RecipeStep;
+import org.mapstruct.*;
 import org.mapstruct.factory.Mappers;
+
+import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface RecipeMapper {
     RecipeMapper INSTANCE = Mappers.getMapper(RecipeMapper.class);
 
+    // Mapping RecipeRequest → Recipe entity
+    @Mapping(target = "recipeId", ignore = true)
+    @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())")
+    @Mapping(target = "updatedAt", expression = "java(java.time.LocalDateTime.now())")
     Recipe toEntity(RecipeRequest dto);
 
+    // Recipe → Response
+    @Mapping(target = "steps", ignore = true)
+    @Mapping(target = "ingredients", ignore = true)
+    @Mapping(target = "tags", ignore = true)
+    @Mapping(target = "categories", ignore = true)
     RecipeResponse toResponse(Recipe entity);
 
-    // Cập nhật entity từ DTO mà không đổi recipeId và userId
-    default void updateRecipeFromDto(RecipeRequest dto, @MappingTarget Recipe entity) {
-        if (dto.getTitle() != null) entity.setTitle(dto.getTitle());
-        if (dto.getSlug() != null) entity.setSlug(dto.getSlug());
-        if (dto.getDescription() != null) entity.setDescription(dto.getDescription());
-        if (dto.getPrepTime() != null) entity.setPrepTime(dto.getPrepTime());
-        if (dto.getCookTime() != null) entity.setCookTime(dto.getCookTime());
-        if (dto.getServings() != null) entity.setServings(dto.getServings());
-        if (dto.getDifficulty() != null) entity.setDifficulty(dto.getDifficulty());
-        if (dto.getFeaturedImage() != null) entity.setFeaturedImage(dto.getFeaturedImage());
-        if (dto.getInstructions() != null) entity.setInstructions(dto.getInstructions());
-        if (dto.getNotes() != null) entity.setNotes(dto.getNotes());
-        if (dto.getNutritionInfo() != null) entity.setNutritionInfo(dto.getNutritionInfo());
-        if (dto.getIsPublished() != null) entity.setIsPublished(dto.getIsPublished());
-        if (dto.getIsFeatured() != null) entity.setIsFeatured(dto.getIsFeatured());
-        if (dto.getMetaKeywords() != null) entity.setMetaKeywords(dto.getMetaKeywords());
-        if (dto.getSeasonalTags() != null) entity.setSeasonalTags(dto.getSeasonalTags());
-    }
+    void updateRecipeFromDto(RecipeRequest dto, @MappingTarget Recipe entity);
+
+    // ---- Mapping Steps & Ingredients ----
+    RecipeStep toStepEntity(RecipeStepRequest dto);
+    RecipeStepResponse toStepResponse(RecipeStep entity);
+
+    RecipeIngredientResponse toIngredientResponse(RecipeIngredient entity);
+    List<RecipeStepResponse> toStepResponseList(List<RecipeStep> entities);
+    List<RecipeIngredientResponse> toIngredientResponseList(List<RecipeIngredient> entities);
 }
