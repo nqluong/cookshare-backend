@@ -31,7 +31,13 @@ public enum ErrorCode {
     ACCESS_DENIED(4005, "Bạn không có quyền truy cập tài nguyên này", HttpStatus.FORBIDDEN),
     INVALID_CURRENT_PASSWORD(4006, "Mật khẩu hiện tại không đúng", HttpStatus.BAD_REQUEST),
     PASSWORD_MISMATCH(4007, "Mật khẩu mới và xác nhận mật khẩu không khớp", HttpStatus.BAD_REQUEST),
-    SAME_PASSWORD(4008, "Mật khẩu mới không được trùng với mật khẩu hiện tại", HttpStatus.BAD_REQUEST)
+    SAME_PASSWORD(4008, "Mật khẩu mới không được trùng với mật khẩu hiện tại", HttpStatus.BAD_REQUEST),
+
+    // Collection errors (4xxx)
+    COLLECTION_NOT_FOUND(4001, "Không tìm thấy bộ sưu tập", HttpStatus.NOT_FOUND),
+    RECIPE_ALREADY_IN_COLLECTION(4002, "Công thức đã có trong bộ sưu tập", HttpStatus.BAD_REQUEST),
+    RECIPE_NOT_IN_COLLECTION(4003, "Công thức không có trong bộ sưu tập", HttpStatus.NOT_FOUND),
+    COLLECTION_NAME_DUPLICATE(4004, "Tên bộ sưu tập đã tồn tại", HttpStatus.BAD_REQUEST);
     ;
 
 
