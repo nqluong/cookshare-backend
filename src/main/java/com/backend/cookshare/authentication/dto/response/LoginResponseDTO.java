@@ -31,8 +31,16 @@ public class LoginResponseDTO {
         private String username;
         private String email;
         private String fullName;
+        private String avatarUrl;
+        private String bio;
         private UserRole role;
         private Boolean isActive;
         private Boolean emailVerified;
+        private LocalDateTime lastActive;
+        private Integer followerCount;
+        private Integer followingCount;
+        private Integer recipeCount;
+        private Integer totalLikes;
+        private LocalDateTime createdAt;
     }
 }
