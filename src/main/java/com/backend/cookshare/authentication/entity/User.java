@@ -68,6 +68,9 @@ public class User {
     @Column(name = "recipe_count")
     Integer recipeCount = 0;
 
+    @Column(name = "refresh_token", length = 500)
+    String refreshToken;
+
     @Column(name = "created_at", updatable = false)
     LocalDateTime createdAt = LocalDateTime.now();
 
