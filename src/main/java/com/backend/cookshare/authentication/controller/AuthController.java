@@ -6,6 +6,7 @@ import com.backend.cookshare.authentication.dto.request.UserRequest;
 import com.backend.cookshare.authentication.dto.request.ChangePasswordRequest;
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.service.UserService;
+import com.backend.cookshare.recipe_management.repository.RecipeRepository;
 import com.backend.cookshare.authentication.service.TokenBlacklistService;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
@@ -33,6 +34,8 @@ public class AuthController {
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
     private final SecurityUtil securityUtil;
     private final UserService userService;
+    private final RecipeRepository recipeRepository;
+
     private final TokenBlacklistService tokenBlacklistService;
 
     @Value("${cookshare.jwt.access-token-validity-in-seconds}")
@@ -155,9 +158,17 @@ public class AuthController {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
+                .avatarUrl(user.getAvatarUrl())
+                .bio(user.getBio())
                 .role(user.getRole())
                 .isActive(user.getIsActive())
                 .emailVerified(user.getEmailVerified())
+                .lastActive(user.getLastActive())
+                .followerCount(user.getFollowerCount())
+                .followingCount(user.getFollowingCount())
+                .recipeCount(user.getRecipeCount())
+                .totalLikes(recipeRepository.getTotalLikeCountByUserId(user.getUserId()))
+                .createdAt(user.getCreatedAt())
                 .build();
         res.setUser(userInfo);
 
