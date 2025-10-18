@@ -158,17 +158,9 @@ public class AuthController {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
-                .avatarUrl(user.getAvatarUrl())
-                .bio(user.getBio())
                 .role(user.getRole())
                 .isActive(user.getIsActive())
                 .emailVerified(user.getEmailVerified())
-                .lastActive(user.getLastActive())
-                .followerCount(user.getFollowerCount())
-                .followingCount(user.getFollowingCount())
-                .recipeCount(user.getRecipeCount())
-                .totalLikes(recipeRepository.getTotalLikeCountByUserId(user.getUserId()))
-                .createdAt(user.getCreatedAt())
                 .build();
         res.setUser(userInfo);
 

@@ -41,17 +41,9 @@ public class UserController {
                             .username(user.getUsername())
                             .email(user.getEmail())
                             .fullName(user.getFullName())
-                            .avatarUrl(user.getAvatarUrl())
-                            .bio(user.getBio())
                             .role(user.getRole())
                             .isActive(user.getIsActive())
                             .emailVerified(user.getEmailVerified())
-                            .lastActive(user.getLastActive())
-                            .followerCount(user.getFollowerCount())
-                            .followingCount(user.getFollowingCount())
-                            .recipeCount(user.getRecipeCount())
-                            .totalLikes(totalLikes)
-                            .createdAt(user.getCreatedAt())
                             .build();
 
                     return ResponseEntity.ok(userInfo);
@@ -72,17 +64,9 @@ public class UserController {
                             .username(user.getUsername())
                             .email(user.getEmail())
                             .fullName(user.getFullName())
-                            .avatarUrl(user.getAvatarUrl())
-                            .bio(user.getBio())
                             .role(user.getRole())
                             .isActive(user.getIsActive())
                             .emailVerified(user.getEmailVerified())
-                            .lastActive(user.getLastActive())
-                            .followerCount(user.getFollowerCount())
-                            .followingCount(user.getFollowingCount())
-                            .recipeCount(user.getRecipeCount())
-                            .totalLikes(totalLikes)
-                            .createdAt(user.getCreatedAt())
                             .build();
 
                     return ResponseEntity.ok(userInfo);
