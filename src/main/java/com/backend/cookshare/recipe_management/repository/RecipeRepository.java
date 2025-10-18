@@ -8,20 +8,17 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.UUID;
-
 @Repository
 public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecificationExecutor<Recipe> {
-
     // Featured recipes
     @Query("SELECT r FROM Recipe r WHERE r.isPublished = true AND r.isFeatured = true ORDER BY r.updatedAt DESC")
     Page<Recipe> findFeaturedRecipes(Pageable pageable);
 
     // Popular recipes - using custom scoring
     @Query("SELECT r FROM Recipe r WHERE r.isPublished = true ORDER BY " +
-           "(r.likeCount * 2.0 + r.viewCount * 0.5 + r.saveCount * 1.5) DESC")
+            "(r.likeCount * 2.0 + r.viewCount * 0.5 + r.saveCount * 1.5) DESC")
     Page<Recipe> findPopularRecipes(Pageable pageable);
 
     // Newest recipes
@@ -29,12 +26,12 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
     Page<Recipe> findNewestRecipes(Pageable pageable);
 
     @Query("SELECT r FROM Recipe r WHERE r.isPublished = true AND r.ratingCount >= :minRatingCount " +
-           "ORDER BY r.averageRating DESC, r.ratingCount DESC")
+            "ORDER BY r.averageRating DESC, r.ratingCount DESC")
     Page<Recipe> findTopRatedRecipes(@Param("minRatingCount") int minRatingCount, Pageable pageable);
 
     // Trending recipes - using custom scoring
     @Query("SELECT r FROM Recipe r WHERE r.isPublished = true ORDER BY " +
-           "(r.viewCount + r.likeCount * 3.0 + r.ratingCount * 2.0) DESC, r.createdAt DESC")
+            "(r.viewCount + r.likeCount * 3.0 + r.ratingCount * 2.0) DESC, r.createdAt DESC")
     Page<Recipe> findTrendingRecipes(Pageable pageable);
 
     // Get recipes by user IDs for batch user name lookup
@@ -51,6 +48,9 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
 
     @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = true AND r.ratingCount >= :minRatingCount")
     long countTopRatedRecipes(@Param("minRatingCount") int minRatingCount);
-
     List<Recipe> findByUserId(UUID userId);
+    //Tong so luot thich cua tat ca cac cong thuc
+    @Query("SELECT COALESCE(SUM(r.likeCount), 0) FROM Recipe r WHERE r.userId = :userId")
+    Integer getTotalLikeCountByUserId(@Param("userId") UUID userId);
+
 }

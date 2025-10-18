@@ -5,6 +5,7 @@ import com.backend.cookshare.authentication.dto.response.LoginResponseDTO;
 import com.backend.cookshare.authentication.dto.request.UserRequest;
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.service.UserService;
+import com.backend.cookshare.recipe_management.repository.RecipeRepository;
 import jakarta.validation.Valid;
 import com.backend.cookshare.authentication.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,8 @@ public class AuthController {
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
     private final SecurityUtil securityUtil;
     private final UserService userService;
+    private final RecipeRepository recipeRepository;
+
 
     @Value("${cookshare.jwt.token-validity-in-seconds}")
     private long jwtExpiration;
@@ -73,6 +76,7 @@ public class AuthController {
                 .followerCount(user.getFollowerCount())
                 .followingCount(user.getFollowingCount())
                 .recipeCount(user.getRecipeCount())
+                .totalLikes(recipeRepository.getTotalLikeCountByUserId(user.getUserId()))
                 .createdAt(user.getCreatedAt())
                 .build();
 
