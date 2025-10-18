@@ -1,5 +1,6 @@
 package com.backend.cookshare.authentication.controller;
 
+import com.backend.cookshare.authentication.dto.UserProfileDto;
 import com.backend.cookshare.authentication.dto.request.UserRequest;
 import com.backend.cookshare.authentication.dto.response.LoginResponseDTO;
 import com.backend.cookshare.authentication.entity.User;
@@ -29,47 +30,59 @@ public class UserController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<LoginResponseDTO.UserInfo> getUserById(@PathVariable UUID userId) {
+    public ResponseEntity<UserProfileDto> getUserById(@PathVariable UUID userId) {
         return userService.getUserById(userId)
                 .map(user -> {
-                    // Lấy tổng lượt thích của user
                     int totalLikes = recipeRepository.getTotalLikeCountByUserId(user.getUserId());
 
-                    // Map dữ liệu sang UserInfo DTO
-                    LoginResponseDTO.UserInfo userInfo = LoginResponseDTO.UserInfo.builder()
+                    UserProfileDto userProfileDto = UserProfileDto.builder()
                             .userId(user.getUserId())
                             .username(user.getUsername())
                             .email(user.getEmail())
                             .fullName(user.getFullName())
+                            .avatarUrl(user.getAvatarUrl())
+                            .bio(user.getBio())
                             .role(user.getRole())
                             .isActive(user.getIsActive())
                             .emailVerified(user.getEmailVerified())
+                            .lastActive(user.getLastActive())
+                            .followerCount(user.getFollowerCount())
+                            .followingCount(user.getFollowingCount())
+                            .recipeCount(user.getRecipeCount())
+                            .totalLikes(totalLikes)
+                            .createdAt(user.getCreatedAt())
                             .build();
 
-                    return ResponseEntity.ok(userInfo);
+                    return ResponseEntity.ok(userProfileDto);
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/username/{username}")
-    public ResponseEntity<LoginResponseDTO.UserInfo> getUserByUsername(@PathVariable String username) {
+    public ResponseEntity<UserProfileDto> getUserByUsername(@PathVariable String username) {
         return userService.getUserByUsername(username)
                 .map(user -> {
-                    // Lấy tổng lượt thích của user
                     int totalLikes = recipeRepository.getTotalLikeCountByUserId(user.getUserId());
 
-                    // Map dữ liệu sang UserInfo DTO
-                    LoginResponseDTO.UserInfo userInfo = LoginResponseDTO.UserInfo.builder()
+                    UserProfileDto userProfileDto = UserProfileDto.builder()
                             .userId(user.getUserId())
                             .username(user.getUsername())
                             .email(user.getEmail())
                             .fullName(user.getFullName())
+                            .avatarUrl(user.getAvatarUrl())
+                            .bio(user.getBio())
                             .role(user.getRole())
                             .isActive(user.getIsActive())
                             .emailVerified(user.getEmailVerified())
+                            .lastActive(user.getLastActive())
+                            .followerCount(user.getFollowerCount())
+                            .followingCount(user.getFollowingCount())
+                            .recipeCount(user.getRecipeCount())
+                            .totalLikes(totalLikes)
+                            .createdAt(user.getCreatedAt())
                             .build();
 
-                    return ResponseEntity.ok(userInfo);
+                    return ResponseEntity.ok(userProfileDto);
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
