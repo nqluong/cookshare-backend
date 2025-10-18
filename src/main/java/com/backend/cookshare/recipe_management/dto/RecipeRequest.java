@@ -1,10 +1,12 @@
 package com.backend.cookshare.recipe_management.dto;
 
 import com.backend.cookshare.recipe_management.enums.Difficulty;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -19,8 +21,6 @@ public class RecipeRequest {
 
     @NotBlank(message = "title không được để trống")
     String title;
-
-    String slug;
 
     @NotBlank(message = "description không được để trống")
     String description;
@@ -38,15 +38,27 @@ public class RecipeRequest {
 
     String featuredImage;
 
-    @NotBlank(message = "instructions không được để trống")
-    String instructions;
+    // 🔥 Thêm danh sách nguyên liệu
+    @Valid
+    @NotEmpty(message = "Phải có ít nhất 1 nguyên liệu")
+    List<UUID> ingredients;
 
-    String notes;
-    String nutritionInfo;
+    // 🔥 Thêm danh sách bước nấu
+    @Valid
+    @NotEmpty(message = "Phải có ít nhất 1 bước nấu ăn")
+    List<RecipeStepRequest> steps;
+
+    // 🔥 Thêm tag + category
+    List<UUID> tagIds;
+    List<UUID> categoryIds;
 
     Boolean isPublished;
     Boolean isFeatured;
 
+    String notes;
+    String nutritionInfo;
+
     String metaKeywords;
     String seasonalTags;
+    String instruction;
 }
