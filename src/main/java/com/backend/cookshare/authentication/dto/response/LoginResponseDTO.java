@@ -39,6 +39,7 @@ public class LoginResponseDTO {
         private Integer followerCount;
         private Integer followingCount;
         private Integer recipeCount;
+        private Integer totalLikes;
         private LocalDateTime createdAt;
     }
 }
