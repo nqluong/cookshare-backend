@@ -71,6 +71,9 @@ public class User {
     @Column(name = "refresh_token", length = 500)
     String refreshToken;
 
+    @OneToOne(mappedBy = "user")
+    ForgotPassword forgotPassword;
+
     @Column(name = "created_at", updatable = false)
     LocalDateTime createdAt = LocalDateTime.now();
 
