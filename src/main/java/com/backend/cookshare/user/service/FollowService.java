@@ -5,10 +5,13 @@ import com.backend.cookshare.authentication.repository.UserRepository;
 import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
+import com.backend.cookshare.common.mapper.PageMapper;
 import com.backend.cookshare.user.dto.FollowResponse;
 import com.backend.cookshare.user.dto.UserFollowDto;
 import com.backend.cookshare.user.entity.Follow;
 import com.backend.cookshare.user.repository.FollowRepository;
+import com.backend.cookshare.user.websocket.NotificationWebSocketHandler;
+import com.backend.cookshare.user.websocket.WebSocketNotificationSender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -17,7 +20,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -28,6 +33,8 @@ public class FollowService {
     private final UserRepository userRepository;
     private final FollowRepository followRepository;
     private final NotificationService notificationService;
+    private  final WebSocketNotificationSender webSocketNotificationSender;
+    private final PageMapper pageMapper;
 
     //Xử lý hành động follow một người dùng khác.
     @Transactional
@@ -75,8 +82,11 @@ public class FollowService {
         userRepository.save(following);
         userRepository.save(follower);
 
-        // Gửi thông báo
+        // ========== 🔔 TẠO FOLLOW NOTIFICATION ==========
         notificationService.createFollowNotification(followerId, followingId);
+
+        // Gửi realtime notification via WebSocket
+        webSocketNotificationSender.sendFollowNotification(followerId, followingId, follower.getUsername());
 
         log.info("User {} successfully followed user {}", followerId, followingId);
 
@@ -136,7 +146,7 @@ public class FollowService {
                 .filter(dto -> dto != null)
                 .collect(Collectors.toList());
 
-        return buildPageResponse(followers, followerIds);
+        return pageMapper.toPageResponse(followers, followerIds);
     }
 
     //Lấy danh sách người dùng mà một người dùng đang follow theo phân trang.
@@ -158,7 +168,7 @@ public class FollowService {
                 .filter(dto -> dto != null)
                 .collect(Collectors.toList());
 
-        return buildPageResponse(following, followingIds);
+        return pageMapper.toPageResponse(following, followingIds);
     }
 
     //Kiểm tra trạng thái follow giữa hai người dùng.
@@ -182,18 +192,4 @@ public class FollowService {
                 .build();
     }
 
-    //Xây dựng đối tượng PageResponse từ danh sách nội dung và thông tin phân trang.
-    private <T> PageResponse<T> buildPageResponse(List<T> content, Page<?> page) {
-        return PageResponse.<T>builder()
-                .content(content)
-                .page(page.getNumber())
-                .size(page.getSize())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .first(page.isFirst())
-                .last(page.isLast())
-                .empty(page.isEmpty())
-                .numberOfElements(content.size())
-                .build();
-    }
 }

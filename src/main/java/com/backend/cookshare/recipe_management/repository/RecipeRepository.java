@@ -98,4 +98,6 @@ WHERE s.recipe_id = :recipeId
 """, nativeQuery = true)
     List<Object[]> findRecipeDetailsById(@Param("recipeId") UUID recipeId);
 
+
+
 }
