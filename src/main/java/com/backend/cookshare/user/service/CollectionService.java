@@ -1,14 +1,21 @@
 package com.backend.cookshare.user.service;
 
+import com.backend.cookshare.authentication.entity.User;
+import com.backend.cookshare.authentication.repository.UserRepository;
 import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
+import com.backend.cookshare.common.mapper.PageMapper;
+import com.backend.cookshare.recipe_management.dto.RecipeResponse;
+import com.backend.cookshare.recipe_management.entity.Recipe;
+import com.backend.cookshare.recipe_management.repository.RecipeRepository;
 import com.backend.cookshare.user.dto.*;
 import com.backend.cookshare.user.entity.Collection;
 import com.backend.cookshare.user.entity.CollectionRecipe;
 import com.backend.cookshare.user.entity.CollectionRecipeId;
 import com.backend.cookshare.user.repository.CollectionRecipeRepository;
 import com.backend.cookshare.user.repository.CollectionRepository;
+import com.backend.cookshare.user.websocket.WebSocketNotificationSender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -29,6 +36,10 @@ public class CollectionService {
 
     private final CollectionRepository collectionRepository;
     private final CollectionRecipeRepository collectionRecipeRepository;
+    private final PageMapper pageMapper;
+    private final WebSocketNotificationSender webSocketNotificationSender;
+    private final RecipeRepository recipeRepository;
+    private final UserRepository userRepository;
 
     // Tạo collection mới
     @Transactional
@@ -71,7 +82,7 @@ public class CollectionService {
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
 
-        return buildPageResponse(content, collections);
+        return pageMapper.toPageResponse(content, collections);
     }
 
     // Lấy danh sách public collections của user
@@ -87,7 +98,7 @@ public class CollectionService {
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
 
-        return buildPageResponse(content, collections);
+        return pageMapper.toPageResponse(content, collections);
     }
 
     // Lấy chi tiết collection
@@ -170,7 +181,7 @@ public class CollectionService {
 
         log.info("Get collection recipes successful, count: {}", content.size());
 
-        return buildPageResponse(content, rawRecipes);
+        return pageMapper.toPageResponse(content, rawRecipes);
     }
 
     // Thêm recipe vào collection
@@ -181,6 +192,10 @@ public class CollectionService {
         // Kiểm tra collection tồn tại
         Collection collection = collectionRepository.findByCollectionIdAndUserId(collectionId, userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.COLLECTION_NOT_FOUND));
+
+        // Kiểm tra recipe tồn tại
+        Recipe recipe = recipeRepository.findById(recipeId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
 
         // Kiểm tra recipe đã có trong collection chưa
         if (collectionRecipeRepository.existsByCollectionIdAndRecipeId(collectionId, recipeId)) {
@@ -197,6 +212,20 @@ public class CollectionService {
 
         collectionRecipeRepository.save(collectionRecipe);
 
+        // 5️⃣ Gửi thông báo WebSocket tới chủ sở hữu công thức (nếu khác user đang thao tác)
+
+        if (!recipe.getUserId().equals(userId)) {
+            User sharer = userRepository.findById(userId)
+                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+            webSocketNotificationSender.sendShareNotification(
+                    recipe.getUserId(),          // Chủ công thức nhận thông báo
+                    recipeId,                    // ID công thức
+                    sharer.getUsername(),        // Tên người chia sẻ
+                    collection.getName(),        // Tên bộ sưu tập
+                    recipe.getTitle()            // Tên công thức
+            );
+        }
         // Cập nhật recipe count
         collection.setRecipeCount(collection.getRecipeCount() + 1);
         collectionRepository.save(collection);
@@ -277,20 +306,6 @@ public class CollectionService {
                 .saveCount((Integer) row[10])
                 .likeCount((Integer) row[11])
                 .averageRating((String) row[12])
-                .build();
-    }
-
-    private <T> PageResponse<T> buildPageResponse(List<T> content, Page<?> page) {
-        return PageResponse.<T>builder()
-                .content(content)
-                .page(page.getNumber())
-                .size(page.getSize())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .first(page.isFirst())
-                .last(page.isLast())
-                .empty(page.isEmpty())
-                .numberOfElements(content.size())
                 .build();
     }
 }
