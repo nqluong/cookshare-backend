@@ -20,7 +20,6 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
     @Query("SELECT r FROM Recipe r WHERE r.isPublished = true ORDER BY " +
             "(r.likeCount * 2.0 + r.viewCount * 0.5 + r.saveCount * 1.5) DESC")
     Page<Recipe> findPopularRecipes(Pageable pageable);
-
     // Newest recipes
     @Query("SELECT r FROM Recipe r WHERE r.isPublished = true ORDER BY r.createdAt DESC")
     Page<Recipe> findNewestRecipes(Pageable pageable);
