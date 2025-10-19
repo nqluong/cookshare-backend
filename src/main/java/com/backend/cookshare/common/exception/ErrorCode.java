@@ -37,7 +37,11 @@ public enum ErrorCode {
     COLLECTION_NOT_FOUND(4001, "Không tìm thấy bộ sưu tập", HttpStatus.NOT_FOUND),
     RECIPE_ALREADY_IN_COLLECTION(4002, "Công thức đã có trong bộ sưu tập", HttpStatus.BAD_REQUEST),
     RECIPE_NOT_IN_COLLECTION(4003, "Công thức không có trong bộ sưu tập", HttpStatus.NOT_FOUND),
-    COLLECTION_NAME_DUPLICATE(4004, "Tên bộ sưu tập đã tồn tại", HttpStatus.BAD_REQUEST);
+    COLLECTION_NAME_DUPLICATE(4004, "Tên bộ sưu tập đã tồn tại", HttpStatus.BAD_REQUEST),
+
+    // 🔹 Notification errors (✨ thêm mới)
+    NOTIFICATION_NOT_FOUND(5001, "Không tìm thấy thông báo", HttpStatus.NOT_FOUND),
+    NOTIFICATION_FORBIDDEN(5002, "Không có quyền truy cập thông báo này", HttpStatus.FORBIDDEN)
     ;
 
 
