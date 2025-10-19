@@ -57,9 +57,10 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(
                         authz -> authz
                                 .requestMatchers(HttpMethod.GET,"/api/v1/recommendations/**").permitAll()
-                                .requestMatchers("/", "/login", "/register").permitAll()
                                 .requestMatchers("/recipe_images/**", "/images/**", "/static/**").permitAll()
                                 .requestMatchers("/", "/auth/login", "/auth/register", "/auth/refresh").permitAll()
+                                .requestMatchers("forgotPassword/**").permitAll()
+
                                 .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer((oauth2) -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))

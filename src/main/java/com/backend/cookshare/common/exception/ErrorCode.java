@@ -32,12 +32,21 @@ public enum ErrorCode {
     INVALID_CURRENT_PASSWORD(4006, "Mật khẩu hiện tại không đúng", HttpStatus.BAD_REQUEST),
     PASSWORD_MISMATCH(4007, "Mật khẩu mới và xác nhận mật khẩu không khớp", HttpStatus.BAD_REQUEST),
     SAME_PASSWORD(4008, "Mật khẩu mới không được trùng với mật khẩu hiện tại", HttpStatus.BAD_REQUEST),
+    INVALID_EMAIL(4009, "Địa chỉ email không hợp lệ", HttpStatus.BAD_REQUEST),
+    OTP_NOT_FOUND(4010, "Mã OTP không hợp lệ", HttpStatus.NOT_FOUND),
+    OTP_EXPIRED(4011, "Mã OTP đã hết hạn", HttpStatus.BAD_REQUEST),
+    OTP_NOT_VERIFIED(4012, "Bạn chưa xác thực OTP. Vui lòng xác thực OTP trước khi đặt lại mật khẩu", HttpStatus.BAD_REQUEST),
+    EMAIL_SEND_FAILED(4013, "Gửi email thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
 
     // Collection errors (4xxx)
     COLLECTION_NOT_FOUND(4001, "Không tìm thấy bộ sưu tập", HttpStatus.NOT_FOUND),
     RECIPE_ALREADY_IN_COLLECTION(4002, "Công thức đã có trong bộ sưu tập", HttpStatus.BAD_REQUEST),
     RECIPE_NOT_IN_COLLECTION(4003, "Công thức không có trong bộ sưu tập", HttpStatus.NOT_FOUND),
-    COLLECTION_NAME_DUPLICATE(4004, "Tên bộ sưu tập đã tồn tại", HttpStatus.BAD_REQUEST);
+    COLLECTION_NAME_DUPLICATE(4004, "Tên bộ sưu tập đã tồn tại", HttpStatus.BAD_REQUEST),
+
+    // 🔹 Notification errors (✨ thêm mới)
+    NOTIFICATION_NOT_FOUND(5001, "Không tìm thấy thông báo", HttpStatus.NOT_FOUND),
+    NOTIFICATION_FORBIDDEN(5002, "Không có quyền truy cập thông báo này", HttpStatus.FORBIDDEN)
     ;
 
 
