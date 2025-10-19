@@ -43,4 +43,18 @@ public interface PageMapper {
                 .sorted(page.getSort().isSorted())
                 .build();
     }
+
+    default <T> PageResponse<T> toPageResponse(List<T> content, Page<?> page) {
+        return PageResponse.<T>builder()
+                .content(content)
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .first(page.isFirst())
+                .last(page.isLast())
+                .empty(page.isEmpty())
+                .numberOfElements(content.size())
+                .build();
+    }
 }
