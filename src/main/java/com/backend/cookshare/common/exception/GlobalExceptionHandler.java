@@ -2,76 +2,140 @@ package com.backend.cookshare.common.exception;
 
 import com.backend.cookshare.common.dto.ErrorResponse;
 import com.backend.cookshare.common.dto.ValidationResponse;
-
 import jakarta.validation.ConstraintViolationException;
-
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /**
-     * Xử lý ngoại lệ tùy chỉnh (CustomException) được ném trong ứng dụng.
-     * Trả về phản hồi với mã lỗi, thông điệp, và trạng thái HTTP tương ứng từ ErrorCode.
-     *
-     * @param ex Ngoại lệ tùy chỉnh chứa thông tin ErrorCode.
-     * @param request Đối tượng WebRequest chứa thông tin về yêu cầu HTTP.
-     * @return ResponseEntity chứa ErrorResponse với trạng thái HTTP từ ErrorCode.
-     */
+    // ==========================
+    // ⚙️ CUSTOM EXCEPTION
+    // ==========================
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ErrorResponse> handleCustomException(CustomException ex, WebRequest request) {
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .code(ex.getErrorCode().getCode())
-                .message(ex.getErrorCode().getMessage())
+        ErrorCode code = ex.getErrorCode();
+
+        ErrorResponse response = ErrorResponse.builder()
+                .succes(false)
+                .code(code.getCode())
+                .message(ex.getMessage() != null ? ex.getMessage() : code.getMessage())
                 .path(extractPath(request))
                 .build();
 
-        return ResponseEntity.status(ex.getErrorCode().getHttpStatus()).body(errorResponse);
+        return ResponseEntity.status(code.getHttpStatus()).body(response);
     }
 
-    /**
-     * Xử lý ngoại lệ validation khi dữ liệu đầu vào không hợp lệ (MethodArgumentNotValidException).
-     * Thu thập các lỗi validation từ các trường và trả về danh sách lỗi chi tiết.
-     *
-     * @param ex Ngoại lệ validation chứa thông tin về các lỗi trường.
-     * @param request Đối tượng WebRequest chứa thông tin về yêu cầu HTTP.
-     * @return ResponseEntity chứa ErrorResponse với trạng thái 400 và danh sách lỗi validation.
-     */
+    // ==========================
+    // ⚙️ VALIDATION ERRORS (@Valid)
+    // ==========================
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationException(
-            MethodArgumentNotValidException ex, WebRequest request) {
-
-        var errors = ex.getBindingResult().getFieldErrors().stream()
-                .map(error -> ValidationResponse.builder()
-                        .field(error.getField())
-                        .message(error.getDefaultMessage())
-                        .build())
+    public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException ex, WebRequest request) {
+        List<ValidationResponse> validationErrors = ex.getBindingResult().getFieldErrors()
+                .stream()
+                .map(fieldError -> new ValidationResponse(
+                        fieldError.getField(),
+                        fieldError.getDefaultMessage(),
+                        fieldError.getRejectedValue()
+                ))
                 .collect(Collectors.toList());
 
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .code(400)
-                .message("Lỗi validation")
-                .validationErrors(errors)
+        ErrorResponse response = ErrorResponse.builder()
+                .succes(false)
+                .code(ErrorCode.VALIDATION_ERROR.getCode())
+                .message("Dữ liệu nhập vào không hợp lệ. Vui lòng kiểm tra lại.")
+                .path(extractPath(request))
+                .validationErrors(validationErrors)
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    // ==========================
+    // ⚙️ BIND & CONSTRAINT ERRORS
+    // ==========================
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<Map<String, String>> handleBindException(BindException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+                errors.put(error.getField(), error.getDefaultMessage()));
+        return ResponseEntity.badRequest().body(errors);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Map<String, String>> handleConstraintViolationException(ConstraintViolationException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getConstraintViolations().forEach(violation ->
+                errors.put(violation.getPropertyPath().toString(), violation.getMessage()));
+        return ResponseEntity.badRequest().body(errors);
+    }
+
+    // ==========================
+    // ⚙️ JSON PARSE / UUID / FORMAT ERRORS
+    // ==========================
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleJsonParseError(HttpMessageNotReadableException ex, WebRequest request) {
+        String msg = ex.getMessage();
+        String viMessage;
+
+        if (msg != null && msg.contains("UUID")) {
+            viMessage = "Định dạng UUID không hợp lệ. Vui lòng kiểm tra lại ID được gửi lên.";
+        } else if (msg != null && msg.contains("JSON parse error")) {
+            viMessage = "Dữ liệu JSON không hợp lệ. Vui lòng kiểm tra lại nội dung gửi lên.";
+        } else {
+            viMessage = "Không thể đọc dữ liệu gửi lên. Kiểm tra lại định dạng JSON.";
+        }
+
+        ErrorResponse response = ErrorResponse.builder()
+                .succes(false)
+                .code(ErrorCode.BAD_REQUEST.getCode())
+                .message(viMessage)
                 .path(extractPath(request))
                 .build();
 
-        return ResponseEntity.badRequest().body(errorResponse);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    // ==========================
+    // ⚙️ DATABASE CONSTRAINT (FK, UNIQUE...)
+    // ==========================
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex, WebRequest request) {
+        String viMessage = "Dữ liệu bị trùng lặp hoặc vi phạm ràng buộc. Vui lòng kiểm tra lại.";
+
+        if (ex.getMessage() != null && ex.getMessage().contains("recipes_slug_key")) {
+            viMessage = "Slug công thức đã tồn tại. Vui lòng chọn tiêu đề khác.";
+        } else if (ex.getMessage() != null && ex.getMessage().contains("recipe_ingredients_ingredient_id_fkey")) {
+            viMessage = "Nguyên liệu không tồn tại trong hệ thống. Vui lòng kiểm tra lại danh sách nguyên liệu.";
+        }
+
+        ErrorResponse response = ErrorResponse.builder()
+                .succes(false)
+                .code(ErrorCode.BAD_REQUEST.getCode())
+                .message(viMessage)
+                .path(extractPath(request))
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    // ==========================
+    // ⚙️ SECURITY / AUTH ERRORS
+    // ==========================
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Map<String, String>> handleBadCredentials(BadCredentialsException ex) {
         Map<String, String> error = new HashMap<>();
@@ -88,59 +152,48 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
-    // Handler cho BindException
-    @ExceptionHandler(BindException.class)
-    public ResponseEntity<Map<String, String>> handleBindException(BindException ex) {
-        Map<String, String> errors = new HashMap<>();
-
-        ex.getBindingResult().getFieldErrors().forEach(error ->
-                errors.put(error.getField(), error.getDefaultMessage()));
-
-        return ResponseEntity.badRequest().body(errors);
-    }
-
-    // Handler cho ConstraintViolationException
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<Map<String, String>> handleConstraintViolationException(
-            ConstraintViolationException ex) {
-        Map<String, String> errors = new HashMap<>();
-
-        ex.getConstraintViolations().forEach(violation -> {
-            String fieldName = violation.getPropertyPath().toString();
-            String errorMessage = violation.getMessage();
-            errors.put(fieldName, errorMessage);
-        });
-
-        return ResponseEntity.badRequest().body(errors);
-    }
-
-    // Handler cho IllegalArgumentException (user đã tồn tại)
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, String>> handleIllegalArgumentException(
-            IllegalArgumentException ex) {
+    public ResponseEntity<Map<String, String>> handleIllegalArgumentException(IllegalArgumentException ex) {
         Map<String, String> error = new HashMap<>();
         error.put("error", ex.getMessage());
         error.put("status", "400");
         return ResponseEntity.badRequest().body(error);
     }
 
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex, WebRequest request) {
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .code(ErrorCode.INTERNAL_SERVER_ERROR.getCode())
-                .message(ErrorCode.INTERNAL_SERVER_ERROR.getMessage())
+    // ==========================
+    // ⚙️ WRONG HTTP METHOD
+    // ==========================
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex, WebRequest request) {
+        ErrorResponse response = ErrorResponse.builder()
+                .succes(false)
+                .code(ErrorCode.METHOD_NOT_ALLOWED.getCode())
+                .message("Phương thức HTTP này không được hỗ trợ cho endpoint hiện tại.")
                 .path(extractPath(request))
                 .build();
 
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(response);
     }
 
+    // ==========================
+    // ⚙️ GENERIC (UNCATEGORIZED) ERRORS
+    // ==========================
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex, WebRequest request) {
+        ErrorResponse response = ErrorResponse.builder()
+                .succes(false)
+                .code(ErrorCode.INTERNAL_SERVER_ERROR.getCode())
+                .message("Đã xảy ra lỗi hệ thống: " + ex.getMessage())
+                .path(extractPath(request))
+                .build();
 
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
+    // ==========================
+    // ⚙️ Utility
+    // ==========================
     private String extractPath(WebRequest request) {
         return request.getDescription(false).replace("uri=", "");
     }
-
-
-
 }

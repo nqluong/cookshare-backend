@@ -109,12 +109,14 @@ public class Recipe {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
     private User user;
-    @OneToMany
-    @JoinColumn(name = "recipe_id")
+
+    @OneToMany(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recipe_id", insertable = false, updatable = false)
     private List<RecipeIngredient> recipeIngredients;
+
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
