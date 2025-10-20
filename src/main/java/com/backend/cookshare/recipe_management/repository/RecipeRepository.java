@@ -5,6 +5,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -98,6 +100,49 @@ WHERE s.recipe_id = :recipeId
 """, nativeQuery = true)
     List<Object[]> findRecipeDetailsById(@Param("recipeId") UUID recipeId);
 
+    @Modifying
+    @Transactional
+    @Query(value = """
+        INSERT INTO recipe_tags (recipe_id, tag_id)
+        VALUES (:recipeId, :tagId)
+        ON CONFLICT DO NOTHING
+        """, nativeQuery = true)
+    void insertRecipeTag(@Param("recipeId") UUID recipeId, @Param("tagId") UUID tagId);
+
+    @Modifying
+    @Transactional
+    @Query(value = """
+        INSERT INTO recipe_categories (recipe_id, category_id)
+        VALUES (:recipeId, :categoryId)
+        ON CONFLICT DO NOTHING
+        """, nativeQuery = true)
+    void insertRecipeCategory(@Param("recipeId") UUID recipeId, @Param("categoryId") UUID categoryId);
+
+    @Modifying
+    @Transactional
+    @Query(value = """
+        INSERT INTO recipe_ingredients (recipe_id, ingredient_id)
+        VALUES (:recipeId, :ingredientId)
+        ON CONFLICT DO NOTHING
+        """, nativeQuery = true)
+    void insertRecipeIngredient(@Param("recipeId") UUID recipeId, @Param("ingredientId") UUID ingredientId);
+
+    @Modifying
+    @Transactional
+    @Query(value = """
+    INSERT INTO recipe_steps (recipe_id, step_number, instruction, image_url, video_url, estimated_time, tips)
+    VALUES (:recipeId, :stepNumber, :instruction, :imageUrl, :videoUrl, :estimatedTime, :tips)
+    ON CONFLICT DO NOTHING
+    """, nativeQuery = true)
+    void insertRecipeStep(
+            @Param("recipeId") UUID recipeId,
+            @Param("stepNumber") Integer stepNumber,
+            @Param("instruction") String instruction,
+            @Param("imageUrl") String imageUrl,
+            @Param("videoUrl") String videoUrl,
+            @Param("estimatedTime") Integer estimatedTime,
+            @Param("tips") String tips
+    );
 
 
 }
