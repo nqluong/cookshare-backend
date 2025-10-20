@@ -46,9 +46,9 @@ public enum ErrorCode {
 
     // 🔹 Notification errors (✨ thêm mới)
     NOTIFICATION_NOT_FOUND(5001, "Không tìm thấy thông báo", HttpStatus.NOT_FOUND),
-    NOTIFICATION_FORBIDDEN(5002, "Không có quyền truy cập thông báo này", HttpStatus.FORBIDDEN)
-    ;
-
+    NOTIFICATION_FORBIDDEN(5002, "Không có quyền truy cập thông báo này", HttpStatus.FORBIDDEN),
+    RECIPE_ALREADY_LIKED(6003,"Công thức đã được thích", HttpStatus.CONFLICT),
+    RECIPE_NOT_LIKED(6004,"Công thức chưa được thích", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;
