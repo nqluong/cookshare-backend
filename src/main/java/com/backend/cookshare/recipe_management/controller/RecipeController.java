@@ -49,7 +49,7 @@ public class RecipeController {
         return ResponseEntity.ok(recipeService.getRecipeById(id));
     }
 
-    /**
+    /**g
      * [PUT] /api/recipes/{id}
      * ➤ Cập nhật thông tin công thức theo ID
      */

@@ -1,5 +1,6 @@
 package com.backend.cookshare.interaction.entity.controller;
 
+import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.interaction.entity.dto.request.RecipeLikeRequest;
 import com.backend.cookshare.interaction.entity.dto.response.RecipeLikeResponse;
 import com.backend.cookshare.interaction.entity.sevice.RecipeLikeService;
@@ -36,6 +37,16 @@ public class RecipeLikeController {
         recipeLikeService.unlikerecipe(recipeId);
         return ApiResponse.<String>builder()
                 .result("Unliked thành công")
+                .build();
+    }
+    @GetMapping("/likedlist")
+    public ApiResponse<PageResponse<RecipeLikeResponse>> getAllLikedList(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        PageResponse<RecipeLikeResponse> likedRecipes = recipeLikeService.getallRecipeLiked(page, size);
+        return ApiResponse.<PageResponse<RecipeLikeResponse>>builder()
+                .result(likedRecipes)
                 .build();
     }
 
