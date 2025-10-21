@@ -17,5 +17,5 @@ public class RecipeLikeResponse {
     private UUID userId;
     private UUID recipeId;
     private LocalDateTime createdAt;
-    private Recipe recipe;
+    private RecipeSummaryResponse recipe;
 }
