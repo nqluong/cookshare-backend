@@ -2,6 +2,7 @@ package com.backend.cookshare.interaction.entity.sevice.impl;
 
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.repository.UserRepository;
+import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
 import com.backend.cookshare.interaction.entity.RecipeLike;
@@ -16,8 +17,13 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -52,6 +58,7 @@ public class RecipeLikeServiceImpl implements RecipeLikeService {
         RecipeLike recipeLike = RecipeLike.builder()
                 .userId(currentUser.getUserId())
                 .recipeId(recipeId)
+                .createdAt(LocalDateTime.now())
                 .build();
         recipeLike = recipeLikeRepository.save(recipeLike);
         recipe.setLikeCount(recipe.getLikeCount() + 1);
@@ -72,6 +79,26 @@ public class RecipeLikeServiceImpl implements RecipeLikeService {
         recipeLikeRepository.delete(recipeLike);
         recipe.setLikeCount(Math.max(0, recipe.getLikeCount() - 1));
         recipeRepository.save(recipe);
+    }
+    @Override
+    @Transactional
+    public PageResponse<RecipeLikeResponse> getallRecipeLiked(int page, int size) {
+        User currentUser = getCurrentUser();
+        Pageable pageable = PageRequest.of(page, size);
+        Page<RecipeLike> likedRecipes = recipeLikeRepository.findAllByUserId(currentUser.getUserId(), pageable);
+
+        Page<RecipeLikeResponse> responsePage = likedRecipes.map(like -> {
+            Recipe recipe = recipeRepository.findById(like.getRecipeId()).orElse(null);
+            return recipeLikeMapper.toRecipeResponse(like, recipe);
+        });
+
+        return PageResponse.<RecipeLikeResponse>builder()
+                .page(page)
+                .size(size)
+                .totalPages(responsePage.getTotalPages())
+                .totalElements(responsePage.getTotalElements())
+                .content(responsePage.getContent())
+                .build();
     }
 
     @Override
