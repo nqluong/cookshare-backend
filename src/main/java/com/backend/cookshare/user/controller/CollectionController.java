@@ -4,12 +4,20 @@ import com.backend.cookshare.common.dto.ApiResponse;
 import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.user.dto.*;
 import com.backend.cookshare.user.service.CollectionService;
+import jakarta.annotation.PostConstruct;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -19,6 +27,56 @@ import java.util.UUID;
 public class CollectionController {
 
     private final CollectionService collectionService;
+    private final Path root = Paths.get("src/main/resources/static/recipe_images");
+
+    @PostConstruct
+    public void init() {
+        try {
+            Files.createDirectories(root);
+            log.info("Created directory for recipe images: {}", root.toAbsolutePath());
+        } catch (IOException e) {
+            log.error("Could not create upload directory!", e);
+            throw new RuntimeException("Không thể tạo thư mục uploads!");
+        }
+    }
+
+    @PostMapping("/upload")
+    public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file) {
+        try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "File rỗng"));
+            }
+
+            // Validate file type
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                return ResponseEntity.badRequest().body(Map.of("error", "File phải là ảnh"));
+            }
+
+            // Validate file size (max 5MB)
+            if (file.getSize() > 5 * 1024 * 1024) {
+                return ResponseEntity.badRequest().body(Map.of("error", "File không được vượt quá 5MB"));
+            }
+
+            String originalFilename = file.getOriginalFilename();
+            String fileExtension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+
+            String fileName = UUID.randomUUID() + fileExtension;
+            Path filePath = root.resolve(fileName);
+            Files.copy(file.getInputStream(), filePath);
+
+            String url = "recipe_images\\" + fileName;
+            log.info("File uploaded successfully: {}", url);
+
+            return ResponseEntity.ok(Map.of("url", url));
+        } catch (Exception e) {
+            log.error("Error uploading file", e);
+            return ResponseEntity.status(500).body(Map.of("error", "Lỗi khi upload ảnh: " + e.getMessage()));
+        }
+    }
 
     // Tạo bộ sưu tập mới
     @PostMapping("/{userId}/collections")
