@@ -228,6 +228,7 @@ public class CollectionService {
         }
         // Cập nhật recipe count
         collection.setRecipeCount(collection.getRecipeCount() + 1);
+        recipe.setSaveCount(recipe.getSaveCount()+ 1);
         collectionRepository.save(collection);
 
         log.info("Recipe added to collection successfully");
@@ -242,6 +243,10 @@ public class CollectionService {
         Collection collection = collectionRepository.findByCollectionIdAndUserId(collectionId, userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.COLLECTION_NOT_FOUND));
 
+        // Kiểm tra recipe tồn tại
+        Recipe recipe = recipeRepository.findById(recipeId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
+
         // Kiểm tra recipe có trong collection
         CollectionRecipe collectionRecipe = collectionRecipeRepository
                 .findByCollectionIdAndRecipeId(collectionId, recipeId)
@@ -254,6 +259,7 @@ public class CollectionService {
 
         // Cập nhật recipe count
         collection.setRecipeCount(Math.max(0, collection.getRecipeCount() - 1));
+        recipe.setSaveCount(recipe.getSaveCount()-1);
         collectionRepository.save(collection);
 
         log.info("Recipe removed from collection successfully");
