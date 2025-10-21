@@ -85,13 +85,14 @@ public class RecipeLikeServiceImpl implements RecipeLikeService {
     public PageResponse<RecipeLikeResponse> getallRecipeLiked(int page, int size) {
         User currentUser = getCurrentUser();
         Pageable pageable = PageRequest.of(page, size);
-        Page<RecipeLike> likedRecipes = recipeLikeRepository.findAllByUserId(currentUser.getUserId(), pageable);
+        Page<RecipeLike> likedRecipes = recipeLikeRepository.findAllByUserIdOrderByCreatedAtDesc(currentUser.getUserId(), pageable);
 
         Page<RecipeLikeResponse> responsePage = likedRecipes.map(like -> {
             Recipe recipe = recipeRepository.findById(like.getRecipeId()).orElse(null);
-            return recipeLikeMapper.toRecipeResponse(like, recipe);
+            if (recipe == null) return null;
+            var summary = recipeLikeMapper.toRecipeSummary(recipe);
+            return recipeLikeMapper.toRecipeResponse(like, summary);
         });
-
         return PageResponse.<RecipeLikeResponse>builder()
                 .page(page)
                 .size(size)

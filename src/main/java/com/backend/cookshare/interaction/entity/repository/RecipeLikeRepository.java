@@ -16,6 +16,6 @@ public interface RecipeLikeRepository extends JpaRepository<RecipeLike, UUID> {
 
     Optional<RecipeLike> findByUserIdAndRecipeId(UUID userId, UUID recipeId);
 
-    @Query("SELECT rl FROM RecipeLike rl WHERE rl.userId = :userId")
-    Page<RecipeLike> findAllByUserId(UUID userId, Pageable pageable);
+    @Query("SELECT rl FROM RecipeLike rl WHERE rl.userId = :userId ORDER BY rl.createdAt DESC")
+    Page<RecipeLike> findAllByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
 }
