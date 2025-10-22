@@ -1,5 +1,6 @@
 package com.backend.cookshare.authentication.service.impl;
 
+import com.backend.cookshare.authentication.dto.request.UpdateUserProfileRequest;
 import com.backend.cookshare.authentication.dto.request.UserRequest;
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.repository.UserRepository;
@@ -126,5 +127,51 @@ public class UserServiceImpl implements UserService {
         // Cập nhật mật khẩu mới
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+    }
+
+    @Override
+    public User updateUserProfile(UUID userId, UpdateUserProfileRequest request) {
+        // Tìm user theo ID
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new com.backend.cookshare.common.exception.CustomException(
+                        com.backend.cookshare.common.exception.ErrorCode.USER_NOT_FOUND));
+
+        // Kiểm tra nếu username mới đã tồn tại (và không phải của chính user này)
+        if (request.getUsername() != null && !request.getUsername().equals(user.getUsername())) {
+            if (userRepository.existsByUsername(request.getUsername())) {
+                throw new com.backend.cookshare.common.exception.CustomException(
+                        com.backend.cookshare.common.exception.ErrorCode.USERNAME_EXISTED);
+            }
+            user.setUsername(request.getUsername());
+        }
+
+        // Kiểm tra nếu email mới đã tồn tại (và không phải của chính user này)
+        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new com.backend.cookshare.common.exception.CustomException(
+                        com.backend.cookshare.common.exception.ErrorCode.EMAIL_EXISTED);
+            }
+            user.setEmail(request.getEmail());
+            // Nếu đổi email mới thì cần verify lại
+            user.setEmailVerified(false);
+        }
+
+        // Cập nhật các trường khác nếu có
+        if (request.getFullName() != null) {
+            user.setFullName(request.getFullName());
+        }
+
+        if (request.getAvatarUrl() != null) {
+            user.setAvatarUrl(request.getAvatarUrl());
+        }
+
+        if (request.getBio() != null) {
+            user.setBio(request.getBio());
+        }
+
+        // Cập nhật thời gian
+        user.setUpdatedAt(LocalDateTime.now());
+
+        return userRepository.save(user);
     }
 }

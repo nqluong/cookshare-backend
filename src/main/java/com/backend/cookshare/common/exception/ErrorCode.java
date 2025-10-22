@@ -37,14 +37,18 @@ public enum ErrorCode {
     OTP_EXPIRED(4011, "Mã OTP đã hết hạn", HttpStatus.BAD_REQUEST),
     OTP_NOT_VERIFIED(4012, "Bạn chưa xác thực OTP. Vui lòng xác thực OTP trước khi đặt lại mật khẩu", HttpStatus.BAD_REQUEST),
     EMAIL_SEND_FAILED(4013, "Gửi email thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
+    USERNAME_EXISTED(4014, "Username đã tồn tại", HttpStatus.BAD_REQUEST),
+    EMAIL_EXISTED(4015, "Email đã tồn tại", HttpStatus.BAD_REQUEST),
 
     // Collection errors (4xxx)
     COLLECTION_NOT_FOUND(4001, "Không tìm thấy bộ sưu tập", HttpStatus.NOT_FOUND),
     RECIPE_ALREADY_IN_COLLECTION(4002, "Công thức đã có trong bộ sưu tập", HttpStatus.BAD_REQUEST),
     RECIPE_NOT_IN_COLLECTION(4003, "Công thức không có trong bộ sưu tập", HttpStatus.NOT_FOUND),
-    COLLECTION_NAME_DUPLICATE(4004, "Tên bộ sưu tập đã tồn tại", HttpStatus.BAD_REQUEST);
-    ;
+    COLLECTION_NAME_DUPLICATE(4004, "Tên bộ sưu tập đã tồn tại", HttpStatus.BAD_REQUEST),
 
+    // Google OAuth errors (5xxx)
+    GOOGLE_AUTH_ERROR(5001, "Lỗi xác thực với Google", HttpStatus.UNAUTHORIZED),
+    FACEBOOK_AUTH_ERROR(5002, "Lỗi xác thực với Facebook", HttpStatus.UNAUTHORIZED);
 
     private final int code;
     private final String message;
