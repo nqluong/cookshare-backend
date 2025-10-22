@@ -59,6 +59,8 @@ public class SecurityConfiguration {
                                 .requestMatchers(HttpMethod.GET,"/api/v1/recommendations/**").permitAll()
                                 .requestMatchers("/recipe_images/**", "/images/**", "/static/**").permitAll()
                                 .requestMatchers("/", "/auth/login", "/auth/register", "/auth/refresh").permitAll()
+                                .requestMatchers("/auth/google/**").permitAll()
+                                .requestMatchers("/auth/facebook/**").permitAll()
                                 .requestMatchers("forgotPassword/**").permitAll()
 
                                 .anyRequest().authenticated()

@@ -1,5 +1,6 @@
 package com.backend.cookshare.authentication.service;
 
+import com.backend.cookshare.authentication.dto.request.UpdateUserProfileRequest;
 import com.backend.cookshare.authentication.dto.request.UserRequest;
 import com.backend.cookshare.authentication.entity.User;
 
@@ -35,4 +36,6 @@ public interface UserService {
     User getUserByRefreshTokenAndUsername(String token, String username);
 
     void changePassword(String username, String currentPassword, String newPassword);
+
+    User updateUserProfile(UUID userId, UpdateUserProfileRequest request);
 }
