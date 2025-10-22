@@ -40,25 +40,6 @@ spring:
           timeout: 5000
           writetimeout: 5000
 
-  security:
-    oauth2:
-      registration:
-        google:
-          client-id: 930367083527-chtbv453jhlmdllanvtrf18sfigeqsvj.apps.googleusercontent.com
-          client-secret: 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
-          redirect-uri: "${GOOGLE_REDIRECT_URI:http://localhost:8080/auth/google/callback}"
-          user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
-          resource-server:
-            opaque-token:
-                introspection-uri: "https://www.googleapis.com"
-        facebook:
-          client-id: 828224186245470
-          client-secret: 8068a1f8cb3f07b3d861feee491d0490
-          redirect-uri: "${FACEBOOK_REDIRECT_URI:http://localhost:8080/auth/facebook/callback}"
-          auth-uri: https://www.facebook.com/v21.0/dialog/oauth
-          token-uri: https://graph.facebook.com/oauth/access_token
-          user-info-uri: https://graph.facebook.com/me?fields=id,name,email,picture,type(large)
-          scope: email,public_profile
 
 cookshare:
   jwt:
