@@ -22,6 +22,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
     @Query("SELECT r FROM Recipe r WHERE r.isPublished = true ORDER BY " +
             "(r.likeCount * 2.0 + r.viewCount * 0.5 + r.saveCount * 1.5) DESC")
     Page<Recipe> findPopularRecipes(Pageable pageable);
+
     // Newest recipes
     @Query("SELECT r FROM Recipe r WHERE r.isPublished = true ORDER BY r.createdAt DESC")
     Page<Recipe> findNewestRecipes(Pageable pageable);
@@ -67,6 +68,9 @@ SELECT
     i.name AS ingredient_name,
     i.slug AS ingredient_slug,
     i.description AS ingredient_description,
+    i.category AS ingredient_category,
+    i.created_at AS ingredient_created_at,
+
     ri.quantity,
     ri.unit,
     ri.notes AS ingredient_notes,
@@ -99,6 +103,7 @@ LEFT JOIN categories c ON rc.category_id = c.category_id
 WHERE s.recipe_id = :recipeId
 """, nativeQuery = true)
     List<Object[]> findRecipeDetailsById(@Param("recipeId") UUID recipeId);
+
 
     @Modifying
     @Transactional

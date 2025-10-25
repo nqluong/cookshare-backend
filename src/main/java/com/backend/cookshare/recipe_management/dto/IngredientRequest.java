@@ -3,20 +3,14 @@ package com.backend.cookshare.recipe_management.dto;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class TagResponse {
-    UUID tagId;
+public class IngredientRequest {
     String name;
-    String slug;
-    String color;
-    Integer usageCount;
-    Boolean isTrending;
-    LocalDateTime createdAt;
+    String category;
+    String unit;
+    String description;
 }

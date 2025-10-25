@@ -1,7 +1,7 @@
 package com.backend.cookshare.recipe_management.service;
 
 import com.backend.cookshare.recipe_management.dto.RecipeRequest;
-import com.backend.cookshare.recipe_management.dto.RecipeResponse;
+import com.backend.cookshare.recipe_management.dto.response.RecipeResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
