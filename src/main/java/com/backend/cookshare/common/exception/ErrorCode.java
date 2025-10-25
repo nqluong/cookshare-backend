@@ -15,6 +15,13 @@ public enum ErrorCode {
     METHOD_NOT_ALLOWED(1004, "Phương thức HTTP không được hỗ trợ", HttpStatus.METHOD_NOT_ALLOWED),
     NOT_FOUND(1005, "Không tìm thấy dữ liệu yêu cầu", HttpStatus.NOT_FOUND),
 
+    TAG_NOT_FOUND(1101, "Không tìm thấy thẻ (Tag)", HttpStatus.NOT_FOUND),
+    TAG_ALREADY_EXISTS(1102, "Thẻ (Tag) đã tồn tại", HttpStatus.CONFLICT),
+
+    // 🔹 Category errors
+    CATEGORY_NOT_FOUND(1301, "Không tìm thấy danh mục (Category)", HttpStatus.NOT_FOUND),
+    CATEGORY_ALREADY_EXISTS(1302, "Danh mục (Category) đã tồn tại", HttpStatus.CONFLICT),
+
     CANNOT_FOLLOW_YOURSELF(2001, "Không thể follow chính mình", HttpStatus.BAD_REQUEST),
     ALREADY_FOLLOWING(2002, "Bạn đã follow người dùng này rồi", HttpStatus.BAD_REQUEST),
     NOT_FOLLOWING(2003, "Bạn chưa follow người dùng này", HttpStatus.BAD_REQUEST),

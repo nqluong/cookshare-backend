@@ -1,8 +1,9 @@
-package com.backend.cookshare.recipe_management.dto;
+package com.backend.cookshare.recipe_management.dto.response;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -15,9 +16,11 @@ public class RecipeIngredientResponse {
     String name;
     String slug;
     String description;
+    String category;
 
     String quantity;
     String unit;
     String notes;
     Integer orderIndex;
+    LocalDateTime createdAt;
 }
