@@ -1,6 +1,6 @@
 package com.backend.cookshare.recipe_management.service;
 
-import com.backend.cookshare.recipe_management.dto.TagRequest;
+import com.backend.cookshare.recipe_management.dto.request.TagRequest;
 import com.backend.cookshare.recipe_management.dto.response.TagResponse;
 
 import java.util.List;

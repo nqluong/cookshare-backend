@@ -2,7 +2,7 @@ package com.backend.cookshare.recipe_management.service.impl;
 
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
-import com.backend.cookshare.recipe_management.dto.CategoryRequest;
+import com.backend.cookshare.recipe_management.dto.request.CategoryRequest;
 import com.backend.cookshare.recipe_management.dto.response.CategoryResponse;
 import com.backend.cookshare.recipe_management.entity.Category;
 import com.backend.cookshare.recipe_management.mapper.CategoryMapper;

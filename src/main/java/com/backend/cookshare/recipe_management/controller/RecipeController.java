@@ -1,7 +1,7 @@
 package com.backend.cookshare.recipe_management.controller;
 
 import com.backend.cookshare.common.dto.PageResponse;
-import com.backend.cookshare.recipe_management.dto.RecipeRequest;
+import com.backend.cookshare.recipe_management.dto.request.RecipeRequest;
 import com.backend.cookshare.recipe_management.dto.response.RecipeResponse;
 import com.backend.cookshare.recipe_management.service.RecipeService;
 import jakarta.validation.Valid;

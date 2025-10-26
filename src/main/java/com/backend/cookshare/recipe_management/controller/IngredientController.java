@@ -1,6 +1,6 @@
 package com.backend.cookshare.recipe_management.controller;
 
-import com.backend.cookshare.recipe_management.dto.*;
+import com.backend.cookshare.recipe_management.dto.request.IngredientRequest;
 import com.backend.cookshare.recipe_management.dto.response.RecipeIngredientResponse;
 import com.backend.cookshare.recipe_management.service.IngredientService;
 import lombok.RequiredArgsConstructor;

@@ -1,6 +1,6 @@
 package com.backend.cookshare.recipe_management.controller;
 
-import com.backend.cookshare.recipe_management.dto.TagRequest;
+import com.backend.cookshare.recipe_management.dto.request.TagRequest;
 import com.backend.cookshare.recipe_management.dto.response.TagResponse;
 import com.backend.cookshare.recipe_management.service.TagService;
 import lombok.RequiredArgsConstructor;

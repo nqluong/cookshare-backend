@@ -1,4 +1,4 @@
-package com.backend.cookshare.recipe_management.dto;
+package com.backend.cookshare.recipe_management.dto.request;
 
 import lombok.Data;
 
