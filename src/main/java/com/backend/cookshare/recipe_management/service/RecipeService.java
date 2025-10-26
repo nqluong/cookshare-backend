@@ -4,6 +4,7 @@ import com.backend.cookshare.recipe_management.dto.request.RecipeRequest;
 import com.backend.cookshare.recipe_management.dto.response.RecipeResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -11,6 +12,8 @@ import java.util.UUID;
 public interface RecipeService {
 
     RecipeResponse createRecipe(RecipeRequest request);
+
+    RecipeResponse createRecipeWithFiles(RecipeRequest request, MultipartFile image, List<MultipartFile> stepImages);
 
     RecipeResponse getRecipeById(UUID id);
 
