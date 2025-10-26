@@ -2,6 +2,8 @@ package com.backend.cookshare.authentication.service;
 
 import com.backend.cookshare.authentication.dto.request.UserRequest;
 import com.backend.cookshare.authentication.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -35,4 +37,15 @@ public interface UserService {
     User getUserByRefreshTokenAndUsername(String token, String username);
 
     void changePassword(String username, String currentPassword, String newPassword);
+
+    // Admin methods
+    Page<User> getAllUsersWithPagination(String search, Pageable pageable);
+
+    User getUserDetailById(UUID userId);
+
+    void banUser(UUID userId, String reason);
+
+    void unbanUser(UUID userId);
+
+    void deleteUserByAdmin(UUID userId);
 }

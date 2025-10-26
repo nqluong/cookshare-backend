@@ -1,8 +1,11 @@
 package com.backend.cookshare.authentication.repository;
 
 import com.backend.cookshare.authentication.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -28,4 +31,15 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByEmail(String email);
 
     User findByRefreshTokenAndUsername(String token, String username);
+
+    // Admin methods
+    @Query("SELECT u FROM User u WHERE " +
+            "(:search IS NULL OR :search = '' OR " +
+            "LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<User> findAllWithSearch(@Param("search") String search, Pageable pageable);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = :isActive")
+    long countByIsActive(@Param("isActive") Boolean isActive);
 }

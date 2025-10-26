@@ -4,7 +4,12 @@ import com.backend.cookshare.authentication.dto.request.UserRequest;
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.repository.UserRepository;
 import com.backend.cookshare.authentication.service.UserService;
+import com.backend.cookshare.common.exception.CustomException;
+import com.backend.cookshare.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +22,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
@@ -108,23 +114,83 @@ public class UserServiceImpl implements UserService {
     public void changePassword(String username, String currentPassword, String newPassword) {
         // Tìm user theo username
         User user = getUserByUsernameOrEmail(username)
-                .orElseThrow(() -> new com.backend.cookshare.common.exception.CustomException(
-                        com.backend.cookshare.common.exception.ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         // Kiểm tra mật khẩu hiện tại có đúng không
         if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new com.backend.cookshare.common.exception.CustomException(
-                    com.backend.cookshare.common.exception.ErrorCode.INVALID_CURRENT_PASSWORD);
+            throw new CustomException(ErrorCode.INVALID_CURRENT_PASSWORD);
         }
 
         // Kiểm tra mật khẩu mới có trùng với mật khẩu hiện tại không
         if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
-            throw new com.backend.cookshare.common.exception.CustomException(
-                    com.backend.cookshare.common.exception.ErrorCode.SAME_PASSWORD);
+            throw new CustomException(ErrorCode.SAME_PASSWORD);
         }
 
         // Cập nhật mật khẩu mới
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+    }
+
+    // ==================== ADMIN METHODS ====================
+
+    @Override
+    public Page<User> getAllUsersWithPagination(String search, Pageable pageable) {
+        log.info("Admin fetching users with search: {}, page: {}, size: {}", 
+                search, pageable.getPageNumber(), pageable.getPageSize());
+        return userRepository.findAllWithSearch(search, pageable);
+    }
+
+    @Override
+    public User getUserDetailById(UUID userId) {
+        log.info("Admin fetching user details for userId: {}", userId);
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    @Override
+    public void banUser(UUID userId, String reason) {
+        log.info("Admin banning user: {} with reason: {}", userId, reason);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        
+        if (Boolean.FALSE.equals(user.getIsActive())) {
+            throw new CustomException(ErrorCode.USER_ALREADY_BANNED);
+        }
+        
+        user.setIsActive(false);
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+        
+        log.info("User {} has been banned successfully", userId);
+    }
+
+    @Override
+    public void unbanUser(UUID userId) {
+        log.info("Admin unbanning user: {}", userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        
+        if (Boolean.TRUE.equals(user.getIsActive())) {
+            throw new CustomException(ErrorCode.USER_ALREADY_ACTIVE);
+        }
+        
+        user.setIsActive(true);
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+        
+        log.info("User {} has been unbanned successfully", userId);
+    }
+
+    @Override
+    public void deleteUserByAdmin(UUID userId) {
+        log.info("Admin deleting user: {}", userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        
+        // You might want to add additional checks here, like preventing deletion of other admins
+        // or performing soft delete instead of hard delete
+        userRepository.delete(user);
+        
+        log.info("User {} has been deleted successfully", userId);
     }
 }
