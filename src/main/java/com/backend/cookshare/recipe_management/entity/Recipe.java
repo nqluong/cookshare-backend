@@ -2,6 +2,7 @@ package com.backend.cookshare.recipe_management.entity;
 
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.recipe_management.enums.Difficulty;
+import com.backend.cookshare.recipe_management.enums.RecipeStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -51,6 +52,11 @@ public class Recipe {
     @Enumerated(EnumType.STRING)
     @Column(name = "difficulty", length = 50)
     private Difficulty difficulty;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 20)
+    @Builder.Default
+    private RecipeStatus status = RecipeStatus.PENDING;
 
     @Column(name = "featured_image", length = 255)
     private String featuredImage;

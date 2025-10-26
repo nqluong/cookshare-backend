@@ -14,6 +14,7 @@ public enum ErrorCode {
     BAD_REQUEST(1003, "Yêu cầu không hợp lệ", HttpStatus.BAD_REQUEST),
     METHOD_NOT_ALLOWED(1004, "Phương thức HTTP không được hỗ trợ", HttpStatus.METHOD_NOT_ALLOWED),
     NOT_FOUND(1005, "Không tìm thấy dữ liệu yêu cầu", HttpStatus.NOT_FOUND),
+    REQUEST_TIMEOUT(1006, "Yêu cầu timeout", HttpStatus.REQUEST_TIMEOUT),
 
     CANNOT_FOLLOW_YOURSELF(2001, "Không thể follow chính mình", HttpStatus.BAD_REQUEST),
     ALREADY_FOLLOWING(2002, "Bạn đã follow người dùng này rồi", HttpStatus.BAD_REQUEST),
@@ -39,12 +40,16 @@ public enum ErrorCode {
     OTP_EXPIRED(4011, "Mã OTP đã hết hạn", HttpStatus.BAD_REQUEST),
     OTP_NOT_VERIFIED(4012, "Bạn chưa xác thực OTP. Vui lòng xác thực OTP trước khi đặt lại mật khẩu", HttpStatus.BAD_REQUEST),
     EMAIL_SEND_FAILED(4013, "Gửi email thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
+    USER_ALREADY_BANNED(4014, "Người dùng đã bị cấm trước đó", HttpStatus.BAD_REQUEST),
+    USER_ALREADY_ACTIVE(4015, "Người dùng đã đang hoạt động", HttpStatus.BAD_REQUEST),
 
     // Collection errors (4xxx)
     COLLECTION_NOT_FOUND(4001, "Không tìm thấy bộ sưu tập", HttpStatus.NOT_FOUND),
     RECIPE_ALREADY_IN_COLLECTION(4002, "Công thức đã có trong bộ sưu tập", HttpStatus.BAD_REQUEST),
     RECIPE_NOT_IN_COLLECTION(4003, "Công thức không có trong bộ sưu tập", HttpStatus.NOT_FOUND),
     COLLECTION_NAME_DUPLICATE(4004, "Tên bộ sưu tập đã tồn tại", HttpStatus.BAD_REQUEST),
+    RECIPE_NOT_APPROVED(4005, "Công thức chưa được phê duyệt", HttpStatus.BAD_REQUEST),
+    RECIPE_NOT_PUBLISHED(4006, "Công thức chưa được publish", HttpStatus.BAD_REQUEST),
 
     // 🔹 Notification errors (✨ thêm mới)
     NOTIFICATION_NOT_FOUND(5001, "Không tìm thấy thông báo", HttpStatus.NOT_FOUND),

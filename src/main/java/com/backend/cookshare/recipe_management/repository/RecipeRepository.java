@@ -1,6 +1,7 @@
 package com.backend.cookshare.recipe_management.repository;
 
 import com.backend.cookshare.recipe_management.entity.Recipe;
+import com.backend.cookshare.recipe_management.enums.RecipeStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,8 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 import java.util.UUID;
+
 @Repository
 public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecificationExecutor<Recipe> {
     // Featured recipes
@@ -22,6 +25,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
     @Query("SELECT r FROM Recipe r WHERE r.isPublished = true ORDER BY " +
             "(r.likeCount * 2.0 + r.viewCount * 0.5 + r.saveCount * 1.5) DESC")
     Page<Recipe> findPopularRecipes(Pageable pageable);
+
     // Newest recipes
     @Query("SELECT r FROM Recipe r WHERE r.isPublished = true ORDER BY r.createdAt DESC")
     Page<Recipe> findNewestRecipes(Pageable pageable);
@@ -49,100 +53,69 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
 
     @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = true AND r.ratingCount >= :minRatingCount")
     long countTopRatedRecipes(@Param("minRatingCount") int minRatingCount);
+
     List<Recipe> findByUserId(UUID userId);
+
     //Tong so luot thich cua tat ca cac cong thuc
     @Query("SELECT COALESCE(SUM(r.likeCount), 0) FROM Recipe r WHERE r.userId = :userId")
     Integer getTotalLikeCountByUserId(@Param("userId") UUID userId);
 
-    @Query(value = """
-SELECT
-    s.step_number,
-    s.instruction,
-    s.image_url,
-    s.video_url,
-    s.estimated_time,
-    s.tips,
+    /**
+     * Tìm kiếm công thức với bộ lọc admin
+     */
+    @Query("SELECT r FROM Recipe r WHERE " +
+            "(:search IS NULL OR r.title LIKE %:search% OR " +
+            "r.description LIKE %:search% OR " +
+            "r.instructions LIKE %:search%) AND " +
+            "(:isPublished IS NULL OR r.isPublished = :isPublished) AND " +
+            "(:isFeatured IS NULL OR r.isFeatured = :isFeatured) AND " +
+            "(:status IS NULL OR r.status = :status)")
+    Page<Recipe> findAllWithAdminFilters(
+            @Param("search") String search,
+            @Param("isPublished") Boolean isPublished,
+            @Param("isFeatured") Boolean isFeatured,
+            @Param("status") RecipeStatus status,
+            Pageable pageable);
 
-    i.ingredient_id,
-    i.name AS ingredient_name,
-    i.slug AS ingredient_slug,
-    i.description AS ingredient_description,
-    ri.quantity,
-    ri.unit,
-    ri.notes AS ingredient_notes,
-    ri.order_index,
+    /**
+     * Lấy danh sách công thức theo trạng thái
+     */
+    Page<Recipe> findByStatusOrderByCreatedAtDesc(RecipeStatus status, Pageable pageable);
 
-    t.tag_id,
-    t.name AS tag_name,
-    t.slug AS tag_slug,
-    t.color AS tag_color,
-    t.usage_count,
-    t.is_trending,
-    t.created_at AS tag_created_at,
+    /**
+     * Lấy danh sách công thức chờ phê duyệt
+     */
+    Page<Recipe> findByStatusAndIsPublishedFalseOrderByCreatedAtDesc(RecipeStatus status, Pageable pageable);
 
-    c.category_id,
-    c.name AS category_name,
-    c.slug AS category_slug,
-    c.description AS category_description,
-    c.icon_url AS category_icon,
-    c.parent_id,
-    c.is_active,
-    c.created_at AS category_created_at
+    /**
+     * Lấy danh sách công thức đã được phê duyệt
+     */
+    Page<Recipe> findByStatusAndIsPublishedTrueOrderByCreatedAtDesc(RecipeStatus status, Pageable pageable);
 
-FROM recipe_steps s
-LEFT JOIN recipe_ingredients ri ON s.recipe_id = ri.recipe_id
-LEFT JOIN ingredients i ON ri.ingredient_id = i.ingredient_id
-LEFT JOIN recipe_tags rt ON s.recipe_id = rt.recipe_id
-LEFT JOIN tags t ON rt.tag_id = t.tag_id
-LEFT JOIN recipe_categories rc ON s.recipe_id = rc.recipe_id
-LEFT JOIN categories c ON rc.category_id = c.category_id
-WHERE s.recipe_id = :recipeId
-""", nativeQuery = true)
-    List<Object[]> findRecipeDetailsById(@Param("recipeId") UUID recipeId);
+    /**
+     * Lấy danh sách công thức nổi bật
+     */
+    Page<Recipe> findByIsFeaturedTrueOrderByCreatedAtDesc(Pageable pageable);
 
-    @Modifying
-    @Transactional
-    @Query(value = """
-        INSERT INTO recipe_tags (recipe_id, tag_id)
-        VALUES (:recipeId, :tagId)
-        ON CONFLICT DO NOTHING
-        """, nativeQuery = true)
-    void insertRecipeTag(@Param("recipeId") UUID recipeId, @Param("tagId") UUID tagId);
+    /**
+     * Đếm số lượng công thức theo trạng thái
+     */
+    @Query("SELECT COUNT(r) FROM Recipe r WHERE r.status = :status")
+    long countByStatus(@Param("status") RecipeStatus status);
 
-    @Modifying
-    @Transactional
-    @Query(value = """
-        INSERT INTO recipe_categories (recipe_id, category_id)
-        VALUES (:recipeId, :categoryId)
-        ON CONFLICT DO NOTHING
-        """, nativeQuery = true)
-    void insertRecipeCategory(@Param("recipeId") UUID recipeId, @Param("categoryId") UUID categoryId);
+    @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = :isPublished")
+    long countByIsPublished(@Param("isPublished") Boolean isPublished);
 
-    @Modifying
-    @Transactional
-    @Query(value = """
-        INSERT INTO recipe_ingredients (recipe_id, ingredient_id)
-        VALUES (:recipeId, :ingredientId)
-        ON CONFLICT DO NOTHING
-        """, nativeQuery = true)
-    void insertRecipeIngredient(@Param("recipeId") UUID recipeId, @Param("ingredientId") UUID ingredientId);
+    @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isFeatured = :isFeatured")
+    long countByIsFeatured(@Param("isFeatured") Boolean isFeatured);
 
-    @Modifying
-    @Transactional
-    @Query(value = """
-    INSERT INTO recipe_steps (recipe_id, step_number, instruction, image_url, video_url, estimated_time, tips)
-    VALUES (:recipeId, :stepNumber, :instruction, :imageUrl, :videoUrl, :estimatedTime, :tips)
-    ON CONFLICT DO NOTHING
-    """, nativeQuery = true)
-    void insertRecipeStep(
-            @Param("recipeId") UUID recipeId,
-            @Param("stepNumber") Integer stepNumber,
-            @Param("instruction") String instruction,
-            @Param("imageUrl") String imageUrl,
-            @Param("videoUrl") String videoUrl,
-            @Param("estimatedTime") Integer estimatedTime,
-            @Param("tips") String tips
-    );
+    @Query("SELECT COUNT(r) FROM Recipe r WHERE r.status = 'PENDING'")
+    long countPendingRecipes();
 
+    @Query("SELECT COUNT(r) FROM Recipe r WHERE r.status = 'APPROVED'")
+    long countApprovedRecipes();
+
+    @Query("SELECT COUNT(r) FROM Recipe r WHERE r.status = 'REJECTED'")
+    long countRejectedRecipes();
 
 }
