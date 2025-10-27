@@ -1,4 +1,4 @@
-package com.backend.cookshare.recipe_management.dto;
+package com.backend.cookshare.recipe_management.dto.response;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -11,12 +11,13 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class TagResponse {
-    UUID tagId;
+public class CategoryResponse {
+    UUID categoryId;
     String name;
     String slug;
-    String color;
-    Integer usageCount;
-    Boolean isTrending;
+    String description;
+    String iconUrl;
+    UUID parentId;
+    Boolean isActive;
     LocalDateTime createdAt;
 }

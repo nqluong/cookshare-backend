@@ -1,4 +1,4 @@
-package com.backend.cookshare.recipe_management.dto;
+package com.backend.cookshare.recipe_management.dto.response;
 
 import com.backend.cookshare.recipe_management.enums.Difficulty;
 import lombok.*;
@@ -18,7 +18,7 @@ public class RecipeResponse {
 
     UUID recipeId;
     UUID userId;
-
+    String fullName;
     String title;
     String slug;
     String description;
