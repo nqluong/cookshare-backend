@@ -1,4 +1,5 @@
 package com.backend.cookshare.recipe_management.specification;
+import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.recipe_management.entity.Ingredient;
 import com.backend.cookshare.recipe_management.entity.Recipe;
 import com.backend.cookshare.recipe_management.entity.RecipeIngredient;
@@ -57,7 +58,7 @@ public class RecipeSpecification {
                 for (String keyword : keywords) {
                     if (keyword.length() >= 2) {
                         Predicate keywordPredicate = cb.or(
-//                                cb.like(cb.lower(root.get("title")), "%" + keyword + "%"),
+                                cb.like(cb.lower(root.get("title")), "%" + keyword + "%"),
                                 cb.like(cb.lower(root.get("description")), "%" + keyword + "%")
                         );
                         keywordPredicates.add(keywordPredicate);
@@ -214,6 +215,23 @@ public class RecipeSpecification {
                 }
             }
 
+            return predicate;
+        };
+    }
+    public static Specification<Recipe> hasRecipeByName(String name) {
+        return (root, query, criteriaBuilder) -> {
+            if (name == null || name.trim().isEmpty()) {
+                return criteriaBuilder.conjunction();
+            }
+
+            String trimmedName = name.trim().toLowerCase();
+            Join<Recipe, User> userJoin = root.join("user", JoinType.INNER);
+            Predicate predicate = criteriaBuilder.like(
+                    criteriaBuilder.lower(userJoin.get("fullName")),
+                    "%" + trimmedName + "%"
+            );
+
+            log.info("Tìm kiếm công thức theo tên người tạo: {}", trimmedName);
             return predicate;
         };
     }

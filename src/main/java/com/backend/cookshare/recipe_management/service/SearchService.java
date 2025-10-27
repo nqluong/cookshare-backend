@@ -14,4 +14,5 @@ public interface SearchService {
     PageResponse<SearchReponse>searchRecipesByIngredient(String title,List<String> ingredients,Pageable pageable);
     List<IngredientResponse>  top10MostUsedIngredients();
     List<SearchHistoryResponse> getSearchHistory();
+    PageResponse<SearchReponse> searchRecipesByfullName(String keyword, Pageable pageable);
 }

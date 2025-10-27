@@ -47,16 +47,16 @@ public class SearchServiceImpl implements SearchService {
     @Override
     public PageResponse<SearchReponse> searchRecipesByName(String keyword, Pageable pageable) {
         if (keyword== null || keyword.trim().isEmpty()) {
-            throw new CustomException(ErrorCode.SEARCH_QUERY_EMPTY,"");
+            throw new CustomException(ErrorCode.SEARCH_QUERY_EMPTY);
         }
         if(keyword.trim().length() < 2) {
-            throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_SHORT,"");
+            throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_SHORT);
         }
         if(keyword.trim().length() > 80) {
-            throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_LONG,"");
+            throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_LONG);
         }
         if (!keyword.trim().matches("^[\\p{L}\\p{N}\\s\\-']+$")) {
-            throw new CustomException(ErrorCode.INVALID_CHARACTERS,"");
+            throw new CustomException(ErrorCode.INVALID_CHARACTERS);
         }
 
         Specification<Recipe> spec = RecipeSpecification.hasNameLike(keyword);
@@ -72,16 +72,16 @@ public class SearchServiceImpl implements SearchService {
    @Override
     public PageResponse<SearchReponse> searchRecipesByIngredient(String title, List<String> ingredientNames, Pageable pageable) {
        if (title== null || title.trim().isEmpty()) {
-           throw new CustomException(ErrorCode.SEARCH_QUERY_EMPTY,"");
+           throw new CustomException(ErrorCode.SEARCH_QUERY_EMPTY);
        }
        if(title.trim().length() < 2) {
-           throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_SHORT,"");
+           throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_SHORT);
        }
        if(title.trim().length() > 80) {
-           throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_LONG,"");
+           throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_LONG);
        }
        if (!title.trim().matches("^[\\p{L}\\p{N}\\s\\-']+$")) {
-           throw new CustomException(ErrorCode.INVALID_CHARACTERS,"");
+           throw new CustomException(ErrorCode.INVALID_CHARACTERS);
        }
        Specification<Recipe> spec = RecipeSpecification.hasRecipesByIngredients(title, ingredientNames);
        Page<Recipe> recipePage = recipeRepository.findAll(spec, pageable);
@@ -147,5 +147,28 @@ public class SearchServiceImpl implements SearchService {
                 .map(searchHistoryMapper::toSearchHistoryResponse)
                 .toList();
         return historyResponses;
+    }
+    @Override
+    public PageResponse<SearchReponse> searchRecipesByfullName(String keyword, Pageable pageable) {
+        if (keyword== null || keyword.trim().isEmpty()) {
+            throw new CustomException(ErrorCode.SEARCH_QUERY_EMPTY);
+        }
+        if(keyword.trim().length() < 2) {
+            throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_SHORT);
+        }
+        if(keyword.trim().length() > 80) {
+            throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_LONG);
+        }
+        if (!keyword.trim().matches("^[\\p{L}\\p{N}\\s\\-']+$")) {
+            throw new CustomException(ErrorCode.INVALID_CHARACTERS);
+        }
+
+        Specification<Recipe> spec = RecipeSpecification.hasRecipeByName(keyword);
+        Page<Recipe> recipePage = recipeRepository.findAll(spec, pageable);
+
+        List<SearchReponse> content = recipePage.getContent().stream()
+                .map(searchMapper::toSearchRecipeResponse)
+                .toList();
+        return buildPageResponse(recipePage, content);
     }
 }
