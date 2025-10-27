@@ -7,9 +7,12 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface IngredientRepository extends JpaRepository<Ingredient, UUID>, JpaSpecificationExecutor<Ingredient> {
+    Optional<Ingredient> findByNameIgnoreCase(String name);
+    boolean existsBySlug(String slug);
     @Query(value = """
         SELECT i.ingredient_id, i.name, COUNT(DISTINCT ri.recipe_id) as recipe_count
         FROM ingredients i

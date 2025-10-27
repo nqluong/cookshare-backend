@@ -1,6 +1,10 @@
 package com.backend.cookshare.recipe_management.mapper;
 
-import com.backend.cookshare.recipe_management.dto.*;
+import com.backend.cookshare.recipe_management.dto.request.RecipeRequest;
+import com.backend.cookshare.recipe_management.dto.request.RecipeStepRequest;
+import com.backend.cookshare.recipe_management.dto.response.RecipeIngredientResponse;
+import com.backend.cookshare.recipe_management.dto.response.RecipeResponse;
+import com.backend.cookshare.recipe_management.dto.response.RecipeStepResponse;
 import com.backend.cookshare.recipe_management.entity.Recipe;
 import com.backend.cookshare.recipe_management.entity.RecipeIngredient;
 import com.backend.cookshare.recipe_management.entity.RecipeStep;
