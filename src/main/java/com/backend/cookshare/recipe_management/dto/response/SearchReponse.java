@@ -15,6 +15,7 @@ public class SearchReponse {
     UUID userId;
     String title;
     String slug;
+    String description;
     String fullName;
     String avatarUrl;
     String featuredImage;
