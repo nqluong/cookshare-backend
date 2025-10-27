@@ -75,5 +75,22 @@ public class SearchController {
                 .result(searchService.getSearchHistory())
                 .build();
     }
+    @GetMapping("/user")
+    public ApiResponse<PageResponse<SearchReponse>> searchRecipesByName(
+            @RequestParam String name,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "title") String sortBy,
+            @RequestParam(defaultValue = "ASC") String direction) {
 
+        Sort.Direction sortDirection = direction.equalsIgnoreCase("DESC")
+                ? Sort.Direction.DESC
+                : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+
+        PageResponse<SearchReponse> results = searchService.searchRecipesByfullName(name, pageable);
+        return ApiResponse.<PageResponse<SearchReponse>>builder()
+                .result(results)
+                .build();
+    }
 }
