@@ -1,6 +1,5 @@
-package com.backend.cookshare.interaction.entity.dto.response;
+package com.backend.cookshare.interaction.dto.response;
 
-import com.backend.cookshare.recipe_management.entity.Recipe;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

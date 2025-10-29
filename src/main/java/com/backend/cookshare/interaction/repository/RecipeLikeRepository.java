@@ -1,4 +1,4 @@
-package com.backend.cookshare.interaction.entity.repository;
+package com.backend.cookshare.interaction.repository;
 
 import com.backend.cookshare.interaction.entity.RecipeLike;
 import org.springframework.data.domain.Page;

@@ -4,6 +4,7 @@ import com.backend.cookshare.common.dto.ApiResponse;
 import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.user.dto.FollowRequest;
 import com.backend.cookshare.user.dto.FollowResponse;
+import com.backend.cookshare.user.dto.RecipeByFollowingResponse;
 import com.backend.cookshare.user.dto.UserFollowDto;
 import com.backend.cookshare.user.service.FollowService;
 import jakarta.validation.Valid;
@@ -108,6 +109,18 @@ public class FollowController {
                 .message("Kiểm tra trạng thái follow thành công")
                 .data(isFollowing)
                 .build());
+    }
+    @GetMapping("/following/recipes")
+    public ApiResponse<PageResponse<RecipeByFollowingResponse>> getRecipesByFollowing(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        var response = followService.getRecipesByFollowing(page, size);
+        return ApiResponse.<PageResponse<RecipeByFollowingResponse>>builder()
+                .code(HttpStatus.OK.value())
+                .message("Lấy tha công")
+                .data(response)
+                .build();
     }
 
 }

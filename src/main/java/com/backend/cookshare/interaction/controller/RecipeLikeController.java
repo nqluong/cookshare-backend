@@ -1,9 +1,9 @@
-package com.backend.cookshare.interaction.entity.controller;
+package com.backend.cookshare.interaction.controller;
 
 import com.backend.cookshare.common.dto.PageResponse;
-import com.backend.cookshare.interaction.entity.dto.request.RecipeLikeRequest;
-import com.backend.cookshare.interaction.entity.dto.response.RecipeLikeResponse;
-import com.backend.cookshare.interaction.entity.sevice.RecipeLikeService;
+import com.backend.cookshare.interaction.dto.request.RecipeLikeRequest;
+import com.backend.cookshare.interaction.dto.response.RecipeLikeResponse;
+import com.backend.cookshare.interaction.sevice.RecipeLikeService;
 import com.backend.cookshare.recipe_management.dto.ApiResponse;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

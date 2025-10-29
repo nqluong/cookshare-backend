@@ -1,7 +1,7 @@
-package com.backend.cookshare.interaction.entity.sevice;
+package com.backend.cookshare.interaction.sevice;
 
 import com.backend.cookshare.common.dto.PageResponse;
-import com.backend.cookshare.interaction.entity.dto.response.RecipeLikeResponse;
+import com.backend.cookshare.interaction.dto.response.RecipeLikeResponse;
 import java.util.UUID;
 
 

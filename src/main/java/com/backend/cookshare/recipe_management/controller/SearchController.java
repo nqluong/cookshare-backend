@@ -1,11 +1,10 @@
 package com.backend.cookshare.recipe_management.controller;
 
 import com.backend.cookshare.common.dto.PageResponse;
-import com.backend.cookshare.interaction.entity.dto.response.SearchHistoryResponse;
+import com.backend.cookshare.interaction.dto.response.SearchHistoryResponse;
 import com.backend.cookshare.recipe_management.dto.ApiResponse;
 import com.backend.cookshare.recipe_management.dto.response.IngredientResponse;
 import com.backend.cookshare.recipe_management.dto.response.SearchReponse;
-import com.backend.cookshare.recipe_management.entity.Recipe;
 
 import com.backend.cookshare.recipe_management.service.SearchService;
 import lombok.AccessLevel;

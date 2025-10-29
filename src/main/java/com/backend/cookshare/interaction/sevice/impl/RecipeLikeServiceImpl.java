@@ -1,4 +1,4 @@
-package com.backend.cookshare.interaction.entity.sevice.impl;
+package com.backend.cookshare.interaction.sevice.impl;
 
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.repository.UserRepository;
@@ -6,10 +6,10 @@ import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
 import com.backend.cookshare.interaction.entity.RecipeLike;
-import com.backend.cookshare.interaction.entity.dto.response.RecipeLikeResponse;
-import com.backend.cookshare.interaction.entity.mapper.RecipeLikeMapper;
-import com.backend.cookshare.interaction.entity.repository.RecipeLikeRepository;
-import com.backend.cookshare.interaction.entity.sevice.RecipeLikeService;
+import com.backend.cookshare.interaction.dto.response.RecipeLikeResponse;
+import com.backend.cookshare.interaction.mapper.RecipeLikeMapper;
+import com.backend.cookshare.interaction.repository.RecipeLikeRepository;
+import com.backend.cookshare.interaction.sevice.RecipeLikeService;
 import com.backend.cookshare.recipe_management.entity.Recipe;
 import com.backend.cookshare.recipe_management.repository.RecipeRepository;
 import jakarta.transaction.Transactional;
@@ -24,7 +24,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -101,7 +100,6 @@ public class RecipeLikeServiceImpl implements RecipeLikeService {
                 .content(responsePage.getContent())
                 .build();
     }
-
     @Override
     public Boolean isRecipeLiked(UUID recipeId) {
         User currentUser = getCurrentUser();
