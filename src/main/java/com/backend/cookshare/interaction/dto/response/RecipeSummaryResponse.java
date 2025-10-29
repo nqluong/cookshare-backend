@@ -1,4 +1,4 @@
-package com.backend.cookshare.interaction.entity.dto.response;
+package com.backend.cookshare.interaction.dto.response;
 import com.backend.cookshare.recipe_management.enums.Difficulty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,6 +28,7 @@ public class RecipeSummaryResponse {
     // Thông tin người tạo
     private UUID userId;
     private String userName;
+    private String fullName;
 
     // Số liệu tương tác
     private Integer viewCount;

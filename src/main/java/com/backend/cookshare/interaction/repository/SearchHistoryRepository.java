@@ -1,4 +1,4 @@
-package com.backend.cookshare.interaction.entity.repository;
+package com.backend.cookshare.interaction.repository;
 
 import com.backend.cookshare.interaction.entity.SearchHistory;
 import org.springframework.data.jpa.repository.JpaRepository;

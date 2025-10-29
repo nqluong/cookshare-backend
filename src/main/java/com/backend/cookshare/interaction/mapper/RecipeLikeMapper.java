@@ -1,8 +1,8 @@
-package com.backend.cookshare.interaction.entity.mapper;
+package com.backend.cookshare.interaction.mapper;
 
 import com.backend.cookshare.interaction.entity.RecipeLike;
-import com.backend.cookshare.interaction.entity.dto.response.RecipeLikeResponse;
-import com.backend.cookshare.interaction.entity.dto.response.RecipeSummaryResponse;
+import com.backend.cookshare.interaction.dto.response.RecipeLikeResponse;
+import com.backend.cookshare.interaction.dto.response.RecipeSummaryResponse;
 import com.backend.cookshare.recipe_management.entity.Recipe;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -36,6 +36,7 @@ public interface RecipeLikeMapper {
                 .difficulty(recipe.getDifficulty())
                 .userId(recipe.getUser() != null ? recipe.getUser().getUserId() : null)
                 .userName(recipe.getUser() != null ? recipe.getUser().getUsername() : null)
+                .fullName(recipe.getUser() != null ? recipe.getUser().getFullName() : null)
                 .viewCount(recipe.getViewCount())
                 .saveCount(recipe.getSaveCount())
                 .likeCount(recipe.getLikeCount())

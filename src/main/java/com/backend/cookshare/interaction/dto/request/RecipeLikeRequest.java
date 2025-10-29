@@ -1,4 +1,4 @@
-package com.backend.cookshare.interaction.entity.dto.request;
+package com.backend.cookshare.interaction.dto.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

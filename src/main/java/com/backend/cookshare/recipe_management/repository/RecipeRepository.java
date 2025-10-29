@@ -119,4 +119,6 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
     @Query("SELECT COUNT(r) FROM Recipe r WHERE r.status = 'REJECTED'")
     long countRejectedRecipes();
 
+    @Query("SELECT r FROM Recipe r WHERE r.user.userId IN :followingIds ORDER BY r.createdAt DESC")
+    Page<Recipe> findRecipesByFollowingIds(List<UUID> followingIds, Pageable pageable);
 }

@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -32,7 +33,8 @@ public interface FollowRepository extends JpaRepository<Follow,FollowId> {
     //Lấy danh sách ID của các người dùng mà một người dùng đang follow theo phân trang.
     @Query("SELECT f.followingId FROM Follow f WHERE f.followerId = :userId")
     Page<UUID> findFollowingIds(@Param("userId") UUID userId, Pageable pageable);
-
+    @Query("SELECT f.followingId FROM Follow f WHERE f.followerId = :userId")
+    List<UUID> findAllFollowingIdsByUser(UUID userId);
     //Lấy danh sách ID của các follower của một người dùng theo phân trang.
     @Query("SELECT f.followerId FROM Follow f WHERE f.followingId = :userId")
     Page<UUID> findFollowerIds(@Param("userId") UUID userId, Pageable pageable);

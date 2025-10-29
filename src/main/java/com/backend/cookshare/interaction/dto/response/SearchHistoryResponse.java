@@ -1,4 +1,4 @@
-package com.backend.cookshare.interaction.entity.dto.response;
+package com.backend.cookshare.interaction.dto.response;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

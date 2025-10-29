@@ -6,7 +6,12 @@ import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
 import com.backend.cookshare.common.mapper.PageMapper;
+import com.backend.cookshare.interaction.dto.response.RecipeLikeResponse;
+import com.backend.cookshare.recipe_management.entity.Recipe;
+import com.backend.cookshare.recipe_management.mapper.RecipeMapper;
+import com.backend.cookshare.recipe_management.repository.RecipeRepository;
 import com.backend.cookshare.user.dto.FollowResponse;
+import com.backend.cookshare.user.dto.RecipeByFollowingResponse;
 import com.backend.cookshare.user.dto.UserFollowDto;
 import com.backend.cookshare.user.entity.Follow;
 import com.backend.cookshare.user.repository.FollowRepository;
@@ -17,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +41,8 @@ public class FollowService {
     private final NotificationService notificationService;
     private  final WebSocketNotificationSender webSocketNotificationSender;
     private final PageMapper pageMapper;
+    private final RecipeRepository recipeRepository;
+    private final RecipeMapper recipeMapper;
 
     //Xử lý hành động follow một người dùng khác.
     @Transactional
@@ -190,6 +198,34 @@ public class FollowService {
                 .isFollowing(currentUserId != null ?
                         followRepository.existsByFollowerIdAndFollowingId(currentUserId, user.getUserId()) : null)
                 .build();
+    }
+
+    @Transactional
+    public PageResponse<RecipeByFollowingResponse> getRecipesByFollowing(int page, int size) {
+        User currentUser = getCurrentUser();
+        Pageable pageable = PageRequest.of(page, size);
+        // Lấy danh sách ID người mà user đang follow
+        List<UUID> followingIds = followRepository.findAllFollowingIdsByUser(currentUser.getUserId());
+        Page<Recipe> recipes = recipeRepository.findRecipesByFollowingIds(followingIds, pageable);
+        Page<RecipeByFollowingResponse> responsePage = recipes.map(recipe -> {
+            var summary = recipeMapper.toRecipeSummary(recipe);
+            var response = recipeMapper.toRecipeByFollowingResponse(recipe, summary);
+            response.setFollowerId(currentUser.getUserId());
+            return response;
+        });
+        return PageResponse.<RecipeByFollowingResponse>builder()
+                .page(page)
+                .size(size)
+                .totalPages(responsePage.getTotalPages())
+                .totalElements(responsePage.getTotalElements())
+                .content(responsePage.getContent())
+                .build();
+
+    }
+    private User getCurrentUser() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
     }
 
 }
