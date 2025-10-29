@@ -24,7 +24,7 @@ public class User {
     @Column(name = "username", nullable = false, unique = true, length = 100)
     String username;
 
-    @Column(name = "email", nullable = false, unique = true, length = 255)
+    @Column(name = "email", unique = true, length = 255)
     String email;
 
     @Column(name = "full_name", length = 255)
@@ -33,7 +33,7 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 255)
     String passwordHash;
 
-    @Column(name = "avatar_url", length = 255)
+    @Column(name = "avatar_url", length = 1000)
     String avatarUrl;
 
     @Column(name = "bio", columnDefinition = "TEXT")
@@ -68,7 +68,7 @@ public class User {
     @Column(name = "recipe_count")
     Integer recipeCount = 0;
 
-    @Column(name = "refresh_token", length = 500)
+    @Column(name = "refresh_token", length = 1000)
     String refreshToken;
 
     @OneToOne(mappedBy = "user")

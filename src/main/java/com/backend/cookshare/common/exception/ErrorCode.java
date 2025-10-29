@@ -48,7 +48,11 @@ public enum ErrorCode {
 
     // Google OAuth errors (5xxx)
     GOOGLE_AUTH_ERROR(5001, "Lỗi xác thực với Google", HttpStatus.UNAUTHORIZED),
+
+    // Facebook OAuth errors (5xxx)
     FACEBOOK_AUTH_ERROR(5002, "Lỗi xác thực với Facebook", HttpStatus.UNAUTHORIZED);
+    ;
+
 
     private final int code;
     private final String message;

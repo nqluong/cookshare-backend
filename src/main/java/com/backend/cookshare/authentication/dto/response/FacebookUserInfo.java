@@ -37,12 +37,6 @@ public class FacebookUserInfo {
     public static class PictureData {
         @JsonProperty("url")
         private String url;
-
-        @JsonProperty("height")
-        private Integer height;
-
-        @JsonProperty("width")
-        private Integer width;
     }
 
     public String getPictureUrl() {
@@ -52,4 +46,3 @@ public class FacebookUserInfo {
         return null;
     }
 }
-
