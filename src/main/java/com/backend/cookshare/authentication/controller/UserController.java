@@ -1,6 +1,7 @@
 package com.backend.cookshare.authentication.controller;
 
 import com.backend.cookshare.authentication.dto.UserProfileDto;
+import com.backend.cookshare.authentication.dto.request.UpdateUserProfileRequest;
 import com.backend.cookshare.authentication.dto.request.UserRequest;
 import com.backend.cookshare.authentication.dto.response.LoginResponseDTO;
 import com.backend.cookshare.authentication.entity.User;
@@ -10,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -131,5 +133,35 @@ public class UserController {
     public ResponseEntity<Boolean> checkEmailExists(@PathVariable String email) {
         boolean exists = userService.existsByEmail(email);
         return ResponseEntity.ok(exists);
+    }
+
+    @PutMapping("/{userId}/profile")
+    @PreAuthorize("hasPermission(null, 'USER')")
+    public ResponseEntity<UserProfileDto> updateUserProfile(
+            @PathVariable UUID userId,
+            @Valid @RequestBody UpdateUserProfileRequest request) {
+
+        User updatedUser = userService.updateUserProfile(userId, request);
+        int totalLikes = recipeRepository.getTotalLikeCountByUserId(updatedUser.getUserId());
+
+        UserProfileDto userProfileDto = UserProfileDto.builder()
+                .userId(updatedUser.getUserId())
+                .username(updatedUser.getUsername())
+                .email(updatedUser.getEmail())
+                .fullName(updatedUser.getFullName())
+                .avatarUrl(updatedUser.getAvatarUrl())
+                .bio(updatedUser.getBio())
+                .role(updatedUser.getRole())
+                .isActive(updatedUser.getIsActive())
+                .emailVerified(updatedUser.getEmailVerified())
+                .lastActive(updatedUser.getLastActive())
+                .followerCount(updatedUser.getFollowerCount())
+                .followingCount(updatedUser.getFollowingCount())
+                .recipeCount(updatedUser.getRecipeCount())
+                .totalLikes(totalLikes)
+                .createdAt(updatedUser.getCreatedAt())
+                .build();
+
+        return ResponseEntity.ok(userProfileDto);
     }
 }
