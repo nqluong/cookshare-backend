@@ -10,11 +10,13 @@ import com.backend.cookshare.authentication.service.FacebookOAuthService;
 import com.backend.cookshare.authentication.util.SecurityUtil;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
+import com.backend.cookshare.common.service.FileDownloadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
@@ -27,6 +29,7 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
     private final UserRepository userRepository;
     private final SecurityUtil securityUtil;
     private final RestTemplate restTemplate;
+    private final FileDownloadService fileDownloadService;
 
     @Value("${spring.security.oauth2.registration.facebook.client-id}")
     private String clientId;
@@ -46,26 +49,21 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
     @Override
     public FacebookTokenResponse getAccessToken(String code) {
         try {
-            String tokenUrl = String.format(
-                "%s?client_id=%s&client_secret=%s&redirect_uri=%s&code=%s",
-                tokenUri,
-                clientId,
-                clientSecret,
-                redirectUri,
-                code
+            String url = String.format(
+                    "%s?client_id=%s&client_secret=%s&redirect_uri=%s&code=%s",
+                    tokenUri,
+                    clientId,
+                    clientSecret,
+                    redirectUri,
+                    code
             );
 
             ResponseEntity<FacebookTokenResponse> response = restTemplate.exchange(
-                    tokenUrl,
+                    url,
                     HttpMethod.GET,
                     null,
                     FacebookTokenResponse.class
             );
-
-            if (response.getBody() == null) {
-                log.error("Facebook token response is null");
-                throw new CustomException(ErrorCode.FACEBOOK_AUTH_ERROR);
-            }
 
             return response.getBody();
         } catch (Exception e) {
@@ -77,19 +75,14 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
     @Override
     public FacebookUserInfo getUserInfo(String accessToken) {
         try {
-            String userInfoUrl = userInfoUri + "&access_token=" + accessToken;
+            String url = userInfoUri + "&access_token=" + accessToken;
 
             ResponseEntity<FacebookUserInfo> response = restTemplate.exchange(
-                    userInfoUrl,
+                    url,
                     HttpMethod.GET,
                     null,
                     FacebookUserInfo.class
             );
-
-            if (response.getBody() == null) {
-                log.error("Facebook user info response is null");
-                throw new CustomException(ErrorCode.FACEBOOK_AUTH_ERROR);
-            }
 
             return response.getBody();
         } catch (Exception e) {
@@ -149,8 +142,15 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
             User user = existingUser.get();
             // Cập nhật thông tin nếu có thay đổi
             user.setFullName(facebookUserInfo.getName());
-            user.setAvatarUrl(facebookUserInfo.getPictureUrl());
-            user.setEmailVerified(true); // Facebook verified email
+
+            // Tải avatar từ Facebook về server
+            if (facebookUserInfo.getPictureUrl() != null) {
+                String localAvatarPath = fileDownloadService.downloadImageToAvatar(
+                    facebookUserInfo.getPictureUrl(),
+                    user.getUserId()
+                );
+                user.setAvatarUrl(localAvatarPath);
+            }
             return userRepository.save(user);
         }
 
@@ -161,7 +161,16 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
                 User user = userByEmail.get();
                 // Link Facebook account với user hiện có
                 user.setFacebookId(facebookUserInfo.getFacebookId());
-                user.setAvatarUrl(facebookUserInfo.getPictureUrl());
+
+                // Tải avatar từ Facebook về server
+                if (facebookUserInfo.getPictureUrl() != null) {
+                    String localAvatarPath = fileDownloadService.downloadImageToAvatar(
+                        facebookUserInfo.getPictureUrl(),
+                        user.getUserId()
+                    );
+                    user.setAvatarUrl(localAvatarPath);
+                }
+
                 user.setEmailVerified(true);
                 return userRepository.save(user);
             }
@@ -169,35 +178,53 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
 
         // Tạo user mới
         String email = facebookUserInfo.getEmail();
+        String username;
+
+        // Nếu Facebook không cung cấp email, tạo email giả từ Facebook ID
         if (email == null || email.isEmpty()) {
-            // Nếu Facebook không cung cấp email, tạo email giả
-            email = "facebook_" + facebookUserInfo.getFacebookId() + "@cookshare.local";
+            email = "facebook_" + facebookUserInfo.getFacebookId() + "@cookshare.app";
+            username = "facebook_" + facebookUserInfo.getFacebookId();
+        } else {
+            username = generateUniqueUsername(email);
         }
 
-        String username = generateUniqueUsername(email);
+        username = generateUniqueUsername(username);
 
         User newUser = User.builder()
                 .username(username)
                 .email(email)
                 .fullName(facebookUserInfo.getName())
                 .facebookId(facebookUserInfo.getFacebookId())
-                .avatarUrl(facebookUserInfo.getPictureUrl())
+                .avatarUrl(facebookUserInfo.getPictureUrl()) // Tạm thời lưu URL gốc
                 .passwordHash("FACEBOOK_AUTH") // Không cần password cho Facebook login
                 .role(UserRole.USER)
                 .isActive(true)
-                .emailVerified(true)
+                .emailVerified(facebookUserInfo.getEmail() != null && !facebookUserInfo.getEmail().isEmpty())
                 .lastActive(LocalDateTime.now())
                 .followerCount(0)
                 .followingCount(0)
                 .recipeCount(0)
                 .build();
 
-        return userRepository.save(newUser);
+        // Save user để có userId
+        newUser = userRepository.save(newUser);
+
+        // Sau khi có userId, tải avatar về server
+        if (facebookUserInfo.getPictureUrl() != null) {
+            String localAvatarPath = fileDownloadService.downloadImageToAvatar(
+                facebookUserInfo.getPictureUrl(),
+                newUser.getUserId()
+            );
+            newUser.setAvatarUrl(localAvatarPath);
+            newUser = userRepository.save(newUser);
+        }
+
+        return newUser;
     }
 
     @Override
     public String generateUniqueUsername(String email) {
-        String baseUsername = email.split("@")[0];
+        String baseUsername = email.contains("@") ? email.split("@")[0] : email;
         String username = baseUsername;
         int counter = 1;
 
@@ -209,4 +236,3 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
         return username;
     }
 }
-

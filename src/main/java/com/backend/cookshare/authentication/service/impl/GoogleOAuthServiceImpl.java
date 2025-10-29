@@ -10,6 +10,7 @@ import com.backend.cookshare.authentication.service.GoogleOAuthService;
 import com.backend.cookshare.authentication.util.SecurityUtil;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
+import com.backend.cookshare.common.service.FileDownloadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,6 +30,7 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
     private final UserRepository userRepository;
     private final SecurityUtil securityUtil;
     private final RestTemplate restTemplate;
+    private final FileDownloadService fileDownloadService;
 
     @Value("${spring.security.oauth2.registration.google.client-id}")
     private String clientId;
@@ -144,7 +146,16 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
             User user = existingUser.get();
             // Cập nhật thông tin nếu có thay đổi
             user.setFullName(googleUserInfo.getName());
-            user.setAvatarUrl(googleUserInfo.getPicture());
+
+            // Tải avatar từ Google về server
+            if (googleUserInfo.getPicture() != null) {
+                String localAvatarPath = fileDownloadService.downloadImageToAvatar(
+                    googleUserInfo.getPicture(),
+                    user.getUserId()
+                );
+                user.setAvatarUrl(localAvatarPath);
+            }
+
             user.setEmailVerified(googleUserInfo.getEmailVerified());
             return userRepository.save(user);
         }
@@ -155,7 +166,16 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
             User user = userByEmail.get();
             // Link Google account với user hiện có
             user.setGoogleId(googleUserInfo.getGoogleId());
-            user.setAvatarUrl(googleUserInfo.getPicture());
+
+            // Tải avatar từ Google về server
+            if (googleUserInfo.getPicture() != null) {
+                String localAvatarPath = fileDownloadService.downloadImageToAvatar(
+                    googleUserInfo.getPicture(),
+                    user.getUserId()
+                );
+                user.setAvatarUrl(localAvatarPath);
+            }
+
             user.setEmailVerified(true);
             return userRepository.save(user);
         }
@@ -163,12 +183,13 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
         // Tạo user mới
         String username = generateUniqueUsername(googleUserInfo.getEmail());
 
+        // Tạo user mới (chưa có userId, sẽ tạo sau khi save)
         User newUser = User.builder()
                 .username(username)
                 .email(googleUserInfo.getEmail())
                 .fullName(googleUserInfo.getName())
                 .googleId(googleUserInfo.getGoogleId())
-                .avatarUrl(googleUserInfo.getPicture())
+                .avatarUrl(googleUserInfo.getPicture()) // Tạm thời lưu URL gốc
                 .passwordHash("GOOGLE_AUTH") // Không cần password cho Google login
                 .role(UserRole.USER)
                 .isActive(true)
@@ -179,7 +200,20 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
                 .recipeCount(0)
                 .build();
 
-        return userRepository.save(newUser);
+        // Save user để có userId
+        newUser = userRepository.save(newUser);
+
+        // Sau khi có userId, tải avatar về server
+        if (googleUserInfo.getPicture() != null) {
+            String localAvatarPath = fileDownloadService.downloadImageToAvatar(
+                googleUserInfo.getPicture(),
+                newUser.getUserId()
+            );
+            newUser.setAvatarUrl(localAvatarPath);
+            newUser = userRepository.save(newUser);
+        }
+
+        return newUser;
     }
 
     @Override
@@ -196,3 +230,4 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
         return username;
     }
 }
+

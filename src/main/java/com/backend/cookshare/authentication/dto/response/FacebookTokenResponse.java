@@ -20,4 +20,3 @@ public class FacebookTokenResponse {
     @JsonProperty("expires_in")
     private Integer expiresIn;
 }
-
