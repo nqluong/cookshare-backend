@@ -12,13 +12,16 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
 
-@RestController
+@Controller
 @RequestMapping("/auth/facebook")
 @RequiredArgsConstructor
 @Slf4j
@@ -71,11 +74,13 @@ public class FacebookAuthController {
     }
 
     @GetMapping("/callback")
-    public ResponseEntity<Object> facebookCallback(
+    public Object facebookCallback(
             @RequestParam("code") String code,
             @RequestParam(value = "state", required = false) String state,
             @RequestParam(value = "error", required = false) String error,
-            @RequestParam(value = "error_description", required = false) String errorDescription) {
+            @RequestParam(value = "error_description", required = false) String errorDescription,
+            HttpServletResponse servletResponse,
+            Model model) {
         try {
             log.info("📥 Facebook callback received");
             log.info("  Code: {}", code != null ? code.substring(0, Math.min(20, code.length())) + "..." : "null");
@@ -115,14 +120,14 @@ public class FacebookAuthController {
                     .maxAge(refreshTokenExpiration)
                     .build();
 
-            Map<String, Object> body = Map.of(
-                    "status", "ok",
-                    "state", state != null ? state : "");
+            // Đưa cookie vào HttpServletResponse header
+            servletResponse.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body);
+            // Trả về view template 'auth-loading' và truyền state
+            String s = (state == null) ? "" : state;
+            model.addAttribute("state", s);
+            model.addAttribute("provider", "facebook");
+            return "auth-loading";
 
         } catch (Exception e) {
             log.error("❌ Error during Facebook authentication: {}", e.getMessage(), e);
@@ -139,6 +144,7 @@ public class FacebookAuthController {
      * Endpoint để app polling kết quả đăng nhập
      */
     @GetMapping("/result/{state}")
+    @ResponseBody
     public ResponseEntity<LoginResponseDTO> getAuthResult(@PathVariable String state) {
         log.info("📊 Polling request for Facebook state: {}", state);
 
@@ -159,6 +165,7 @@ public class FacebookAuthController {
      * Endpoint để xử lý login từ mobile/frontend với authorization code
      */
     @PostMapping("/authenticate")
+    @ResponseBody
     public ResponseEntity<LoginResponseDTO> authenticateWithCode(@RequestParam("code") String code) {
         try {
             LoginResponseDTO response = facebookOAuthService.authenticateFacebookUser(code);
