@@ -1,5 +1,6 @@
 package com.backend.cookshare.authentication.service.impl;
 
+import com.backend.cookshare.authentication.dto.request.UpdateUserProfileRequest;
 import com.backend.cookshare.authentication.dto.request.UserRequest;
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.repository.UserRepository;
@@ -131,11 +132,57 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
     }
 
+    @Override
+    public User updateUserProfile(UUID userId, UpdateUserProfileRequest request) {
+        // Tìm user theo ID
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new com.backend.cookshare.common.exception.CustomException(
+                        com.backend.cookshare.common.exception.ErrorCode.USER_NOT_FOUND));
+
+        // Kiểm tra nếu username mới đã tồn tại (và không phải của chính user này)
+        if (request.getUsername() != null && !request.getUsername().equals(user.getUsername())) {
+            if (userRepository.existsByUsername(request.getUsername())) {
+                throw new com.backend.cookshare.common.exception.CustomException(
+                        com.backend.cookshare.common.exception.ErrorCode.USERNAME_EXISTED);
+            }
+            user.setUsername(request.getUsername());
+        }
+
+        // Kiểm tra nếu email mới đã tồn tại (và không phải của chính user này)
+        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new com.backend.cookshare.common.exception.CustomException(
+                        com.backend.cookshare.common.exception.ErrorCode.EMAIL_EXISTED);
+            }
+            user.setEmail(request.getEmail());
+            // Nếu đổi email mới thì cần verify lại
+            user.setEmailVerified(false);
+        }
+
+        // Cập nhật các trường khác nếu có
+        if (request.getFullName() != null) {
+            user.setFullName(request.getFullName());
+        }
+
+        if (request.getAvatarUrl() != null) {
+            user.setAvatarUrl(request.getAvatarUrl());
+        }
+
+        if (request.getBio() != null) {
+            user.setBio(request.getBio());
+        }
+
+        // Cập nhật thời gian
+        user.setUpdatedAt(LocalDateTime.now());
+
+        return userRepository.save(user);
+    }
+
     // ==================== ADMIN METHODS ====================
 
     @Override
     public Page<User> getAllUsersWithPagination(String search, Pageable pageable) {
-        log.info("Admin fetching users with search: {}, page: {}, size: {}", 
+        log.info("Admin fetching users with search: {}, page: {}, size: {}",
                 search, pageable.getPageNumber(), pageable.getPageSize());
         return userRepository.findAllWithSearch(search, pageable);
     }
@@ -152,15 +199,15 @@ public class UserServiceImpl implements UserService {
         log.info("Admin banning user: {} with reason: {}", userId, reason);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        
+
         if (Boolean.FALSE.equals(user.getIsActive())) {
             throw new CustomException(ErrorCode.USER_ALREADY_BANNED);
         }
-        
+
         user.setIsActive(false);
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
-        
+
         log.info("User {} has been banned successfully", userId);
     }
 
@@ -169,15 +216,15 @@ public class UserServiceImpl implements UserService {
         log.info("Admin unbanning user: {}", userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        
+
         if (Boolean.TRUE.equals(user.getIsActive())) {
             throw new CustomException(ErrorCode.USER_ALREADY_ACTIVE);
         }
-        
+
         user.setIsActive(true);
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
-        
+
         log.info("User {} has been unbanned successfully", userId);
     }
 
@@ -186,11 +233,11 @@ public class UserServiceImpl implements UserService {
         log.info("Admin deleting user: {}", userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        
+
         // You might want to add additional checks here, like preventing deletion of other admins
         // or performing soft delete instead of hard delete
         userRepository.delete(user);
-        
+
         log.info("User {} has been deleted successfully", userId);
     }
 }
