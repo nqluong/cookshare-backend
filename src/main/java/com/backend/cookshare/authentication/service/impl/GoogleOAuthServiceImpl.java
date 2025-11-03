@@ -7,10 +7,10 @@ import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.enums.UserRole;
 import com.backend.cookshare.authentication.repository.UserRepository;
 import com.backend.cookshare.authentication.service.GoogleOAuthService;
+import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.authentication.util.SecurityUtil;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
-import com.backend.cookshare.common.service.FileDownloadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,8 +20,12 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +34,7 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
     private final UserRepository userRepository;
     private final SecurityUtil securityUtil;
     private final RestTemplate restTemplate;
-    private final FileDownloadService fileDownloadService;
+    private final FirebaseStorageService firebaseStorageService;
 
     @Value("${spring.security.oauth2.registration.google.client-id}")
     private String clientId;
@@ -63,8 +67,7 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
                     TOKEN_URL,
                     HttpMethod.POST,
                     request,
-                    GoogleTokenResponse.class
-            );
+                    GoogleTokenResponse.class);
 
             return response.getBody();
         } catch (Exception e) {
@@ -85,8 +88,7 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
                     USER_INFO_URL,
                     HttpMethod.GET,
                     entity,
-                    GoogleUserInfo.class
-            );
+                    GoogleUserInfo.class);
 
             return response.getBody();
         } catch (Exception e) {
@@ -119,6 +121,8 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
                 .role(user.getRole())
                 .isActive(user.getIsActive())
                 .emailVerified(user.getEmailVerified())
+                .avatarUrl(user.getAvatarUrl()) // Thêm avatarUrl từ Firebase
+                .bio(user.getBio()) // Thêm bio
                 .build();
 
         String accessToken = securityUtil.createAccessToken(user.getUsername(), userInfo);
@@ -147,13 +151,21 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
             // Cập nhật thông tin nếu có thay đổi
             user.setFullName(googleUserInfo.getName());
 
-            // Tải avatar từ Google về server
-            if (googleUserInfo.getPicture() != null) {
-                String localAvatarPath = fileDownloadService.downloadImageToAvatar(
-                    googleUserInfo.getPicture(),
-                    user.getUserId()
-                );
-                user.setAvatarUrl(localAvatarPath);
+            // Tải avatar từ Google và upload lên Firebase Storage
+            if (googleUserInfo.getPicture() != null && !googleUserInfo.getPicture().isEmpty()) {
+                // Xóa avatar cũ trước khi upload avatar mới
+                String oldAvatarUrl = user.getAvatarUrl();
+                if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
+                    log.info("🗑️ Xóa avatar cũ của Google user trước khi cập nhật: {}", oldAvatarUrl);
+                    firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+                }
+
+                String firebaseAvatarUrl = uploadAvatarToFirebase(
+                        googleUserInfo.getPicture(),
+                        user.getUserId());
+                if (firebaseAvatarUrl != null) {
+                    user.setAvatarUrl(firebaseAvatarUrl);
+                }
             }
 
             user.setEmailVerified(googleUserInfo.getEmailVerified());
@@ -167,13 +179,21 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
             // Link Google account với user hiện có
             user.setGoogleId(googleUserInfo.getGoogleId());
 
-            // Tải avatar từ Google về server
-            if (googleUserInfo.getPicture() != null) {
-                String localAvatarPath = fileDownloadService.downloadImageToAvatar(
-                    googleUserInfo.getPicture(),
-                    user.getUserId()
-                );
-                user.setAvatarUrl(localAvatarPath);
+            // Tải avatar từ Google và upload lên Firebase Storage
+            if (googleUserInfo.getPicture() != null && !googleUserInfo.getPicture().isEmpty()) {
+                // Xóa avatar cũ trước khi upload avatar mới
+                String oldAvatarUrl = user.getAvatarUrl();
+                if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
+                    log.info("🗑️ Xóa avatar cũ khi link Google account: {}", oldAvatarUrl);
+                    firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+                }
+
+                String firebaseAvatarUrl = uploadAvatarToFirebase(
+                        googleUserInfo.getPicture(),
+                        user.getUserId());
+                if (firebaseAvatarUrl != null) {
+                    user.setAvatarUrl(firebaseAvatarUrl);
+                }
             }
 
             user.setEmailVerified(true);
@@ -189,7 +209,7 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
                 .email(googleUserInfo.getEmail())
                 .fullName(googleUserInfo.getName())
                 .googleId(googleUserInfo.getGoogleId())
-                .avatarUrl(googleUserInfo.getPicture()) // Tạm thời lưu URL gốc
+                .avatarUrl(null) // Sẽ cập nhật sau khi upload lên Firebase
                 .passwordHash("GOOGLE_AUTH") // Không cần password cho Google login
                 .role(UserRole.USER)
                 .isActive(true)
@@ -203,17 +223,56 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
         // Save user để có userId
         newUser = userRepository.save(newUser);
 
-        // Sau khi có userId, tải avatar về server
-        if (googleUserInfo.getPicture() != null) {
-            String localAvatarPath = fileDownloadService.downloadImageToAvatar(
-                googleUserInfo.getPicture(),
-                newUser.getUserId()
-            );
-            newUser.setAvatarUrl(localAvatarPath);
-            newUser = userRepository.save(newUser);
+        // Sau khi có userId, tải avatar từ Google và upload lên Firebase
+        if (googleUserInfo.getPicture() != null && !googleUserInfo.getPicture().isEmpty()) {
+            String firebaseAvatarUrl = uploadAvatarToFirebase(
+                    googleUserInfo.getPicture(),
+                    newUser.getUserId());
+            if (firebaseAvatarUrl != null) {
+                newUser.setAvatarUrl(firebaseAvatarUrl);
+                newUser = userRepository.save(newUser);
+            }
         }
 
         return newUser;
+    }
+
+    /**
+     * Tải ảnh từ URL của Google và upload lên Firebase Storage
+     * 
+     * @param imageUrl URL ảnh từ Google
+     * @param userId   ID của user
+     * @return Public URL trên Firebase Storage hoặc null nếu thất bại
+     */
+    private String uploadAvatarToFirebase(String imageUrl, UUID userId) {
+        try {
+            log.info("📥 Bắt đầu tải avatar từ Google: {}", imageUrl);
+
+            // Tải ảnh từ URL của Google
+            URL url = new URL(imageUrl);
+            InputStream inputStream = url.openStream();
+            byte[] imageBytes = inputStream.readAllBytes();
+            inputStream.close();
+
+            log.info("✅ Đã tải {} bytes từ Google", imageBytes.length);
+
+            // Tạo tên file unique
+            String fileName = "oauth_google_" + userId + "_" + System.currentTimeMillis() + ".jpg";
+
+            // Upload lên Firebase Storage
+            firebaseStorageService.uploadFile(fileName, imageBytes, "image/jpeg");
+            log.info("✅ Đã upload avatar lên Firebase Storage: {}", fileName);
+
+            // Lấy public URL
+            String publicUrl = firebaseStorageService.getPublicUrl(fileName);
+            log.info("✅ Firebase avatar URL: {}", publicUrl);
+
+            return publicUrl;
+
+        } catch (IOException e) {
+            log.error("❌ Lỗi khi tải/upload avatar từ Google lên Firebase: {}", e.getMessage(), e);
+            return null;
+        }
     }
 
     @Override
@@ -230,4 +289,3 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
         return username;
     }
 }
-

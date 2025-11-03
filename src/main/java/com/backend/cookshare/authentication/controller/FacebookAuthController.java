@@ -151,9 +151,12 @@ public class FacebookAuthController {
         LoginResponseDTO result = authResults.get(state);
 
         if (result != null) {
-            // Xóa kết quả sau khi đã lấy
-            authResults.remove(state);
-            log.info("✅ Facebook auth result retrieved and removed for state: {}", state);
+            log.info("✅ Facebook auth result retrieved for state: {}", state);
+
+            // Không xóa ngay, đánh dấu đã lấy và để auto-cleanup xóa sau 30s
+            // Điều này tránh race condition khi frontend có nhiều request pending
+            scheduleResultRemoval(state, 30000); // Xóa sau 30 giây
+
             return ResponseEntity.ok(result);
         }
 
@@ -198,6 +201,19 @@ public class FacebookAuthController {
                 Thread.sleep(5 * 60 * 1000); // 5 phút
                 authResults.remove(state);
                 log.info("🧹 Auto-cleaned Facebook auth result for state: {}", state);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }).start();
+    }
+
+    private void scheduleResultRemoval(String state, long delayMillis) {
+        // Xóa result sau khoảng thời gian delay (để tránh race condition)
+        new Thread(() -> {
+            try {
+                Thread.sleep(delayMillis);
+                authResults.remove(state);
+                log.info("🧹 Removed Facebook auth result after delay for state: {}", state);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }

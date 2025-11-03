@@ -7,10 +7,10 @@ import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.enums.UserRole;
 import com.backend.cookshare.authentication.repository.UserRepository;
 import com.backend.cookshare.authentication.service.FacebookOAuthService;
+import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.authentication.util.SecurityUtil;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
-import com.backend.cookshare.common.service.FileDownloadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,8 +19,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +33,7 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
     private final UserRepository userRepository;
     private final SecurityUtil securityUtil;
     private final RestTemplate restTemplate;
-    private final FileDownloadService fileDownloadService;
+    private final FirebaseStorageService firebaseStorageService;
 
     @Value("${spring.security.oauth2.registration.facebook.client-id}")
     private String clientId;
@@ -55,15 +59,13 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
                     clientId,
                     clientSecret,
                     redirectUri,
-                    code
-            );
+                    code);
 
             ResponseEntity<FacebookTokenResponse> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
                     null,
-                    FacebookTokenResponse.class
-            );
+                    FacebookTokenResponse.class);
 
             return response.getBody();
         } catch (Exception e) {
@@ -81,8 +83,7 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
                     url,
                     HttpMethod.GET,
                     null,
-                    FacebookUserInfo.class
-            );
+                    FacebookUserInfo.class);
 
             return response.getBody();
         } catch (Exception e) {
@@ -115,6 +116,8 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
                 .role(user.getRole())
                 .isActive(user.getIsActive())
                 .emailVerified(user.getEmailVerified())
+                .avatarUrl(user.getAvatarUrl()) // Thêm avatarUrl từ Firebase
+                .bio(user.getBio()) // Thêm bio
                 .build();
 
         String accessToken = securityUtil.createAccessToken(user.getUsername(), userInfo);
@@ -143,13 +146,21 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
             // Cập nhật thông tin nếu có thay đổi
             user.setFullName(facebookUserInfo.getName());
 
-            // Tải avatar từ Facebook về server
-            if (facebookUserInfo.getPictureUrl() != null) {
-                String localAvatarPath = fileDownloadService.downloadImageToAvatar(
-                    facebookUserInfo.getPictureUrl(),
-                    user.getUserId()
-                );
-                user.setAvatarUrl(localAvatarPath);
+            // Tải avatar từ Facebook và upload lên Firebase Storage
+            if (facebookUserInfo.getPictureUrl() != null && !facebookUserInfo.getPictureUrl().isEmpty()) {
+                // Xóa avatar cũ trước khi upload avatar mới
+                String oldAvatarUrl = user.getAvatarUrl();
+                if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
+                    log.info("🗑️ Xóa avatar cũ của Facebook user trước khi cập nhật: {}", oldAvatarUrl);
+                    firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+                }
+
+                String firebaseAvatarUrl = uploadAvatarToFirebase(
+                        facebookUserInfo.getPictureUrl(),
+                        user.getUserId());
+                if (firebaseAvatarUrl != null) {
+                    user.setAvatarUrl(firebaseAvatarUrl);
+                }
             }
             return userRepository.save(user);
         }
@@ -162,13 +173,21 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
                 // Link Facebook account với user hiện có
                 user.setFacebookId(facebookUserInfo.getFacebookId());
 
-                // Tải avatar từ Facebook về server
-                if (facebookUserInfo.getPictureUrl() != null) {
-                    String localAvatarPath = fileDownloadService.downloadImageToAvatar(
-                        facebookUserInfo.getPictureUrl(),
-                        user.getUserId()
-                    );
-                    user.setAvatarUrl(localAvatarPath);
+                // Tải avatar từ Facebook và upload lên Firebase Storage
+                if (facebookUserInfo.getPictureUrl() != null && !facebookUserInfo.getPictureUrl().isEmpty()) {
+                    // Xóa avatar cũ trước khi upload avatar mới
+                    String oldAvatarUrl = user.getAvatarUrl();
+                    if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
+                        log.info("🗑️ Xóa avatar cũ khi link Facebook account: {}", oldAvatarUrl);
+                        firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+                    }
+
+                    String firebaseAvatarUrl = uploadAvatarToFirebase(
+                            facebookUserInfo.getPictureUrl(),
+                            user.getUserId());
+                    if (firebaseAvatarUrl != null) {
+                        user.setAvatarUrl(firebaseAvatarUrl);
+                    }
                 }
 
                 user.setEmailVerified(true);
@@ -195,7 +214,7 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
                 .email(email)
                 .fullName(facebookUserInfo.getName())
                 .facebookId(facebookUserInfo.getFacebookId())
-                .avatarUrl(facebookUserInfo.getPictureUrl()) // Tạm thời lưu URL gốc
+                .avatarUrl(null) // Sẽ cập nhật sau khi upload lên Firebase
                 .passwordHash("FACEBOOK_AUTH") // Không cần password cho Facebook login
                 .role(UserRole.USER)
                 .isActive(true)
@@ -209,17 +228,56 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
         // Save user để có userId
         newUser = userRepository.save(newUser);
 
-        // Sau khi có userId, tải avatar về server
-        if (facebookUserInfo.getPictureUrl() != null) {
-            String localAvatarPath = fileDownloadService.downloadImageToAvatar(
-                facebookUserInfo.getPictureUrl(),
-                newUser.getUserId()
-            );
-            newUser.setAvatarUrl(localAvatarPath);
-            newUser = userRepository.save(newUser);
+        // Sau khi có userId, tải avatar từ Facebook và upload lên Firebase
+        if (facebookUserInfo.getPictureUrl() != null && !facebookUserInfo.getPictureUrl().isEmpty()) {
+            String firebaseAvatarUrl = uploadAvatarToFirebase(
+                    facebookUserInfo.getPictureUrl(),
+                    newUser.getUserId());
+            if (firebaseAvatarUrl != null) {
+                newUser.setAvatarUrl(firebaseAvatarUrl);
+                newUser = userRepository.save(newUser);
+            }
         }
 
         return newUser;
+    }
+
+    /**
+     * Tải ảnh từ URL của Facebook và upload lên Firebase Storage
+     * 
+     * @param imageUrl URL ảnh từ Facebook
+     * @param userId   ID của user
+     * @return Public URL trên Firebase Storage hoặc null nếu thất bại
+     */
+    private String uploadAvatarToFirebase(String imageUrl, UUID userId) {
+        try {
+            log.info("📥 Bắt đầu tải avatar từ Facebook: {}", imageUrl);
+
+            // Tải ảnh từ URL của Facebook
+            URL url = new URL(imageUrl);
+            InputStream inputStream = url.openStream();
+            byte[] imageBytes = inputStream.readAllBytes();
+            inputStream.close();
+
+            log.info("✅ Đã tải {} bytes từ Facebook", imageBytes.length);
+
+            // Tạo tên file unique
+            String fileName = "oauth_facebook_" + userId + "_" + System.currentTimeMillis() + ".jpg";
+
+            // Upload lên Firebase Storage
+            firebaseStorageService.uploadFile(fileName, imageBytes, "image/jpeg");
+            log.info("✅ Đã upload avatar lên Firebase Storage: {}", fileName);
+
+            // Lấy public URL
+            String publicUrl = firebaseStorageService.getPublicUrl(fileName);
+            log.info("✅ Firebase avatar URL: {}", publicUrl);
+
+            return publicUrl;
+
+        } catch (IOException e) {
+            log.error("❌ Lỗi khi tải/upload avatar từ Facebook lên Firebase: {}", e.getMessage(), e);
+            return null;
+        }
     }
 
     @Override
