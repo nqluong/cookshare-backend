@@ -70,3 +70,9 @@ cookshare:
     base64-secret: qoAEABDke07+AVLepXB4aCMtsT0wMAqR5x2VFyldsnx6e75YQkJH2UcZKTjEyoNgG71SBCXfq5N6NVZxWOfsHQ==
     access-token-validity-in-seconds: 86400
     refresh-token-validity-in-seconds: 8640000
+
+firebase:
+  storage:
+    bucket: ${FIREBASE_STORAGE_BUCKET:cookshare-app-33834.firebasestorage.app}
+  credentials:
+    path: ${FIREBASE_CREDENTIALS_PATH:src/main/resources/firebase-credentials.json}
