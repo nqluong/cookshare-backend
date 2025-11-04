@@ -12,10 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
-
 @Repository
 public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecificationExecutor<Recipe> {
     // Featured recipes
@@ -56,6 +55,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
     long countTopRatedRecipes(@Param("minRatingCount") int minRatingCount);
     List<Recipe> findByUserId(UUID userId);
 
+    UUID findUserIdByRecipeId(UUID recipeId);
     //Tong so luot thich cua tat ca cac cong thuc
     @Query("SELECT COALESCE(SUM(r.likeCount), 0) FROM Recipe r WHERE r.userId = :userId")
     Integer getTotalLikeCountByUserId(@Param("userId") UUID userId);
