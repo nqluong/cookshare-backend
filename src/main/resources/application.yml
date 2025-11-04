@@ -45,3 +45,12 @@ cookshare:
     base64-secret: qoAEABDke07+AVLepXB4aCMtsT0wMAqR5x2VFyldsnx6e75YQkJH2UcZKTjEyoNgG71SBCXfq5N6NVZxWOfsHQ==
     access-token-validity-in-seconds: 86400
     refresh-token-validity-in-seconds: 8640000
+    # WebSocket Configuration
+    websocket:
+      allowed-origins:
+        - http://localhost:3000
+        - http://localhost:4200
+        - http://localhost:5173
+      message-size-limit: 524288  # 512KB
+      send-buffer-size-limit: 524288  # 512KB
+      send-time-limit: 20000  # 20 seconds
