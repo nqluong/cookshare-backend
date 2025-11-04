@@ -217,89 +217,6 @@ public class SearchStatisticsServiceImpl implements SearchStatisticsService {
     }
 
     @Override
-    public RecommendationEffectivenessDTO getRecommendationEffectiveness(LocalDateTime startDate, LocalDateTime endDate) {
-        log.info("Bắt đầu tính hiệu quả gợi ý");
-
-        LocalDateTime start = startDate != null ? startDate : LocalDateTime.now().minusMonths(1);
-        LocalDateTime end = endDate != null ? endDate : LocalDateTime.now();
-
-        // Lấy thống kê gợi ý
-        RecommendationStatsProjection recStats = searchRepository.getRecommendationStats(start, end);
-
-        Long shown = recStats.getShownCount();
-        Long clicked = recStats.getClickedCount();
-        BigDecimal avgPosition = recStats.getAvgPosition();
-        BigDecimal ctr = calculatePercentage(clicked, shown);
-
-        // Lấy theo loại
-        List<RecommendationTypeProjection> byTypeData = searchRepository.getRecommendationStatsByType(start, end);
-        List<RecommendationTypeStatsDTO> byType = byTypeData.stream()
-                .map(this::mapToRecommendationType)
-                .collect(Collectors.toList());
-
-        // Lấy theo nguồn
-        List<RecommendationSourceProjection> bySourceData = searchRepository.getRecommendationStatsBySource(start, end);
-        List<RecommendationSourceStatsDTO> bySource = bySourceData.stream()
-                .map(this::mapToRecommendationSource)
-                .collect(Collectors.toList());
-
-        log.info("Gợi ý được hiển thị: {}, Clicked: {}, CTR: {}%", shown, clicked, ctr);
-
-        return RecommendationEffectivenessDTO.builder()
-                .totalRecommendationShown(shown)
-                .totalRecommendationClicked(clicked)
-                .clickThroughRate(ctr)
-                .averagePosition(avgPosition)
-                .byType(byType)
-                .bySource(bySource)
-                .periodStart(start)
-                .periodEnd(end)
-                .build();
-    }
-
-    @Override
-    public IngredientBasedRecommendationDTO getIngredientBasedRecommendations(LocalDateTime startDate, LocalDateTime endDate) {
-        log.info("Bắt đầu lấy thống kê gợi ý theo nguyên liệu");
-
-        LocalDateTime start = startDate != null ? startDate : LocalDateTime.now().minusMonths(1);
-        LocalDateTime end = endDate != null ? endDate : LocalDateTime.now();
-
-        // Lấy tổng quan
-        IngredientRecommendationOverviewProjection overview =
-                searchRepository.getIngredientRecommendationOverview(start, end);
-        Long totalSearches = overview.getTotalSearches();
-        Long totalRecs = overview.getTotalRecommendations();
-
-        // Lấy chi tiết
-        List<IngredientRecommendationProjection> ingredientData =
-                searchRepository.getIngredientRecommendationStats(start, end);
-        List<IngredientRecommendationStatsDTO> topIngredients = ingredientData.stream()
-                .map(this::mapToIngredientRecommendation)
-                .collect(Collectors.toList());
-
-        // Tính độ chính xác và tỷ lệ sử dụng trung bình
-        BigDecimal avgAccuracy = topIngredients.stream()
-                .map(IngredientRecommendationStatsDTO::getAccuracy)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .divide(BigDecimal.valueOf(Math.max(1, topIngredients.size())), 2, RoundingMode.HALF_UP);
-
-        BigDecimal usageRate = calculatePercentage(totalRecs, totalSearches);
-
-        log.info("Gợi ý theo nguyên liệu - Độ chính xác: {}%, Tỷ lệ sử dụng: {}%",
-                avgAccuracy, usageRate);
-
-        return IngredientBasedRecommendationDTO.builder()
-                .totalIngredientSearches(totalSearches)
-                .totalRecommendations(totalRecs)
-                .averageAccuracy(avgAccuracy)
-                .usageRate(usageRate)
-                .topIngredients(topIngredients)
-                .periodStart(start)
-                .periodEnd(end)
-                .build();
-    }
-
-    @Override
     public SearchTrendsDTO getSearchTrends(LocalDateTime startDate, LocalDateTime endDate, String groupBy) {
         log.info("Bắt đầu lấy xu hướng tìm kiếm, nhóm theo: {}", groupBy);
 
@@ -428,46 +345,6 @@ public class SearchStatisticsServiceImpl implements SearchStatisticsService {
                 .firstSearched(projection.getFirstSearched())
                 .lastSearched(projection.getLastSearched())
                 .suggestedActions(suggestedActions)
-                .build();
-    }
-
-    private RecommendationTypeStatsDTO mapToRecommendationType(RecommendationTypeProjection projection) {
-        Long shown = projection.getShown();
-        Long clicked = projection.getClicked();
-
-        return RecommendationTypeStatsDTO.builder()
-                .recommendationType(projection.getRecType())
-                .shownCount(shown)
-                .clickedCount(clicked)
-                .clickThroughRate(calculatePercentage(clicked, shown))
-                .conversionRate(BigDecimal.ZERO)
-                .build();
-    }
-
-    private RecommendationSourceStatsDTO mapToRecommendationSource(RecommendationSourceProjection projection) {
-        Long shown = projection.getShown();
-        Long clicked = projection.getClicked();
-
-        return RecommendationSourceStatsDTO.builder()
-                .source(projection.getSource())
-                .shownCount(shown)
-                .clickedCount(clicked)
-                .clickThroughRate(calculatePercentage(clicked, shown))
-                .build();
-    }
-
-    private IngredientRecommendationStatsDTO mapToIngredientRecommendation(IngredientRecommendationProjection projection) {
-        Long shown = projection.getShown();
-        Long clicked = projection.getClicked();
-
-        return IngredientRecommendationStatsDTO.builder()
-                .ingredientId(projection.getIngredientId().toString())
-                .ingredientName(projection.getIngredientName())
-                .searchCount(projection.getSearchCount())
-                .recommendationShown(shown)
-                .recommendationClicked(clicked)
-                .clickThroughRate(calculatePercentage(clicked, shown))
-                .accuracy(BigDecimal.valueOf(75))
                 .build();
     }
 

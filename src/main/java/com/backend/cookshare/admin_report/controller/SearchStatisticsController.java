@@ -161,49 +161,6 @@ public class SearchStatisticsController {
     }
 
     /**
-     * Lấy thống kê hiệu quả gợi ý
-     * GET /api/admin/statistics/search/recommendation-effectiveness
-     */
-    @GetMapping("/recommendation-effectiveness")
-    public ResponseEntity<ApiResponse<RecommendationEffectivenessDTO>> getRecommendationEffectiveness(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
-
-        log.info("Yêu cầu lấy hiệu quả gợi ý từ {} đến {}", startDate, endDate);
-
-        RecommendationEffectivenessDTO effectiveness = searchStatisticsService.getRecommendationEffectiveness(startDate, endDate);
-        ApiResponse<RecommendationEffectivenessDTO> response = ApiResponse.<RecommendationEffectivenessDTO>builder()
-                .code(200)
-                .message("Lấy hiệu quả gợi ý thành công")
-                .data(effectiveness)
-                .build();
-
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * Lấy thống kê gợi ý theo nguyên liệu
-     * GET /api/admin/statistics/search/ingredient-based-recommendations
-     */
-    @GetMapping("/ingredient-based-recommendations")
-    public ResponseEntity<ApiResponse<IngredientBasedRecommendationDTO>> getIngredientBasedRecommendations(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
-
-        log.info("Yêu cầu lấy thống kê gợi ý theo nguyên liệu từ {} đến {}", startDate, endDate);
-
-        IngredientBasedRecommendationDTO recommendations = searchStatisticsService.getIngredientBasedRecommendations(startDate, endDate);
-
-        ApiResponse<IngredientBasedRecommendationDTO> response = ApiResponse.<IngredientBasedRecommendationDTO>builder()
-                .code(200)
-                .message("Lấy thống kê gợi ý theo nguyên liệu thành công")
-                .data(recommendations)
-                .build();
-
-        return ResponseEntity.ok(response);
-    }
-
-    /**
      * Lấy xu hướng tìm kiếm theo thời gian
      * GET /api/admin/statistics/search/trends
      */

@@ -57,22 +57,6 @@ public interface SearchStatisticsService {
     ZeroResultKeywordsDTO getZeroResultKeywords(int limit, LocalDateTime startDate, LocalDateTime endDate);
 
     /**
-     * Lấy hiệu quả hệ thống gợi ý
-     * @param startDate Ngày bắt đầu
-     * @param endDate Ngày kết thúc
-     * @return RecommendationEffectivenessDTO
-     */
-    RecommendationEffectivenessDTO getRecommendationEffectiveness(LocalDateTime startDate, LocalDateTime endDate);
-
-    /**
-     * Lấy thống kê gợi ý dựa trên nguyên liệu
-     * @param startDate Ngày bắt đầu
-     * @param endDate Ngày kết thúc
-     * @return IngredientBasedRecommendationDTO
-     */
-    IngredientBasedRecommendationDTO getIngredientBasedRecommendations(LocalDateTime startDate, LocalDateTime endDate);
-
-    /**
      * Lấy xu hướng tìm kiếm theo thời gian
      * @param startDate Ngày bắt đầu
      * @param endDate Ngày kết thúc
