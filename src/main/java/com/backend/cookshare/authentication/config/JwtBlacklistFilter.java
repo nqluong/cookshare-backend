@@ -22,7 +22,13 @@ public class JwtBlacklistFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+        String requestURI = request.getRequestURI();
 
+        // ✅ QUAN TRỌNG: Bỏ qua WebSocket endpoints
+        if (requestURI.startsWith("/ws") || requestURI.startsWith("/ws-sockjs")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
@@ -38,5 +44,15 @@ public class JwtBlacklistFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        // ✅ THÊM: Không filter WebSocket requests
+        return path.startsWith("/ws") ||
+                path.startsWith("/ws-sockjs") ||
+                path.equals("/auth/login") ||
+                path.equals("/auth/register") ||
+                path.equals("/auth/refresh");
     }
 }
