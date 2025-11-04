@@ -1,5 +1,6 @@
 package com.backend.cookshare.admin_report.repository;
 
+import com.backend.cookshare.admin_report.repository.recipe_projection.*;
 import com.backend.cookshare.recipe_management.entity.Recipe;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

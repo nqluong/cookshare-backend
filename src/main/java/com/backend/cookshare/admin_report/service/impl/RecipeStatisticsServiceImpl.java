@@ -1,7 +1,8 @@
 package com.backend.cookshare.admin_report.service.impl;
 
-import com.backend.cookshare.admin_report.dto.*;
+import com.backend.cookshare.admin_report.dto.recipe_response.*;
 import com.backend.cookshare.admin_report.repository.*;
+import com.backend.cookshare.admin_report.repository.recipe_projection.*;
 import com.backend.cookshare.admin_report.service.RecipeStatisticsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
