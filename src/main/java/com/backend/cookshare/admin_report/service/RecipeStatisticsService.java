@@ -1,6 +1,6 @@
 package com.backend.cookshare.admin_report.service;
 
-import com.backend.cookshare.admin_report.dto.*;
+import com.backend.cookshare.admin_report.dto.recipe_response.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
