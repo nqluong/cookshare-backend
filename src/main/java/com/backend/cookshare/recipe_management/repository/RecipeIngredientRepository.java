@@ -44,4 +44,9 @@ public interface RecipeIngredientRepository extends JpaRepository<RecipeIngredie
             ON CONFLICT DO NOTHING
             """, nativeQuery = true)
     void insertRecipeIngredient(@Param("recipeId") UUID recipeId, @Param("ingredientId") UUID ingredientId);
+
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM recipe_ingredients WHERE recipe_id = :recipeId", nativeQuery = true)
+    void deleteAllByRecipeId(@Param("recipeId") UUID recipeId);
 }
