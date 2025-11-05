@@ -8,6 +8,7 @@ import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.repository.UserRepository;
 import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.authentication.service.UserService;
+import com.backend.cookshare.authentication.util.SecurityUtil;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,16 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final FirebaseStorageService firebaseStorageService;
+
+    /**
+     * Lấy thông tin user đang đăng nhập từ SecurityContext
+     */
+    private User getCurrentUser() {
+        String username = SecurityUtil.getCurrentUserLogin()
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+    }
 
     @Override
     public String createUser(UserRequest user) {
@@ -138,16 +149,24 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User updateUserProfile(UUID userId, UpdateUserProfileRequest request) {
+        // Lấy thông tin user đang đăng nhập
+        User currentUser = getCurrentUser();
+
+        // Kiểm tra xem userId truyền vào có phải của user đang đăng nhập không
+        if (!currentUser.getUserId().equals(userId)) {
+            log.error("❌ User {} đang cố gắng cập nhật profile của user {}",
+                    currentUser.getUserId(), userId);
+            throw new CustomException(ErrorCode.UNAUTHORIZED_UPDATE);
+        }
+
         // Tìm user theo ID
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new com.backend.cookshare.common.exception.CustomException(
-                        com.backend.cookshare.common.exception.ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         // Kiểm tra nếu username mới đã tồn tại (và không phải của chính user này)
         if (request.getUsername() != null && !request.getUsername().equals(user.getUsername())) {
             if (userRepository.existsByUsername(request.getUsername())) {
-                throw new com.backend.cookshare.common.exception.CustomException(
-                        com.backend.cookshare.common.exception.ErrorCode.USERNAME_EXISTED);
+                throw new CustomException(ErrorCode.USERNAME_EXISTED);
             }
             user.setUsername(request.getUsername());
         }
@@ -155,8 +174,7 @@ public class UserServiceImpl implements UserService {
         // Kiểm tra nếu email mới đã tồn tại (và không phải của chính user này)
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
-                throw new com.backend.cookshare.common.exception.CustomException(
-                        com.backend.cookshare.common.exception.ErrorCode.EMAIL_EXISTED);
+                throw new CustomException(ErrorCode.EMAIL_EXISTED);
             }
             user.setEmail(request.getEmail());
             // Nếu đổi email mới thì cần verify lại
