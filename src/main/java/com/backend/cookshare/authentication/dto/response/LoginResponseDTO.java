@@ -31,6 +31,8 @@ public class LoginResponseDTO {
         private String username;
         private String email;
         private String fullName;
+        private String avatarUrl;
+        private String bio;
         private UserRole role;
         private Boolean isActive;
         private Boolean emailVerified;

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Đang xử lý đăng nhập</title>
+    <style>
+        body{font-family:Arial,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;background:#fff;}
+        #box{padding:20px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.08);text-align:center;}
+        .spinner{border:4px solid #f3f3f3;border-top:4px solid #ff7a00;border-radius:50%;width:36px;height:36px;animation:spin 1s linear infinite;margin:0 auto 12px}
+        @keyframes spin{100%{transform:rotate(360deg)}}
+        #status{margin-top:6px;color:#333}
+    </style>
+</head>
+<body>
+<div id="box">
+    <div class="spinner"></div>
+    <div id="status">Đang đăng nhập... Vui lòng chờ.</div>
+</div>
+<!-- truyền state và provider thông qua input ẩn để tránh escape issues -->
+<input type="hidden" id="oauth-state" th:value="${state}" />
+<input type="hidden" id="oauth-provider" th:value="${provider}" />
+<script>
+    (function(){
+        function getState(){
+            try{ return document.getElementById('oauth-state').value || ''; }catch(e){ return ''; }
+        }
+        function getProvider(){
+            try{ return document.getElementById('oauth-provider').value || 'google'; }catch(e){ return 'google'; }
+        }
+        const state = getState();
+        const provider = getProvider();
+        function poll(){
+            if(!state){ document.getElementById('status').innerText='Đăng nhập hoàn tất. Vui lòng quay lại ứng dụng.'; return; }
+            fetch('/auth/' + provider + '/result/' + encodeURIComponent(state), { credentials: 'same-origin' })
+                .then(function(res){ if(res.status===200) return res.json(); throw new Error('pending'); })
+                .then(function(data){
+                    try{
+                        if(window.opener){
+                            window.opener.postMessage({type:'oauth',provider:provider,data:data}, '*');
+                            window.close();
+                        } else {
+                            document.getElementById('status').innerText='Đăng nhập thành công. Bạn có thể đóng tab này.';
+                        }
+                    }catch(e){
+                        document.getElementById('status').innerText='Đăng nhập thành công. Vui lòng quay lại ứng dụng.';
+                    }
+                }).catch(function(){ setTimeout(poll, 1000); });
+        }
+        poll();
+    })();
+</script>
+</body>
+</html>
+

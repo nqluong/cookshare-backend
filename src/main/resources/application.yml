@@ -79,3 +79,9 @@ cookshare:
       message-size-limit: 524288  # 512KB
       send-buffer-size-limit: 524288  # 512KB
       send-time-limit: 20000  # 20 seconds
+
+firebase:
+  storage:
+    bucket: ${FIREBASE_STORAGE_BUCKET:cookshare-app-33834.firebasestorage.app}
+  credentials:
+    path: ${FIREBASE_CREDENTIALS_PATH:src/main/resources/firebase-credentials.json}

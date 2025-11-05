@@ -11,14 +11,17 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
 
-@RestController
+@Controller
 @RequestMapping("/auth/google")
 @RequiredArgsConstructor
 @Slf4j
@@ -41,6 +44,7 @@ public class GoogleAuthController {
     private final Map<String, LoginResponseDTO> authResults = new ConcurrentHashMap<>();
 
     @GetMapping("/login")
+    @ResponseBody
     public ResponseEntity<Void> loginWithGoogle(@RequestParam(required = false) String state) {
         // Nếu không có state, tạo mới
         if (state == null || state.isEmpty()) {
@@ -62,13 +66,15 @@ public class GoogleAuthController {
     }
 
     /**
-     * Callback endpoint - Trả về HTML page để đóng browser
+     * Callback endpoint - Trả về HTML page để đóng browser (view: auth-loading)
      */
     @GetMapping("/callback")
-    public ResponseEntity<Object> googleCallback(
+    public Object googleCallback(
             @RequestParam("code") String code,
             @RequestParam(value = "state", required = false) String state,
-            @RequestParam(value = "error", required = false) String error) {
+            @RequestParam(value = "error", required = false) String error,
+            HttpServletResponse servletResponse,
+            Model model) {
         try {
             if (error != null) {
                 log.error("Google auth error: {}", error);
@@ -102,15 +108,14 @@ public class GoogleAuthController {
                     .maxAge(refreshTokenExpiration)
                     .build();
 
-            // Trả về JSON tối giản (không trả token trong body để tránh rò rỉ).
-            Map<String, Object> body = Map.of(
-                    "status", "ok",
-                    "state", state);
+            // Đưa cookie vào HttpServletResponse header
+            servletResponse.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body);
+            // Trả về view template 'auth-loading' và truyền state
+            String s = (state == null) ? "" : state;
+            model.addAttribute("state", s);
+            model.addAttribute("provider", "google");
+            return "auth-loading";
 
         } catch (CustomException e) {
             log.error("Error during Google authentication: {}", e.getMessage());
@@ -137,13 +142,17 @@ public class GoogleAuthController {
      * Endpoint để app polling kết quả đăng nhập
      */
     @GetMapping("/result/{state}")
+    @ResponseBody
     public ResponseEntity<LoginResponseDTO> getAuthResult(@PathVariable String state) {
         LoginResponseDTO result = authResults.get(state);
 
         if (result != null) {
-            // Xóa kết quả sau khi đã lấy
-            authResults.remove(state);
-            log.info("Auth result retrieved and removed for state: {}", state);
+            log.info("Auth result retrieved for state: {}", state);
+
+            // Không xóa ngay, đánh dấu đã lấy và để auto-cleanup xóa sau 30s
+            // Điều này tránh race condition khi frontend có nhiều request pending
+            scheduleResultRemoval(state, 30000); // Xóa sau 30 giây
+
             return ResponseEntity.ok(result);
         }
 
@@ -154,6 +163,7 @@ public class GoogleAuthController {
      * Endpoint để xử lý login từ mobile/frontend với authorization code
      */
     @PostMapping("/authenticate")
+    @ResponseBody
     public ResponseEntity<LoginResponseDTO> authenticateWithCode(@RequestParam("code") String code) {
         try {
             LoginResponseDTO response = googleOAuthService.authenticateGoogleUser(code);
@@ -183,6 +193,19 @@ public class GoogleAuthController {
                 Thread.sleep(5 * 60 * 1000); // 5 phút
                 authResults.remove(state);
                 log.info("Auto-cleaned auth result for state: {}", state);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }).start();
+    }
+
+    private void scheduleResultRemoval(String state, long delayMillis) {
+        // Xóa result sau khoảng thời gian delay (để tránh race condition)
+        new Thread(() -> {
+            try {
+                Thread.sleep(delayMillis);
+                authResults.remove(state);
+                log.info("Removed auth result after delay for state: {}", state);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
