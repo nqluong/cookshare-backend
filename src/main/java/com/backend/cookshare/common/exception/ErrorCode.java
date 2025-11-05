@@ -51,6 +51,7 @@ public enum ErrorCode {
     EMAIL_EXISTED(4015, "Email đã tồn tại", HttpStatus.BAD_REQUEST),
     USER_ALREADY_BANNED(4016, "Người dùng đã bị cấm trước đó", HttpStatus.BAD_REQUEST),
     USER_ALREADY_ACTIVE(4017, "Người dùng đã đang hoạt động", HttpStatus.BAD_REQUEST),
+    UNAUTHORIZED_UPDATE(4020, "Bạn không có quyền cập nhật thông tin người dùng này", HttpStatus.FORBIDDEN),
 
     // Google OAuth errors (5xxx)
     GOOGLE_AUTH_ERROR(4018, "Lỗi xác thực với Google", HttpStatus.UNAUTHORIZED),

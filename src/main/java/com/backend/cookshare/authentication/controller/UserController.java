@@ -1,8 +1,10 @@
 package com.backend.cookshare.authentication.controller;
 
 import com.backend.cookshare.authentication.dto.UserProfileDto;
+import com.backend.cookshare.authentication.dto.request.AvatarUploadUrlRequest;
 import com.backend.cookshare.authentication.dto.request.UpdateUserProfileRequest;
 import com.backend.cookshare.authentication.dto.request.UserRequest;
+import com.backend.cookshare.authentication.dto.response.AvatarUploadUrlResponse;
 import com.backend.cookshare.authentication.dto.response.LoginResponseDTO;
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.service.UserService;
@@ -89,7 +91,6 @@ public class UserController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-
     @GetMapping("/email/{email}")
     public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
         return userService.getUserByEmail(email)
@@ -163,5 +164,15 @@ public class UserController {
                 .build();
 
         return ResponseEntity.ok(userProfileDto);
+    }
+
+    @PostMapping("/{userId}/avatar/upload-url")
+    @PreAuthorize("hasPermission(null, 'USER')")
+    public ResponseEntity<AvatarUploadUrlResponse> requestAvatarUploadUrl(
+            @PathVariable UUID userId,
+            @Valid @RequestBody AvatarUploadUrlRequest request) {
+
+        AvatarUploadUrlResponse response = userService.generateAvatarUploadUrl(userId, request);
+        return ResponseEntity.ok(response);
     }
 }

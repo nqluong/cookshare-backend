@@ -1,10 +1,14 @@
 package com.backend.cookshare.authentication.service.impl;
 
+import com.backend.cookshare.authentication.dto.request.AvatarUploadUrlRequest;
 import com.backend.cookshare.authentication.dto.request.UpdateUserProfileRequest;
 import com.backend.cookshare.authentication.dto.request.UserRequest;
+import com.backend.cookshare.authentication.dto.response.AvatarUploadUrlResponse;
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.repository.UserRepository;
+import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.authentication.service.UserService;
+import com.backend.cookshare.authentication.util.SecurityUtil;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +32,17 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final FirebaseStorageService firebaseStorageService;
+
+    /**
+     * Lấy thông tin user đang đăng nhập từ SecurityContext
+     */
+    private User getCurrentUser() {
+        String username = SecurityUtil.getCurrentUserLogin()
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+    }
 
     @Override
     public String createUser(UserRequest user) {
@@ -134,16 +149,24 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User updateUserProfile(UUID userId, UpdateUserProfileRequest request) {
+        // Lấy thông tin user đang đăng nhập
+        User currentUser = getCurrentUser();
+
+        // Kiểm tra xem userId truyền vào có phải của user đang đăng nhập không
+        if (!currentUser.getUserId().equals(userId)) {
+            log.error("❌ User {} đang cố gắng cập nhật profile của user {}",
+                    currentUser.getUserId(), userId);
+            throw new CustomException(ErrorCode.UNAUTHORIZED_UPDATE);
+        }
+
         // Tìm user theo ID
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new com.backend.cookshare.common.exception.CustomException(
-                        com.backend.cookshare.common.exception.ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         // Kiểm tra nếu username mới đã tồn tại (và không phải của chính user này)
         if (request.getUsername() != null && !request.getUsername().equals(user.getUsername())) {
             if (userRepository.existsByUsername(request.getUsername())) {
-                throw new com.backend.cookshare.common.exception.CustomException(
-                        com.backend.cookshare.common.exception.ErrorCode.USERNAME_EXISTED);
+                throw new CustomException(ErrorCode.USERNAME_EXISTED);
             }
             user.setUsername(request.getUsername());
         }
@@ -151,8 +174,7 @@ public class UserServiceImpl implements UserService {
         // Kiểm tra nếu email mới đã tồn tại (và không phải của chính user này)
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
-                throw new com.backend.cookshare.common.exception.CustomException(
-                        com.backend.cookshare.common.exception.ErrorCode.EMAIL_EXISTED);
+                throw new CustomException(ErrorCode.EMAIL_EXISTED);
             }
             user.setEmail(request.getEmail());
             // Nếu đổi email mới thì cần verify lại
@@ -165,6 +187,14 @@ public class UserServiceImpl implements UserService {
         }
 
         if (request.getAvatarUrl() != null) {
+            // Xóa avatar cũ trước khi cập nhật avatar mới
+            String oldAvatarUrl = user.getAvatarUrl();
+            if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()
+                    && !oldAvatarUrl.equals(request.getAvatarUrl())) {
+                log.info("🗑️ Xóa avatar cũ trước khi cập nhật: {}", oldAvatarUrl);
+                firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+            }
+
             user.setAvatarUrl(request.getAvatarUrl());
         }
 
@@ -176,6 +206,55 @@ public class UserServiceImpl implements UserService {
         user.setUpdatedAt(LocalDateTime.now());
 
         return userRepository.save(user);
+    }
+
+    @Override
+    public AvatarUploadUrlResponse generateAvatarUploadUrl(UUID userId, AvatarUploadUrlRequest request) {
+        log.info("🔐 Tạo upload URL cho avatar của user: {}", userId);
+
+        // Kiểm tra Firebase Storage đã được khởi tạo chưa
+        if (!firebaseStorageService.isInitialized()) {
+            log.error("❌ Firebase Storage chưa được khởi tạo");
+            throw new IllegalStateException("Firebase Storage chưa được cấu hình. Vui lòng liên hệ admin.");
+        }
+
+        // Kiểm tra user có tồn tại không
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> {
+                    log.error("❌ Không tìm thấy user với ID: {}", userId);
+                    return new CustomException(ErrorCode.USER_NOT_FOUND);
+                });
+
+        // Validate content type (chỉ cho phép ảnh)
+        if (!request.getContentType().startsWith("image/")) {
+            log.error("❌ Content type không hợp lệ: {}", request.getContentType());
+            throw new IllegalArgumentException("Chỉ chấp nhận file ảnh");
+        }
+
+        // Validate phần mở rộng file
+        String fileName = request.getFileName();
+        String extension = fileName.substring(fileName.lastIndexOf(".")).toLowerCase();
+        if (!extension.matches("\\.(jpg|jpeg|png|gif|webp)")) {
+            log.error("❌ Phần mở rộng file không hợp lệ: {}", extension);
+            throw new IllegalArgumentException("Phần mở rộng file không hợp lệ. Chấp nhận: jpg, jpeg, png, gif, webp");
+        }
+
+        log.info("📝 Tạo signed URL cho file: {}, content type: {}", fileName, request.getContentType());
+
+        // Tạo signed URL để upload
+        String uploadUrl = firebaseStorageService.generateUploadUrl(fileName, request.getContentType());
+
+        // Lấy public URL (đây sẽ là URL avatar sau khi upload)
+        String publicUrl = firebaseStorageService.getPublicUrl(fileName);
+
+        log.info("✅ Tạo upload URL thành công cho user: {}", userId);
+        log.info("📤 Upload URL: {}", uploadUrl);
+        log.info("🌐 Public URL: {}", publicUrl);
+
+        return AvatarUploadUrlResponse.builder()
+                .uploadUrl(uploadUrl)
+                .publicUrl(publicUrl)
+                .build();
     }
 
     // ==================== ADMIN METHODS ====================
@@ -234,7 +313,8 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        // You might want to add additional checks here, like preventing deletion of other admins
+        // You might want to add additional checks here, like preventing deletion of
+        // other admins
         // or performing soft delete instead of hard delete
         userRepository.delete(user);
 
