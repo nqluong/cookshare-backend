@@ -16,14 +16,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -49,50 +49,130 @@ public class RecommendationServiceImpl implements RecommendationService {
     @Override
     public HomeRecommendationResponse getHomeRecommendations() {
         log.info("Bắt đầu lấy tất cả gợi ý công thức cho trang chủ");
-        
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user= userRepository.findByUsername(username)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        UUID userId= user.getUserId();
         try {
             // Sử dụng đa luồng để lấy tất cả recommendations song song
-            CompletableFuture<List<RecipeRecommendationResponse>> featuredFuture = 
+            CompletableFuture<List<RecipeRecommendationResponse>> featuredFuture =
                 CompletableFuture.supplyAsync(() -> getFeaturedRecipes(DEFAULT_LIMIT), executor);
-            
-            CompletableFuture<List<RecipeRecommendationResponse>> popularFuture = 
+
+            CompletableFuture<List<RecipeRecommendationResponse>> popularFuture =
                 CompletableFuture.supplyAsync(() -> getPopularRecipes(DEFAULT_LIMIT), executor);
-            
-            CompletableFuture<List<RecipeRecommendationResponse>> newestFuture = 
+
+            CompletableFuture<List<RecipeRecommendationResponse>> newestFuture =
                 CompletableFuture.supplyAsync(() -> getNewestRecipes(DEFAULT_LIMIT), executor);
-            
-            CompletableFuture<List<RecipeRecommendationResponse>> topRatedFuture = 
+
+            CompletableFuture<List<RecipeRecommendationResponse>> topRatedFuture =
                 CompletableFuture.supplyAsync(() -> getTopRatedRecipes(DEFAULT_LIMIT), executor);
-            
-            CompletableFuture<List<RecipeRecommendationResponse>> trendingFuture = 
+
+            CompletableFuture<List<RecipeRecommendationResponse>> trendingFuture =
                 CompletableFuture.supplyAsync(() -> getTrendingRecipes(DEFAULT_LIMIT), executor);
+            CompletableFuture<List<RecipeRecommendationResponse>> dailyFuture =
+                    CompletableFuture.supplyAsync(() -> getDailyRecommendations(userId), executor);
 
             CompletableFuture<Void> allFutures = CompletableFuture.allOf(
                 featuredFuture, popularFuture, newestFuture, topRatedFuture, trendingFuture);
-            
+
             allFutures.join();
-            
+
             List<RecipeRecommendationResponse> featured = featuredFuture.join();
             List<RecipeRecommendationResponse> popular = popularFuture.join();
             List<RecipeRecommendationResponse> newest = newestFuture.join();
             List<RecipeRecommendationResponse> topRated = topRatedFuture.join();
             List<RecipeRecommendationResponse> trending = trendingFuture.join();
-            
             log.info("Đã lấy thành công tất cả gợi ý: {} featured, {} popular, {} newest, {} topRated, {} trending",
                     featured.size(), popular.size(), newest.size(), topRated.size(), trending.size());
-            
+
             return HomeRecommendationResponse.builder()
                     .featuredRecipes(featured)
                     .popularRecipes(popular)
                     .newestRecipes(newest)
                     .topRatedRecipes(topRated)
                     .trendingRecipes(trending)
+                    .dailyRecommendations(dailyFuture.join())
                     .build();
-                    
+
         } catch (Exception e) {
             log.error("Lỗi khi lấy gợi ý trang chủ: {}", e.getMessage(), e);
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "Không thể lấy danh sách gợi ý công thức");
         }
+    }
+    @Override
+    public List<RecipeRecommendationResponse> getDailyRecommendations(UUID userId) {
+        log.info("Lấy gợi ý công thức theo ngày cho user: {}", userId);
+
+        try {
+            // Lấy ngày hiện tại (chỉ lấy ngày, không tính giờ)
+            LocalDate today = LocalDate.now();
+
+            // Tạo seed dựa trên ngày và userId để đảm bảo tính đa dạng
+            long seed = generateDailySeed(today, userId);
+
+            // Lấy tất cả công thức đã publish
+            List<Recipe> allPublishedRecipes = recipeRepository.findAllPublishedRecipes();
+
+            if (allPublishedRecipes.isEmpty()) {
+                log.warn("Không có công thức nào được publish");
+                return List.of();
+            }
+
+            // Shuffle danh sách với seed để đảm bảo mỗi ngày có thứ tự khác nhau
+            List<Recipe> shuffledRecipes = shuffleWithSeed(allPublishedRecipes, seed);
+
+            // Lấy 3 công thức đầu tiên sau khi shuffle
+            List<Recipe> selectedRecipes = shuffledRecipes.stream()
+                    .limit(3)
+                    .collect(Collectors.toList());
+
+            log.info("Đã chọn {} công thức cho gợi ý hàng ngày", selectedRecipes.size());
+
+            return convertToRecommendationResponses(selectedRecipes);
+
+        } catch (Exception e) {
+            log.error("Lỗi khi lấy gợi ý công thức theo ngày: {}", e.getMessage(), e);
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR,
+                    "Không thể lấy danh sách gợi ý công thức theo ngày");
+        }
+    }
+
+    /**
+     * Tạo seed cho việc shuffle dựa trên ngày và userId
+     * Công thức: (năm * 10000 + tháng * 100 + ngày) XOR hash(userId)
+     */
+    private long generateDailySeed(LocalDate date, UUID userId) {
+        // Tạo base seed từ ngày
+        long dateSeed = date.getYear() * 10000L + date.getMonthValue() * 100L + date.getDayOfMonth();
+
+        // Nếu có userId, XOR với hash của userId để tạo sự đa dạng
+        if (userId != null) {
+            long userSeed = Math.abs(userId.hashCode());
+            // Sử dụng XOR để kết hợp cả ngày và userId
+            return dateSeed ^ userSeed;
+        }
+
+        // Nếu không có userId, chỉ dùng dateSeed
+        return dateSeed;
+    }
+
+    /**
+     * Shuffle danh sách với seed cố định
+     * Sử dụng Random với seed để đảm bảo kết quả shuffle giống nhau với cùng seed
+     */
+    private List<Recipe> shuffleWithSeed(List<Recipe> recipes, long seed) {
+        List<Recipe> shuffled = new ArrayList<>(recipes);
+        Random random = new Random(seed);
+
+        // Fisher-Yates shuffle algorithm
+        for (int i = shuffled.size() - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            Recipe temp = shuffled.get(i);
+            shuffled.set(i, shuffled.get(j));
+            shuffled.set(j, temp);
+        }
+
+        return shuffled;
     }
     
     @Override

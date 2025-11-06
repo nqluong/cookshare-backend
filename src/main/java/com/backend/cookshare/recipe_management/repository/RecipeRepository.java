@@ -96,7 +96,8 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
      * Lấy danh sách công thức nổi bật
      */
     Page<Recipe> findByIsFeaturedTrueOrderByCreatedAtDesc(Pageable pageable);
-
+    @Query("SELECT r FROM Recipe r WHERE r.isPublished = true ORDER BY r.recipeId")
+    List<Recipe> findAllPublishedRecipes();
     /**
      * Đếm số lượng công thức theo trạng thái
      */
