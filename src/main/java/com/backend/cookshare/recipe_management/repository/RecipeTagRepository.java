@@ -42,5 +42,11 @@ public interface RecipeTagRepository extends JpaRepository<RecipeTag, UUID> {
         """, nativeQuery = true)
     void insertRecipeTag(@Param("recipeId") UUID recipeId, @Param("tagId") UUID tagId);
 
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM recipe_tags WHERE recipe_id = :recipeId", nativeQuery = true)
+    void deleteAllByRecipeId(@Param("recipeId") UUID recipeId);
+
+
 
 }
