@@ -5,6 +5,7 @@ import com.backend.cookshare.recommendation.dto.response.RecipeRecommendationPag
 import com.backend.cookshare.recommendation.dto.response.RecipeRecommendationResponse;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface RecommendationService {
     
@@ -13,7 +14,12 @@ public interface RecommendationService {
      * Bao gồm: công thức nổi bật, phổ biến, mới nhất, đánh giá cao, trending
      */
     HomeRecommendationResponse getHomeRecommendations();
-    
+    /**
+     * Gợi ý 3 công thức theo ngày
+     * Mỗi ngày sẽ có các công thức khác nhau
+     * Mỗi người dùng có thể có gợi ý giống hoặc khác nhau dựa trên userId
+     */
+    List<RecipeRecommendationResponse> getDailyRecommendations(UUID userId);
     /**
      * Lấy danh sách công thức nổi bật (được admin đánh dấu)
      * Chỉ lấy các công thức đã được xuất bản và đánh dấu isFeatured = true

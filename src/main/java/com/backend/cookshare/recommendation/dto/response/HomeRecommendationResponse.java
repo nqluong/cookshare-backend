@@ -23,5 +23,7 @@ public class HomeRecommendationResponse {
     private List<RecipeRecommendationResponse> topRatedRecipes;
 
     private List<RecipeRecommendationResponse> trendingRecipes;
+
+    private List<RecipeRecommendationResponse> dailyRecommendations;
 }
 
