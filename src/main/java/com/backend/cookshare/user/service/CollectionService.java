@@ -13,7 +13,6 @@ import com.backend.cookshare.user.entity.Collection;
 import com.backend.cookshare.user.entity.CollectionRecipe;
 import com.backend.cookshare.user.repository.CollectionRecipeRepository;
 import com.backend.cookshare.user.repository.CollectionRepository;
-import com.backend.cookshare.user.websocket.WebSocketNotificationSender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -34,7 +33,6 @@ public class CollectionService {
     private final CollectionRepository collectionRepository;
     private final CollectionRecipeRepository collectionRecipeRepository;
     private final PageMapper pageMapper;
-    private final WebSocketNotificationSender webSocketNotificationSender;
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
 
@@ -209,20 +207,7 @@ public class CollectionService {
 
         collectionRecipeRepository.save(collectionRecipe);
 
-        // 5️⃣ Gửi thông báo WebSocket tới chủ sở hữu công thức (nếu khác user đang thao tác)
 
-        if (!recipe.getUserId().equals(userId)) {
-            User sharer = userRepository.findById(userId)
-                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-
-            webSocketNotificationSender.sendShareNotification(
-                    recipe.getUserId(),          // Chủ công thức nhận thông báo
-                    recipeId,                    // ID công thức
-                    sharer.getUsername(),        // Tên người chia sẻ
-                    collection.getName(),        // Tên bộ sưu tập
-                    recipe.getTitle()            // Tên công thức
-            );
-        }
         // Cập nhật recipe count
         collection.setRecipeCount(collection.getRecipeCount() + 1);
         recipe.setSaveCount(recipe.getSaveCount()+ 1);

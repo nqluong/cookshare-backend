@@ -61,6 +61,8 @@ public class SecurityConfiguration implements WebMvcConfigurer {
                 .cors(Customizer.withDefaults()) // Enable CORS
                 .authorizeHttpRequests(
                         authz -> authz
+                                .requestMatchers("/ws/**").permitAll()
+                                .requestMatchers("/ws-sockjs/**").permitAll()
                                 .requestMatchers(HttpMethod.GET,"/api/v1/recommendations/**").permitAll()
                                 .requestMatchers("/recipe_images/**", "/images/**", "/static/**").permitAll()
                                 .requestMatchers("/", "/auth/login", "/auth/register", "/auth/refresh").permitAll()

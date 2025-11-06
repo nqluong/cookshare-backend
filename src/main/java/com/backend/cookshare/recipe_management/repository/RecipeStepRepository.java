@@ -47,4 +47,10 @@ public interface RecipeStepRepository extends JpaRepository<RecipeStep, UUID> {
             @Param("estimatedTime") Integer estimatedTime,
             @Param("tips") String tips
     );
+
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM recipe_steps WHERE recipe_id = :recipeId", nativeQuery = true)
+    void deleteAllByRecipeId(@Param("recipeId") UUID recipeId);
+
 }
