@@ -151,20 +151,39 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
             // Cập nhật thông tin nếu có thay đổi
             user.setFullName(googleUserInfo.getName());
 
-            // Tải avatar từ Google và upload lên Firebase Storage
+            // CHỈ upload avatar từ Google nếu:
+            // 1. User chưa có avatar, HOẶC
+            // 2. Avatar hiện tại vẫn là từ OAuth (chưa tùy chỉnh)
             if (googleUserInfo.getPicture() != null && !googleUserInfo.getPicture().isEmpty()) {
-                // Xóa avatar cũ trước khi upload avatar mới
                 String oldAvatarUrl = user.getAvatarUrl();
-                if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
-                    log.info("🗑️ Xóa avatar cũ của Google user trước khi cập nhật: {}", oldAvatarUrl);
-                    firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+                boolean shouldUpdateAvatar = false;
+
+                if (oldAvatarUrl == null || oldAvatarUrl.isEmpty()) {
+                    // Trường hợp 1: Chưa có avatar
+                    log.info("✅ User chưa có avatar, sẽ upload từ Google");
+                    shouldUpdateAvatar = true;
+                } else if (oldAvatarUrl.contains("oauth_google_") || oldAvatarUrl.contains("oauth_facebook_")) {
+                    // Trường hợp 2: Avatar hiện tại vẫn là từ OAuth (chưa tùy chỉnh)
+                    log.info("✅ Avatar hiện tại là từ OAuth, sẽ cập nhật từ Google");
+                    shouldUpdateAvatar = true;
+                } else {
+                    // Trường hợp 3: User đã tùy chỉnh avatar -> KHÔNG ghi đè
+                    log.info("⚠️ User đã tùy chỉnh avatar, giữ nguyên avatar hiện tại");
                 }
 
-                String firebaseAvatarUrl = uploadAvatarToFirebase(
-                        googleUserInfo.getPicture(),
-                        user.getUserId());
-                if (firebaseAvatarUrl != null) {
-                    user.setAvatarUrl(firebaseAvatarUrl);
+                if (shouldUpdateAvatar) {
+                    // Xóa avatar OAuth cũ
+                    if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
+                        log.info("🗑️ Xóa avatar OAuth cũ: {}", oldAvatarUrl);
+                        firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+                    }
+
+                    String firebaseAvatarUrl = uploadAvatarToFirebase(
+                            googleUserInfo.getPicture(),
+                            user.getUserId());
+                    if (firebaseAvatarUrl != null) {
+                        user.setAvatarUrl(firebaseAvatarUrl);
+                    }
                 }
             }
 
@@ -179,20 +198,36 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
             // Link Google account với user hiện có
             user.setGoogleId(googleUserInfo.getGoogleId());
 
-            // Tải avatar từ Google và upload lên Firebase Storage
+            // CHỈ upload avatar từ Google nếu:
+            // 1. User chưa có avatar, HOẶC
+            // 2. Avatar hiện tại vẫn là từ OAuth (chưa tùy chỉnh)
             if (googleUserInfo.getPicture() != null && !googleUserInfo.getPicture().isEmpty()) {
-                // Xóa avatar cũ trước khi upload avatar mới
                 String oldAvatarUrl = user.getAvatarUrl();
-                if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
-                    log.info("🗑️ Xóa avatar cũ khi link Google account: {}", oldAvatarUrl);
-                    firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+                boolean shouldUpdateAvatar = false;
+
+                if (oldAvatarUrl == null || oldAvatarUrl.isEmpty()) {
+                    log.info("✅ User chưa có avatar khi link Google, sẽ upload từ Google");
+                    shouldUpdateAvatar = true;
+                } else if (oldAvatarUrl.contains("oauth_google_") || oldAvatarUrl.contains("oauth_facebook_")) {
+                    log.info("✅ Avatar hiện tại là từ OAuth khi link Google, sẽ cập nhật");
+                    shouldUpdateAvatar = true;
+                } else {
+                    log.info("⚠️ User đã tùy chỉnh avatar khi link Google, giữ nguyên");
                 }
 
-                String firebaseAvatarUrl = uploadAvatarToFirebase(
-                        googleUserInfo.getPicture(),
-                        user.getUserId());
-                if (firebaseAvatarUrl != null) {
-                    user.setAvatarUrl(firebaseAvatarUrl);
+                if (shouldUpdateAvatar) {
+                    // Xóa avatar OAuth cũ
+                    if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
+                        log.info("🗑️ Xóa avatar OAuth cũ khi link Google: {}", oldAvatarUrl);
+                        firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+                    }
+
+                    String firebaseAvatarUrl = uploadAvatarToFirebase(
+                            googleUserInfo.getPicture(),
+                            user.getUserId());
+                    if (firebaseAvatarUrl != null) {
+                        user.setAvatarUrl(firebaseAvatarUrl);
+                    }
                 }
             }
 

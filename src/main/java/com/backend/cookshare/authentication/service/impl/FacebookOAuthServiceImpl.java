@@ -146,20 +146,36 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
             // Cập nhật thông tin nếu có thay đổi
             user.setFullName(facebookUserInfo.getName());
 
-            // Tải avatar từ Facebook và upload lên Firebase Storage
+            // CHỈ upload avatar từ Facebook nếu:
+            // 1. User chưa có avatar, HOẶC
+            // 2. Avatar hiện tại vẫn là từ OAuth (chưa tùy chỉnh)
             if (facebookUserInfo.getPictureUrl() != null && !facebookUserInfo.getPictureUrl().isEmpty()) {
-                // Xóa avatar cũ trước khi upload avatar mới
                 String oldAvatarUrl = user.getAvatarUrl();
-                if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
-                    log.info("🗑️ Xóa avatar cũ của Facebook user trước khi cập nhật: {}", oldAvatarUrl);
-                    firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+                boolean shouldUpdateAvatar = false;
+
+                if (oldAvatarUrl == null || oldAvatarUrl.isEmpty()) {
+                    log.info("✅ User chưa có avatar, sẽ upload từ Facebook");
+                    shouldUpdateAvatar = true;
+                } else if (oldAvatarUrl.contains("oauth_google_") || oldAvatarUrl.contains("oauth_facebook_")) {
+                    log.info("✅ Avatar hiện tại là từ OAuth, sẽ cập nhật từ Facebook");
+                    shouldUpdateAvatar = true;
+                } else {
+                    log.info("⚠️ User đã tùy chỉnh avatar, giữ nguyên avatar hiện tại");
                 }
 
-                String firebaseAvatarUrl = uploadAvatarToFirebase(
-                        facebookUserInfo.getPictureUrl(),
-                        user.getUserId());
-                if (firebaseAvatarUrl != null) {
-                    user.setAvatarUrl(firebaseAvatarUrl);
+                if (shouldUpdateAvatar) {
+                    // Xóa avatar OAuth cũ
+                    if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
+                        log.info("🗑️ Xóa avatar OAuth cũ: {}", oldAvatarUrl);
+                        firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+                    }
+
+                    String firebaseAvatarUrl = uploadAvatarToFirebase(
+                            facebookUserInfo.getPictureUrl(),
+                            user.getUserId());
+                    if (firebaseAvatarUrl != null) {
+                        user.setAvatarUrl(firebaseAvatarUrl);
+                    }
                 }
             }
             return userRepository.save(user);
@@ -173,20 +189,36 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
                 // Link Facebook account với user hiện có
                 user.setFacebookId(facebookUserInfo.getFacebookId());
 
-                // Tải avatar từ Facebook và upload lên Firebase Storage
+                // CHỈ upload avatar từ Facebook nếu:
+                // 1. User chưa có avatar, HOẶC
+                // 2. Avatar hiện tại vẫn là từ OAuth (chưa tùy chỉnh)
                 if (facebookUserInfo.getPictureUrl() != null && !facebookUserInfo.getPictureUrl().isEmpty()) {
-                    // Xóa avatar cũ trước khi upload avatar mới
                     String oldAvatarUrl = user.getAvatarUrl();
-                    if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
-                        log.info("🗑️ Xóa avatar cũ khi link Facebook account: {}", oldAvatarUrl);
-                        firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+                    boolean shouldUpdateAvatar = false;
+
+                    if (oldAvatarUrl == null || oldAvatarUrl.isEmpty()) {
+                        log.info("✅ User chưa có avatar khi link Facebook, sẽ upload từ Facebook");
+                        shouldUpdateAvatar = true;
+                    } else if (oldAvatarUrl.contains("oauth_google_") || oldAvatarUrl.contains("oauth_facebook_")) {
+                        log.info("✅ Avatar hiện tại là từ OAuth khi link Facebook, sẽ cập nhật");
+                        shouldUpdateAvatar = true;
+                    } else {
+                        log.info("⚠️ User đã tùy chỉnh avatar khi link Facebook, giữ nguyên");
                     }
 
-                    String firebaseAvatarUrl = uploadAvatarToFirebase(
-                            facebookUserInfo.getPictureUrl(),
-                            user.getUserId());
-                    if (firebaseAvatarUrl != null) {
-                        user.setAvatarUrl(firebaseAvatarUrl);
+                    if (shouldUpdateAvatar) {
+                        // Xóa avatar OAuth cũ
+                        if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
+                            log.info("🗑️ Xóa avatar OAuth cũ khi link Facebook: {}", oldAvatarUrl);
+                            firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+                        }
+
+                        String firebaseAvatarUrl = uploadAvatarToFirebase(
+                                facebookUserInfo.getPictureUrl(),
+                                user.getUserId());
+                        if (firebaseAvatarUrl != null) {
+                            user.setAvatarUrl(firebaseAvatarUrl);
+                        }
                     }
                 }
 
