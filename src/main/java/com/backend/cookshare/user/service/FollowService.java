@@ -15,8 +15,6 @@ import com.backend.cookshare.user.dto.RecipeByFollowingResponse;
 import com.backend.cookshare.user.dto.UserFollowDto;
 import com.backend.cookshare.user.entity.Follow;
 import com.backend.cookshare.user.repository.FollowRepository;
-import com.backend.cookshare.user.websocket.NotificationWebSocketHandler;
-import com.backend.cookshare.user.websocket.WebSocketNotificationSender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,9 +24,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -39,7 +35,6 @@ public class FollowService {
     private final UserRepository userRepository;
     private final FollowRepository followRepository;
     private final NotificationService notificationService;
-    private  final WebSocketNotificationSender webSocketNotificationSender;
     private final PageMapper pageMapper;
     private final RecipeRepository recipeRepository;
     private final RecipeMapper recipeMapper;
@@ -94,7 +89,7 @@ public class FollowService {
         notificationService.createFollowNotification(followerId, followingId);
 
         // Gửi realtime notification via WebSocket
-        webSocketNotificationSender.sendFollowNotification(followerId, followingId, follower.getUsername());
+        //webSocketNotificationSender.sendFollowNotification(followerId, followingId, follower.getUsername());
 
         log.info("User {} successfully followed user {}", followerId, followingId);
 

@@ -13,4 +13,5 @@ public class IngredientRequest {
     String category;
     String unit;
     String description;
+    String quantity;
 }

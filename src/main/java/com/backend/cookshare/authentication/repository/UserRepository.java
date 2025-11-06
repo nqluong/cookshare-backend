@@ -15,7 +15,7 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID> {
     //Tìm người dùng theo username.
     Optional<User> findByUsername(String username);
-
+    User findByUserId(UUID userId);
     //Tìm người dùng theo email.
     Optional<User> findByEmail(String email);
     Optional<User> findByGoogleId(String googleId);

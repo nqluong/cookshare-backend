@@ -1,7 +1,9 @@
 package com.backend.cookshare.authentication.service;
 
+import com.backend.cookshare.authentication.dto.request.AvatarUploadUrlRequest;
 import com.backend.cookshare.authentication.dto.request.UpdateUserProfileRequest;
 import com.backend.cookshare.authentication.dto.request.UserRequest;
+import com.backend.cookshare.authentication.dto.response.AvatarUploadUrlResponse;
 import com.backend.cookshare.authentication.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -40,6 +42,8 @@ public interface UserService {
     void changePassword(String username, String currentPassword, String newPassword);
 
     User updateUserProfile(UUID userId, UpdateUserProfileRequest request);
+
+    AvatarUploadUrlResponse generateAvatarUploadUrl(UUID userId, AvatarUploadUrlRequest request);
 
     // Admin methods
     Page<User> getAllUsersWithPagination(String search, Pageable pageable);
