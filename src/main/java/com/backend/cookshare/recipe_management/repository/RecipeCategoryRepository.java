@@ -42,4 +42,9 @@ public interface RecipeCategoryRepository extends JpaRepository<RecipeCategory, 
             """, nativeQuery = true)
     void insertRecipeCategory(@Param("recipeId") UUID recipeId, @Param("categoryId") UUID categoryId);
 
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM recipe_categories WHERE recipe_id = :recipeId", nativeQuery = true)
+    void deleteAllByRecipeId(@Param("recipeId") UUID recipeId);
+
 }

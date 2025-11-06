@@ -12,10 +12,10 @@ import com.backend.cookshare.recipe_management.service.FileStorageService;
 import com.backend.cookshare.recipe_management.service.RecipeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -35,16 +35,16 @@ public class RecipeServiceImpl implements RecipeService {
     private final RecipeLoaderHelper recipeLoaderHelper;
     private final FileStorageService fileStorageService;
 
+    // ================= CREATE =================
+
     @Override
     @Transactional
     public RecipeResponse createRecipeWithFiles(RecipeRequest request, MultipartFile image, List<MultipartFile> stepImages) {
-        // Upload ảnh chính nếu có
         if (image != null && !image.isEmpty()) {
             String imageUrl = fileStorageService.uploadFile(image);
             request.setFeaturedImage(imageUrl);
         }
 
-        // Upload ảnh bước nấu
         if (request.getSteps() != null && stepImages != null) {
             for (int i = 0; i < Math.min(request.getSteps().size(), stepImages.size()); i++) {
                 MultipartFile stepImage = stepImages.get(i);
@@ -55,7 +55,6 @@ public class RecipeServiceImpl implements RecipeService {
             }
         }
 
-        // Sau khi upload xong => tạo công thức bình thường
         return createRecipe(request);
     }
 
@@ -67,6 +66,7 @@ public class RecipeServiceImpl implements RecipeService {
         if (recipe.getSlug() == null || recipe.getSlug().isEmpty()) {
             recipe.setSlug(generateSlug(recipe.getTitle()));
         }
+
         recipe.setCreatedAt(LocalDateTime.now());
         recipe.setUpdatedAt(LocalDateTime.now());
 
@@ -74,41 +74,35 @@ public class RecipeServiceImpl implements RecipeService {
         UUID recipeId = savedRecipe.getRecipeId();
 
         saveRecipeRelations(recipeId, request);
-
-        RecipeDetailsResult details =
-                recipeLoaderHelper.loadRecipeDetailsForPublic(recipeId, savedRecipe.getUserId());
-
-        RecipeResponse response = recipeMapper.toResponse(savedRecipe);
-        response.setSteps(details.steps);
-        response.setIngredients(details.ingredients);
-        response.setTags(details.tags);
-        response.setCategories(details.categories);
-        response.setFullName(details.fullName);
-        return response;
+        return loadRecipeResponse(savedRecipe);
     }
 
+    // ================= UPDATE =================
+
     @Override
-    public RecipeResponse getRecipeById(UUID id) {
+    @Transactional
+    public RecipeResponse updateRecipe(UUID id, RecipeRequest request,
+                                       MultipartFile image, List<MultipartFile> stepImages) {
         Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND, "Không tìm thấy recipe id: " + id));
 
-        RecipeDetailsResult details =
-                recipeLoaderHelper.loadRecipeDetailsForPublic(id, recipe.getUserId());
+        if (image != null && !image.isEmpty()) {
+            if (recipe.getFeaturedImage() != null) {
+                fileStorageService.deleteFile(recipe.getFeaturedImage());
+            }
+            String newImageUrl = fileStorageService.uploadFile(image);
+            request.setFeaturedImage(newImageUrl);
+        }
 
-        RecipeResponse response = recipeMapper.toResponse(recipe);
-        response.setSteps(details.steps);
-        response.setIngredients(details.ingredients);
-        response.setTags(details.tags);
-        response.setCategories(details.categories);
-        response.setFullName(details.fullName);
-
-        return response;
-    }
-
-    @Override
-    public RecipeResponse updateRecipe(UUID id, RecipeRequest request) {
-        Recipe recipe = recipeRepository.findById(id)
-                .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
+        if (request.getSteps() != null && stepImages != null) {
+            for (int i = 0; i < Math.min(request.getSteps().size(), stepImages.size()); i++) {
+                MultipartFile stepImage = stepImages.get(i);
+                if (stepImage != null && !stepImage.isEmpty()) {
+                    String stepImageUrl = fileStorageService.uploadFile(stepImage);
+                    request.getSteps().get(i).setImageUrl(stepImageUrl);
+                }
+            }
+        }
 
         recipeMapper.updateRecipeFromDto(request, recipe);
         recipe.setUpdatedAt(LocalDateTime.now());
@@ -118,14 +112,35 @@ public class RecipeServiceImpl implements RecipeService {
         }
 
         Recipe updated = recipeRepository.save(recipe);
-        return recipeMapper.toResponse(updated);
+
+        recipeStepRepository.deleteAllByRecipeId(id);
+        recipeIngredientRepository.deleteAllByRecipeId(id);
+        recipeTagRepository.deleteAllByRecipeId(id);
+        recipeCategoryRepository.deleteAllByRecipeId(id);
+
+        saveRecipeRelations(id, request);
+
+        return loadRecipeResponse(updated);
+    }
+
+    // ================= GET / DELETE =================
+
+    @Override
+    public RecipeResponse getRecipeById(UUID id) {
+        Recipe recipe = recipeRepository.findById(id)
+                .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
+        return loadRecipeResponse(recipe);
     }
 
     @Override
     public void deleteRecipe(UUID id) {
-        if (!recipeRepository.existsById(id)) {
-            throw new CustomException(ErrorCode.RECIPE_NOT_FOUND);
+        Recipe recipe = recipeRepository.findById(id)
+                .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
+
+        if (recipe.getFeaturedImage() != null) {
+            fileStorageService.deleteFile(recipe.getFeaturedImage());
         }
+
         recipeRepository.deleteById(id);
     }
 
@@ -139,6 +154,21 @@ public class RecipeServiceImpl implements RecipeService {
         List<Recipe> recipes = recipeRepository.findByUserId(userId);
         if (recipes == null || recipes.isEmpty()) return Collections.emptyList();
         return recipes.stream().map(recipeMapper::toResponse).toList();
+    }
+
+    // ================= HELPERS =================
+
+    private RecipeResponse loadRecipeResponse(Recipe recipe) {
+        RecipeDetailsResult details =
+                recipeLoaderHelper.loadRecipeDetailsForPublic(recipe.getRecipeId(), recipe.getUserId());
+
+        RecipeResponse response = recipeMapper.toResponse(recipe);
+        response.setSteps(details.steps);
+        response.setIngredients(details.ingredients);
+        response.setTags(details.tags);
+        response.setCategories(details.categories);
+        response.setFullName(details.fullName);
+        return response;
     }
 
     private String generateSlug(String title) {

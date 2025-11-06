@@ -15,9 +15,9 @@ public interface RecipeService {
 
     RecipeResponse createRecipeWithFiles(RecipeRequest request, MultipartFile image, List<MultipartFile> stepImages);
 
-    RecipeResponse getRecipeById(UUID id);
+    RecipeResponse updateRecipe(UUID id, RecipeRequest request, MultipartFile image, List<MultipartFile> stepImages);
 
-    RecipeResponse updateRecipe(UUID id, RecipeRequest request);
+    RecipeResponse getRecipeById(UUID id);
 
     void deleteRecipe(UUID id);
 
