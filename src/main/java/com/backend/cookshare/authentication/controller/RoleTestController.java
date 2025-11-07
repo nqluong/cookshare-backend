@@ -23,6 +23,12 @@ public class RoleTestController {
         return ResponseEntity.ok("Chỉ ADMIN có thể truy cập endpoint này");
     }
 
+    @GetMapping("/admin1")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> adminEndpoint1() {
+        return ResponseEntity.ok("Chỉ ADMIN có thể truy cập endpoint này");
+    }
+
     @GetMapping("/any-role")
     @PreAuthorize("hasPermission(null, 'USER')")
     public ResponseEntity<String> anyRoleEndpoint() {
