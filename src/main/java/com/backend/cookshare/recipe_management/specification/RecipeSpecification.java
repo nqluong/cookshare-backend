@@ -34,6 +34,7 @@ public class RecipeSpecification {
 
     public static Specification<Recipe> hasNameLike(String name) {
         return (root, query, cb) -> {
+            Predicate predicate = cb.equal(root.get("status"), "APPROVED");
             if (name == null || name.trim().isEmpty()) {
                 return cb.conjunction();
             }
@@ -41,8 +42,6 @@ public class RecipeSpecification {
             String trimmedName = name.trim().toLowerCase();
             boolean hasAccent = hasVietnameseAccent(trimmedName);
             String[] keywords = trimmedName.split("\\s+");
-
-            Predicate predicate = cb.conjunction();
 
             if (hasAccent && trimmedName.length() >= 15) {
                 // Tìm kiếm cụm từ đầy đủ trước
@@ -119,7 +118,7 @@ public class RecipeSpecification {
         return (root, query, cb) -> {
             query.distinct(true);
 
-            Predicate predicate = cb.conjunction();
+            Predicate predicate = cb.equal(root.get("status"), "APPROVED");
 
             // Lọc theo slug nếu có
             if (title != null && !title.trim().isEmpty()) {
@@ -219,17 +218,17 @@ public class RecipeSpecification {
         };
     }
     public static Specification<Recipe> hasRecipeByName(String name) {
-        return (root, query, criteriaBuilder) -> {
+        return (root, query, cb) -> {
+            Predicate predicate = cb.equal(root.get("status"), "APPROVED");
+
             if (name == null || name.trim().isEmpty()) {
-                return criteriaBuilder.conjunction();
+                return predicate;
             }
 
             String trimmedName = name.trim().toLowerCase();
             Join<Recipe, User> userJoin = root.join("user", JoinType.INNER);
-            Predicate predicate = criteriaBuilder.like(
-                    criteriaBuilder.lower(userJoin.get("fullName")),
-                    "%" + trimmedName + "%"
-            );
+            predicate = cb.and(predicate,
+                    cb.like(cb.lower(userJoin.get("fullName")), "%" + trimmedName + "%"));
 
             log.info("Tìm kiếm công thức theo tên người tạo: {}", trimmedName);
             return predicate;
