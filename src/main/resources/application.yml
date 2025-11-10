@@ -5,9 +5,9 @@ server:
 
 spring:
   datasource:
-    url: "jdbc:postgresql://localhost:5433/cookshare_db"
-    username: project1
-    password: pass_project1
+    url: "jdbc:postgresql://${HOST}:${PORT:5433}/${DATABASE}"
+    username: ${USERNAME-DB:project1}
+    password: ${PASSWORD-DB:pass_project1}
     driver-class-name: "org.postgresql.Driver"
   application:
     name: cookshare
@@ -25,8 +25,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: nhatplbn2004@gmail.com
-    password: uelhjrmvojruvmiv
+    username: ${USERNAME-MAIL}
+    password: ${PASSWORD-MAIL}
     properties:
       mail:
         smtp:
@@ -44,16 +44,16 @@ spring:
     oauth2:
       registration:
         google:
-          client-id: 930367083527-chtbv453jhlmdllanvtrf18sfigeqsvj.apps.googleusercontent.com
-          client-secret: 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
+          client-id: ${GG-CLIENT-ID}
+          client-secret: ${GG-CLIENT-SECRET}
           redirect-uri: "${GOOGLE_REDIRECT_URI:http://localhost:8080/auth/google/callback}"
           user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
           resource-server:
             opaque-token:
                 introspection-uri: "https://www.googleapis.com"
         facebook:
-          client-id: 1213805893870945
-          client-secret: e13f0d954f2dd935931198e1486fa047
+          client-id: ${FB-CLIENT-ID}
+          client-secret: ${FB-CLIENT-SECRET}
           redirect-uri: "${FACEBOOK_REDIRECT_URI:http://localhost:8080/auth/facebook/callback}"
           auth-uri: https://www.facebook.com/v21.0/dialog/oauth
           token-uri: https://graph.facebook.com/v21.0/oauth/access_token
@@ -67,7 +67,7 @@ spring:
 
 cookshare:
   jwt:
-    base64-secret: qoAEABDke07+AVLepXB4aCMtsT0wMAqR5x2VFyldsnx6e75YQkJH2UcZKTjEyoNgG71SBCXfq5N6NVZxWOfsHQ==
+    base64-secret: ${JWT_SECRET}
     access-token-validity-in-seconds: 86400
     refresh-token-validity-in-seconds: 8640000
     # WebSocket Configuration
