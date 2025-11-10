@@ -36,3 +36,4 @@ recipe_images/
 # Firebase credentials
 src/main/resources/firebase-credentials.json
 *.json
+*.env
