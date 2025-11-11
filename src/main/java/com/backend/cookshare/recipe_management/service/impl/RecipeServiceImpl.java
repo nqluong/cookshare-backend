@@ -1,5 +1,6 @@
 package com.backend.cookshare.recipe_management.service.impl;
 
+import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
 import com.backend.cookshare.recipe_management.dto.request.RecipeRequest;
@@ -8,7 +9,6 @@ import com.backend.cookshare.recipe_management.dto.response.RecipeResponse;
 import com.backend.cookshare.recipe_management.entity.Recipe;
 import com.backend.cookshare.recipe_management.mapper.RecipeMapper;
 import com.backend.cookshare.recipe_management.repository.*;
-import com.backend.cookshare.recipe_management.service.FileStorageService;
 import com.backend.cookshare.recipe_management.service.RecipeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +33,7 @@ public class RecipeServiceImpl implements RecipeService {
     private final RecipeCategoryRepository recipeCategoryRepository;
     private final RecipeMapper recipeMapper;
     private final RecipeLoaderHelper recipeLoaderHelper;
-    private final FileStorageService fileStorageService;
+    private final FirebaseStorageService fileStorageService;
 
     // ================= CREATE =================
 

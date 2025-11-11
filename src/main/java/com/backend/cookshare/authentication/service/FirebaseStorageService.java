@@ -1,6 +1,9 @@
 package com.backend.cookshare.authentication.service;
 
 
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 import java.util.List;
 
 public interface FirebaseStorageService {
@@ -51,6 +54,19 @@ public interface FirebaseStorageService {
      * @return Public URL của image đã upload
      */
     String uploadRecipeImage(String fileName, byte[] fileBytes, String contentType);
+
+    /**
+     * Upload file từ MultipartFile (cho recipe images và step images)
+     * @param file MultipartFile từ request
+     * @return Public URL của file đã upload
+     */
+    String uploadFile(MultipartFile file);
+
+    /**
+     * Xóa file theo URL
+     * @param fileUrl URL đầy đủ của file cần xóa
+     */
+    void deleteFile(String fileUrl);
 
     /**
      * Xóa recipe image khỏi Firebase Storage
