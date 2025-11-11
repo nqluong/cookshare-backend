@@ -192,7 +192,7 @@ public class UserServiceImpl implements UserService {
             if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()
                     && !oldAvatarUrl.equals(request.getAvatarUrl())) {
                 log.info("🗑️ Xóa avatar cũ trước khi cập nhật: {}", oldAvatarUrl);
-                firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+                firebaseStorageService.deleteAvatar(oldAvatarUrl);
             }
 
             user.setAvatarUrl(request.getAvatarUrl());
@@ -242,10 +242,10 @@ public class UserServiceImpl implements UserService {
         log.info("📝 Tạo signed URL cho file: {}, content type: {}", fileName, request.getContentType());
 
         // Tạo signed URL để upload
-        String uploadUrl = firebaseStorageService.generateUploadUrl(fileName, request.getContentType());
+        String uploadUrl = firebaseStorageService.generateAvatarUploadUrl(fileName, request.getContentType());
 
         // Lấy public URL (đây sẽ là URL avatar sau khi upload)
-        String publicUrl = firebaseStorageService.getPublicUrl(fileName);
+        String publicUrl = firebaseStorageService.getAvatarPublicUrl(fileName);
 
         log.info("✅ Tạo upload URL thành công cho user: {}", userId);
         log.info("📤 Upload URL: {}", uploadUrl);

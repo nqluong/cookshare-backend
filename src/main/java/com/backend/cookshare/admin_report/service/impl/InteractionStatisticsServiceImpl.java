@@ -42,7 +42,7 @@ public class InteractionStatisticsServiceImpl implements InteractionStatisticsSe
 
         // Tính engagement rate: (likes + comments + saves) / views * 100
         BigDecimal engagementRate = BigDecimal.ZERO;
-        if (totalViews > 0) {
+        if (totalViews != null && totalViews > 0) {
             BigDecimal totalInteractions = BigDecimal.valueOf(totalLikes + totalComments + totalSaves);
             engagementRate = totalInteractions
                     .divide(BigDecimal.valueOf(totalViews), 4, RoundingMode.HALF_UP)
