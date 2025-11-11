@@ -8,10 +8,12 @@ import com.google.firebase.FirebaseOptions;
 import com.google.firebase.cloud.StorageClient;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.UUID;
 
@@ -20,12 +22,19 @@ import java.util.UUID;
 public class FirebaseStorageServiceImpl implements FileStorageService {
 
     private static final String BUCKET_NAME = "cookshare-app-33834.appspot.com";
+    @Value("${firebase.credentials.path}")
+    private String credentialsPath;
 
     @PostConstruct
     public void init() {
         try {
             if (FirebaseApp.getApps().isEmpty()) {
-                var serviceAccount = new ClassPathResource("firebase-credentials.json").getInputStream();
+                if (credentialsPath == null || credentialsPath.startsWith("${")) {
+                    log.error("❌ Firebase credentials path not set. Did you set the FIREBASE_CREDENTIALS_PATH environment variable?");
+                    return;
+                }
+
+                var serviceAccount = new FileInputStream(credentialsPath);
                 FirebaseOptions options = FirebaseOptions.builder()
                         .setCredentials(GoogleCredentials.fromStream(serviceAccount))
                         .setStorageBucket(BUCKET_NAME)
