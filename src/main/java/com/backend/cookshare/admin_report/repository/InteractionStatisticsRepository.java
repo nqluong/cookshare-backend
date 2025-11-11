@@ -42,7 +42,7 @@ public interface InteractionStatisticsRepository extends JpaRepository<Recipe, U
      * Đếm tổng số công thức đã xuất bản
      */
     @Query("SELECT COUNT(r) FROM Recipe r " +
-            "WHERE r.isPublished = true " +
+            "WHERE r.isPublished = true AND r.status = 'APPROVED' " +
             "AND r.createdAt BETWEEN :startDate AND :endDate")
     Long countPublishedRecipes(@Param("startDate") LocalDateTime startDate,
                                @Param("endDate") LocalDateTime endDate);
@@ -51,7 +51,7 @@ public interface InteractionStatisticsRepository extends JpaRepository<Recipe, U
      * Đếm tổng số lượt xem trong khoảng thời gian
      */
     @Query("SELECT SUM(r.viewCount) FROM Recipe r " +
-            "WHERE r.isPublished = true " +
+            "WHERE r.isPublished = true AND r.status = 'APPROVED' " +
             "AND r.createdAt BETWEEN :startDate AND :endDate")
     Long countTotalViews(@Param("startDate") LocalDateTime startDate,
                          @Param("endDate") LocalDateTime endDate);
@@ -60,7 +60,7 @@ public interface InteractionStatisticsRepository extends JpaRepository<Recipe, U
      * Tính trung bình số likes mỗi công thức
      */
     @Query("SELECT COALESCE(AVG(r.likeCount), 0) FROM Recipe r " +
-            "WHERE r.isPublished = true " +
+            "WHERE r.isPublished = true AND r.status = 'APPROVED' " +
             "AND r.createdAt BETWEEN :startDate AND :endDate")
     BigDecimal getAverageLikesPerRecipe(@Param("startDate") LocalDateTime startDate,
                                         @Param("endDate") LocalDateTime endDate);
@@ -73,7 +73,7 @@ public interface InteractionStatisticsRepository extends JpaRepository<Recipe, U
               SELECT COUNT(c.comment_id) as comment_count 
               FROM recipes r 
               LEFT JOIN comments c ON r.recipe_id = c.recipe_id 
-              WHERE r.is_published = true
+              WHERE r.is_published = true 
               AND r.created_at BETWEEN :startDate AND :endDate 
               GROUP BY r.recipe_id
             ) subquery""",

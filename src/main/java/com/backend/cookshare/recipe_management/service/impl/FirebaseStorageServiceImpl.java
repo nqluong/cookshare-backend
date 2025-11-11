@@ -30,7 +30,7 @@ public class FirebaseStorageServiceImpl implements FileStorageService {
         try {
             if (FirebaseApp.getApps().isEmpty()) {
                 if (credentialsPath == null || credentialsPath.startsWith("${")) {
-                    log.error("❌ Firebase credentials path not set. Did you set the FIREBASE_CREDENTIALS_PATH environment variable?");
+                    log.error("Firebase credentials path not set. Did you set the FIREBASE_CREDENTIALS_PATH environment variable?");
                     return;
                 }
 
@@ -40,10 +40,10 @@ public class FirebaseStorageServiceImpl implements FileStorageService {
                         .setStorageBucket(BUCKET_NAME)
                         .build();
                 FirebaseApp.initializeApp(options);
-                log.info("✅ Firebase initialized successfully");
+                log.info("Firebase initialized successfully");
             }
         } catch (Exception e) {
-            log.error("❌ Firebase initialization error: {}", e.getMessage(), e);
+            log.error("Firebase initialization error: {}", e.getMessage(), e);
         }
     }
 
@@ -61,7 +61,7 @@ public class FirebaseStorageServiceImpl implements FileStorageService {
 
             return String.format("https://storage.googleapis.com/%s/%s", BUCKET_NAME, fileName);
         } catch (IOException e) {
-            log.error("❌ Lỗi khi upload file lên Firebase: {}", e.getMessage(), e);
+            log.error("Lỗi khi upload file lên Firebase: {}", e.getMessage(), e);
             throw new RuntimeException("Không thể upload file lên Firebase", e);
         }
     }
@@ -78,12 +78,12 @@ public class FirebaseStorageServiceImpl implements FileStorageService {
             boolean deleted = storage.delete(BUCKET_NAME, fileName);
 
             if (deleted) {
-                log.info("🗑️ Đã xóa file trên Firebase: {}", fileName);
+                log.info("Đã xóa file trên Firebase: {}", fileName);
             } else {
-                log.warn("⚠️ Không tìm thấy file cần xóa: {}", fileName);
+                log.warn("Không tìm thấy file cần xóa: {}", fileName);
             }
         } catch (Exception e) {
-            log.error("❌ Lỗi khi xóa file Firebase: {}", e.getMessage(), e);
+            log.error("Lỗi khi xóa file Firebase: {}", e.getMessage(), e);
         }
     }
 
