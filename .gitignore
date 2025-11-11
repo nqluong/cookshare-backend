@@ -34,6 +34,13 @@ build/
 recipe_images/
 
 # Firebase credentials
-src/main/resources/firebase-credentials.json
+firebase-credentials.json
 *.json
 *.env
+
+# Logs
+logs/
+*.log
+
+# Uploads
+uploads/
