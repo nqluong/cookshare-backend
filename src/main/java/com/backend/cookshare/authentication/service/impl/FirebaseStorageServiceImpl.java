@@ -8,6 +8,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -18,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -103,6 +105,62 @@ public class FirebaseStorageServiceImpl implements FirebaseStorageService {
     }
 
     @Override
+    public String uploadFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File trống, không thể upload");
+        }
+
+        try {
+            // Validate file type (chỉ cho phép ảnh)
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                throw new IllegalArgumentException("File phải là ảnh");
+            }
+
+            // Generate unique filename
+            String originalFilename = file.getOriginalFilename();
+            String extension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+            String fileName = UUID.randomUUID() + extension;
+
+            // Upload lên Firebase
+            byte[] fileBytes = file.getBytes();
+            uploadFile(RECIPE_IMAGE_FOLDER, fileName, fileBytes, contentType);
+
+            String publicUrl = getPublicUrl(RECIPE_IMAGE_FOLDER, fileName);
+            log.info("Uploaded file: {} -> {}", originalFilename, publicUrl);
+
+            return publicUrl;
+
+        } catch (IOException e) {
+            log.error("Lỗi khi upload file lên Firebase: {}", e.getMessage(), e);
+            throw new RuntimeException("Không thể upload file lên Firebase", e);
+        }
+    }
+
+    @Override
+    public void deleteFile(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return;
+        }
+
+        try {
+            // Xóa từ recipe_images folder
+            boolean deleted = deleteFile(fileUrl, RECIPE_IMAGE_FOLDER);
+
+            if (deleted) {
+                log.info("Đã xóa file khỏi Firebase Storage: {}", fileUrl);
+            } else {
+                log.warn("Không tìm thấy file để xóa: {}", fileUrl);
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi xóa file từ Firebase Storage: {}", e.getMessage(), e);
+        }
+    }
+
+    @Override
     public String convertPathToFirebaseUrl(String localPath) {
         if (localPath == null || localPath.isEmpty()) {
             return null;
@@ -113,7 +171,6 @@ public class FirebaseStorageServiceImpl implements FirebaseStorageService {
         }
 
         String normalizedPath = localPath.replace("\\", "/");
-
         String encodedPath = normalizedPath.replace("/", "%2F");
 
         return String.format(
@@ -207,7 +264,8 @@ public class FirebaseStorageServiceImpl implements FirebaseStorageService {
 
         try {
             // Chỉ xóa nếu là Firebase Storage URL
-            if (!fileUrl.contains("firebasestorage.googleapis.com")) {
+            if (!fileUrl.contains("firebasestorage.googleapis.com") &&
+                    !fileUrl.contains("storage.googleapis.com")) {
                 log.info("URL không phải từ Firebase Storage, bỏ qua xóa: {}", fileUrl);
                 return false;
             }
