@@ -5,7 +5,7 @@ server:
 
 spring:
   datasource:
-    url: "jdbc:postgresql://${HOST}:${PORT:5433}/${DATABASE}"
+    url: "jdbc:postgresql://${HOST}:${PORT}/${DATABASE}"
     username: ${USERNAME-DB:project1}
     password: ${PASSWORD-DB:pass_project1}
     driver-class-name: "org.postgresql.Driver"
@@ -46,7 +46,7 @@ spring:
         google:
           client-id: ${GG-CLIENT-ID}
           client-secret: ${GG-CLIENT-SECRET}
-          redirect-uri: "${GOOGLE_REDIRECT_URI:http://localhost:8080/auth/google/callback}"
+          redirect-uri: "${GOOGLE_REDIRECT_URI}"
           user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
           resource-server:
             opaque-token:
@@ -54,7 +54,7 @@ spring:
         facebook:
           client-id: ${FB-CLIENT-ID}
           client-secret: ${FB-CLIENT-SECRET}
-          redirect-uri: "${FACEBOOK_REDIRECT_URI:http://localhost:8080/auth/facebook/callback}"
+          redirect-uri: "${FACEBOOK_REDIRECT_URI}"
           auth-uri: https://www.facebook.com/v21.0/dialog/oauth
           token-uri: https://graph.facebook.com/v21.0/oauth/access_token
           user-info-uri: https://graph.facebook.com/me?fields=id,name,email,picture.type(large)
