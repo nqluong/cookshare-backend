@@ -41,15 +41,13 @@ jobs:
     needs: build-and-push # Phải chạy sau khi job 1 thành công
 
     steps:
-      # 1. Tạo file production.env từ secret
-      - name: Create production.env
-        run: echo "${{ secrets.PRODUCTION_ENV_CONTENT }}" > production.env
+      # 1. Tạo file production.env và firebase-credentials.json từ secret
+      - name: Create config files
+        run: |
+          echo "${{ secrets.PRODUCTION_ENV_CONTENT }}" > production.env
+          echo "${{ secrets.FIREBASE_CREDENTIALS_JSON }}" > firebase-credentials.json
 
-      # 2. Tạo file firebase-credentials.json từ secret
-      - name: Create firebase-credentials.json
-        run: echo "${{ secrets.FIREBASE_CREDENTIALS_JSON }}" > firebase-credentials.json
-
-      # 3. Copy file và chạy lệnh trên VM qua SSH
+      # 2. Copy file và chạy lệnh trên VM qua SSH
       - name: Deploy to VM
         uses: appleboy/ssh-action@master
         with:
@@ -57,7 +55,7 @@ jobs:
           username: ${{ secrets.VM_SSH_USER }}
           key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
           source: "production.env,firebase-credentials.json"
-          target: "~/cookshare" # Thư mục đích trên VM (nơi chứa file env)
+          target: "~/cookshare-temp" # Copy vào thư mục tạm trước, sau đó xử lý trong script
           
           # Các lệnh sẽ chạy trên VM E2
           script: |
@@ -69,10 +67,29 @@ jobs:
             # Vẫn dùng tên cố định để dễ stop/rm
             CONTAINER_NAME="cookshare-backend" 
             CONFIG_PATH="/home/${{ secrets.VM_SSH_USER }}/cookshare"
+            TEMP_PATH="/home/${{ secrets.VM_SSH_USER }}/cookshare-temp"
 
             echo "--- Creating config and log directories ---"
-            # Thêm lệnh tạo thư mục logs
-            mkdir -p $CONFIG_PATH/logs 
+            mkdir -p $CONFIG_PATH/logs
+
+            echo "--- Handling production.env file ---"
+            if [ ! -f "$CONFIG_PATH/production.env" ]; then
+              cp $TEMP_PATH/production.env $CONFIG_PATH/production.env
+              chmod 600 $CONFIG_PATH/production.env
+            else
+              echo "✓ production.env already exists - keeping local file unchanged"
+            fi
+
+            echo "--- Handling firebase-credentials.json file ---"
+            if [ ! -f "$CONFIG_PATH/firebase-credentials.json" ]; then
+              cp $TEMP_PATH/firebase-credentials.json $CONFIG_PATH/firebase-credentials.json
+              chmod 600 $CONFIG_PATH/firebase-credentials.json
+            else
+              echo "✓ firebase-credentials.json already exists - keeping local file unchanged"
+            fi
+
+            # Xóa thư mục tạm
+            rm -rf $TEMP_PATH 
 
             echo "--- Checking SSL keystore ---"
             # Kiểm tra keystore có tồn tại không
@@ -97,8 +114,6 @@ jobs:
             docker rm $CONTAINER_NAME || true
 
             echo "--- Starting new container with SSL support ---"
-            # Mount keystore nếu tồn tại
-            # Lưu ý: Nếu SSL_ENABLED=true trong production.env, Spring Boot chỉ lắng nghe HTTPS
             # Nên chỉ map port 443 (HTTPS). Nếu muốn hỗ trợ cả HTTP, cần cấu hình Spring Boot với 2 connectors
             if [ -f "$CONFIG_PATH/keystore.p12" ]; then
               docker run -d \
