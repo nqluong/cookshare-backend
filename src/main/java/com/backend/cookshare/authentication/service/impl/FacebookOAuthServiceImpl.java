@@ -167,7 +167,7 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
                     // Xóa avatar OAuth cũ
                     if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
                         log.info("🗑️ Xóa avatar OAuth cũ: {}", oldAvatarUrl);
-                        firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+                        firebaseStorageService.deleteAvatar(oldAvatarUrl);
                     }
 
                     String firebaseAvatarUrl = uploadAvatarToFirebase(
@@ -210,7 +210,7 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
                         // Xóa avatar OAuth cũ
                         if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
                             log.info("🗑️ Xóa avatar OAuth cũ khi link Facebook: {}", oldAvatarUrl);
-                            firebaseStorageService.deleteAvatarByUrl(oldAvatarUrl);
+                            firebaseStorageService.deleteAvatar(oldAvatarUrl);
                         }
 
                         String firebaseAvatarUrl = uploadAvatarToFirebase(
@@ -297,11 +297,11 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
             String fileName = "oauth_facebook_" + userId + "_" + System.currentTimeMillis() + ".jpg";
 
             // Upload lên Firebase Storage
-            firebaseStorageService.uploadFile(fileName, imageBytes, "image/jpeg");
+            firebaseStorageService.uploadAvatar(fileName, imageBytes, "image/jpeg");
             log.info("✅ Đã upload avatar lên Firebase Storage: {}", fileName);
 
             // Lấy public URL
-            String publicUrl = firebaseStorageService.getPublicUrl(fileName);
+            String publicUrl = firebaseStorageService.getAvatarPublicUrl(fileName);
             log.info("✅ Firebase avatar URL: {}", publicUrl);
 
             return publicUrl;
