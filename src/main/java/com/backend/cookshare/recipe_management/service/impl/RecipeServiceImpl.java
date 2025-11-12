@@ -130,6 +130,7 @@ public class RecipeServiceImpl implements RecipeService {
     public RecipeResponse getRecipeById(UUID id) {
         Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
+        recipe.setViewCount(recipe.getViewCount()+1);
         return loadRecipeResponse(recipe);
     }
 
