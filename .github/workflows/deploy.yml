@@ -74,6 +74,18 @@ jobs:
             # Thêm lệnh tạo thư mục logs
             mkdir -p $CONFIG_PATH/logs 
 
+            echo "--- Checking SSL keystore ---"
+            # Kiểm tra keystore có tồn tại không
+            if [ ! -f "$CONFIG_PATH/keystore.p12" ]; then
+              echo "WARNING: keystore.p12 not found at $CONFIG_PATH/keystore.p12"
+              echo "Please create keystore first using Let's Encrypt or self-signed certificate"
+              echo "Example: sudo certbot certonly --standalone -d cookshare-app.io.vn"
+              echo "Then convert: sudo openssl pkcs12 -export -in /etc/letsencrypt/live/cookshare-app.io.vn/fullchain.pem -inkey /etc/letsencrypt/live/cookshare-app.io.vn/privkey.pem -out $CONFIG_PATH/keystore.p12 -name cookshare -password pass:YOUR_PASSWORD"
+            else
+              echo "✓ Keystore found at $CONFIG_PATH/keystore.p12"
+              chmod 600 $CONFIG_PATH/keystore.p12 || true
+            fi
+
             echo "--- Logging in to Docker Hub (for pulling private images) ---"
             docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
 
@@ -84,15 +96,32 @@ jobs:
             docker stop $CONTAINER_NAME || true
             docker rm $CONTAINER_NAME || true
 
-            echo "--- Starting new container (với lệnh mới) ---"
-            docker run -d \
-              -p 80:8080 \
-              --name $CONTAINER_NAME \
-              --restart always \
-              --env-file $CONFIG_PATH/production.env \
-              -v $CONFIG_PATH/firebase-credentials.json:/app/firebase-credentials.json:ro \
-              -v $CONFIG_PATH/logs:/app/logs \
-              $IMAGE_NAME
+            echo "--- Starting new container with SSL support ---"
+            # Mount keystore nếu tồn tại
+            # Lưu ý: Nếu SSL_ENABLED=true trong production.env, Spring Boot chỉ lắng nghe HTTPS
+            # Nên chỉ map port 443 (HTTPS). Nếu muốn hỗ trợ cả HTTP, cần cấu hình Spring Boot với 2 connectors
+            if [ -f "$CONFIG_PATH/keystore.p12" ]; then
+              docker run -d \
+                -p 443:8080 \
+                --name $CONTAINER_NAME \
+                --restart always \
+                --env-file $CONFIG_PATH/production.env \
+                -v $CONFIG_PATH/firebase-credentials.json:/app/firebase-credentials.json:ro \
+                -v $CONFIG_PATH/keystore.p12:/app/keystore.p12:ro \
+                -v $CONFIG_PATH/logs:/app/logs \
+                $IMAGE_NAME
+            else
+              # Nếu không có keystore, chỉ chạy HTTP (fallback)
+              echo "WARNING: Running without SSL keystore (HTTP only)"
+              docker run -d \
+                -p 80:8080 \
+                --name $CONTAINER_NAME \
+                --restart always \
+                --env-file $CONFIG_PATH/production.env \
+                -v $CONFIG_PATH/firebase-credentials.json:/app/firebase-credentials.json:ro \
+                -v $CONFIG_PATH/logs:/app/logs \
+                $IMAGE_NAME
+            fi
             
             echo "--- Cleaning up old images ---"
             docker image prune -f
