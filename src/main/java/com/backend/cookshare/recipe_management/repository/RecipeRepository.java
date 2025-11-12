@@ -54,6 +54,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
     @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = true AND r.ratingCount >= :minRatingCount")
     long countTopRatedRecipes(@Param("minRatingCount") int minRatingCount);
     List<Recipe> findByUserId(UUID userId);
+    List<Recipe> findByUserIdAndStatus(UUID userId, RecipeStatus status);
 
     UUID findUserIdByRecipeId(UUID recipeId);
     //Tong so luot thich cua tat ca cac cong thuc

@@ -1,6 +1,5 @@
 package com.backend.cookshare.recipe_management.repository;
 
-
 import com.backend.cookshare.recipe_management.dto.response.RecipeIngredientResponse;
 import com.backend.cookshare.recipe_management.entity.RecipeIngredient;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,6 +14,8 @@ import java.util.UUID;
 
 @Repository
 public interface RecipeIngredientRepository extends JpaRepository<RecipeIngredient, UUID> {
+
+    // ✅ METHOD NÀY VẪN CÒN - DÙNG ĐỂ ĐỌC DỮ LIỆU
     @Query(value = """
             SELECT new com.backend.cookshare.recipe_management.dto.response.RecipeIngredientResponse(
                 i.ingredientId,
@@ -36,15 +37,28 @@ public interface RecipeIngredientRepository extends JpaRepository<RecipeIngredie
             """)
     List<RecipeIngredientResponse> findIngredientsByRecipeId(@Param("recipeId") UUID recipeId);
 
+    // ✅ METHOD NÀY ĐÃ SỬA - DÙNG ĐỂ GHI DỮ LIỆU
     @Modifying
     @Transactional
     @Query(value = """
-            INSERT INTO recipe_ingredients (recipe_id, ingredient_id)
-            VALUES (:recipeId, :ingredientId)
-            ON CONFLICT DO NOTHING
+            INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit, notes, order_index)
+            VALUES (:recipeId, :ingredientId, :quantity, :unit, :notes, :orderIndex)
+            ON CONFLICT (recipe_id, ingredient_id) DO UPDATE
+            SET quantity = EXCLUDED.quantity,
+                unit = EXCLUDED.unit,
+                notes = EXCLUDED.notes,
+                order_index = EXCLUDED.order_index
             """, nativeQuery = true)
-    void insertRecipeIngredient(@Param("recipeId") UUID recipeId, @Param("ingredientId") UUID ingredientId);
+    void insertRecipeIngredient(
+            @Param("recipeId") UUID recipeId,
+            @Param("ingredientId") UUID ingredientId,
+            @Param("quantity") String quantity,
+            @Param("unit") String unit,
+            @Param("notes") String notes,
+            @Param("orderIndex") Integer orderIndex
+    );
 
+    // ✅ METHOD NÀY VẪN CÒN - DÙNG ĐỂ XÓA
     @Modifying
     @Transactional
     @Query(value = "DELETE FROM recipe_ingredients WHERE recipe_id = :recipeId", nativeQuery = true)
