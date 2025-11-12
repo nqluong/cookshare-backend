@@ -1,0 +1,98 @@
+name: CI/CD Backend to DockerHub and GCE VM
+
+# Trigger: Chạy khi push lên nhánh "main"
+on:
+  push:
+    branches:
+      - main 
+
+jobs:
+
+  build-and-push:
+    name: Build and Push to Docker Hub
+    runs-on: ubuntu-latest
+
+    steps:
+      # Lấy code về
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Đăng nhập vào Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Build và Push Docker image
+      # Action này sẽ tự động đọc Dockerfile và build
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/project1:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/project1:${{ github.sha }}
+
+  deploy-to-vm:
+    name: Deploy to GCE VM
+    runs-on: ubuntu-latest
+    needs: build-and-push # Phải chạy sau khi job 1 thành công
+
+    steps:
+      # 1. Tạo file production.env từ secret
+      - name: Create production.env
+        run: echo "${{ secrets.PRODUCTION_ENV_CONTENT }}" > production.env
+
+      # 2. Tạo file firebase-credentials.json từ secret
+      - name: Create firebase-credentials.json
+        run: echo "${{ secrets.FIREBASE_CREDENTIALS_JSON }}" > firebase-credentials.json
+
+      # 3. Copy file và chạy lệnh trên VM qua SSH
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VM_SSH_HOST }}
+          username: ${{ secrets.VM_SSH_USER }}
+          key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+          source: "production.env,firebase-credentials.json"
+          target: "~/cookshare" # Thư mục đích trên VM (nơi chứa file env)
+          
+          # Các lệnh sẽ chạy trên VM E2
+          script: |
+            set -e # Dừng ngay nếu có lỗi
+            
+            # Biến môi trường
+            # Vẫn dùng "latest" để đảm bảo luôn chạy image vừa build
+            IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/project1:latest"
+            # Vẫn dùng tên cố định để dễ stop/rm
+            CONTAINER_NAME="cookshare-backend" 
+            CONFIG_PATH="/home/${{ secrets.VM_SSH_USER }}/cookshare"
+
+            echo "--- Creating config and log directories ---"
+            # Thêm lệnh tạo thư mục logs
+            mkdir -p $CONFIG_PATH/logs 
+
+            echo "--- Logging in to Docker Hub (for pulling private images) ---"
+            docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+
+            echo "--- Pulling latest image from Docker Hub ---"
+            docker pull $IMAGE_NAME
+
+            echo "--- Stopping and removing old container ---"
+            docker stop $CONTAINER_NAME || true
+            docker rm $CONTAINER_NAME || true
+
+            echo "--- Starting new container (với lệnh mới) ---"
+            docker run -d \
+              -p 80:8080 \
+              --name $CONTAINER_NAME \
+              --restart always \
+              --env-file $CONFIG_PATH/production.env \
+              -v $CONFIG_PATH/firebase-credentials.json:/app/firebase-credentials.json:ro \
+              -v $CONFIG_PATH/logs:/app/logs \
+              $IMAGE_NAME
+            
+            echo "--- Cleaning up old images ---"
+            docker image prune -f
