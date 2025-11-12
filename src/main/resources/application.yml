@@ -3,13 +3,13 @@ server:
   username-admin: ${USERNAME-ADMIN}
   password-admin: ${PASSWORD-ADMIN}
   ssl:
-    enabled: ${SSL_ENABLED}
-    key-store: ${SSL_KEYSTORE_PATH}
-    key-store-password: ${SSL_KEYSTORE_PASSWORD}
+    enabled: ${SSL_ENABLED:false}
+    key-store: ${SSL_KEYSTORE_PATH:}
+    key-store-password: ${SSL_KEYSTORE_PASSWORD:}
     key-store-type: ${SSL_KEYSTORE_TYPE:PKCS12}
-    key-alias: ${SSL_KEY_ALIAS}
+    key-alias: ${SSL_KEY_ALIAS:}
   http2:
-    enabled: ${HTTP2_ENABLED}
+    enabled: ${HTTP2_ENABLED:false}
   forward-headers-strategy: framework
   use-forward-headers: true
 
