@@ -14,6 +14,14 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
+# Install timezone data and set timezone to UTC+7 (Vietnam)
+RUN apk add --no-cache tzdata && \
+    cp /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime && \
+    echo "Asia/Ho_Chi_Minh" > /etc/timezone
+
+# Set timezone environment variable
+ENV TZ=Asia/Ho_Chi_Minh
+
 # Create necessary directories
 RUN mkdir -p /app/logs
 
