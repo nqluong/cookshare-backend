@@ -211,6 +211,7 @@ public class CollectionService {
         // Cập nhật recipe count
         collection.setRecipeCount(collection.getRecipeCount() + 1);
         recipe.setSaveCount(recipe.getSaveCount()+ 1);
+        log.info("SaveCount {}", recipe.getSaveCount());
         collectionRepository.save(collection);
 
         log.info("Recipe added to collection successfully");
