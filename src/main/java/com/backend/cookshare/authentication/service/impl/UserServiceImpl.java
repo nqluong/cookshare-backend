@@ -15,12 +15,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -33,6 +36,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final FirebaseStorageService firebaseStorageService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     /**
      * Lấy thông tin user đang đăng nhập từ SecurityContext
@@ -52,6 +56,7 @@ public class UserServiceImpl implements UserService {
                 .passwordHash(passwordEncoder.encode(user.getPassword()))
                 .email(user.getEmail())
                 .fullName(user.getFullname())
+                .isActive(true)
                 .createdAt(LocalDateTime.now())
                 .lastActive(LocalDateTime.now())
                 .build();
@@ -286,6 +291,24 @@ public class UserServiceImpl implements UserService {
         user.setIsActive(false);
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
+
+        // Gửi thông báo WebSocket cho user bị ban
+        try {
+            Map<String, Object> message = new HashMap<>();
+            message.put("type", "ACCOUNT_BANNED");
+            message.put("message", "Tài khoản của bạn đã bị khóa");
+            message.put("reason", reason);
+            message.put("timestamp", System.currentTimeMillis());
+
+            messagingTemplate.convertAndSendToUser(
+                    userId.toString(),
+                    "/queue/account-status",
+                    message);
+            log.info("Sent ACCOUNT_BANNED WebSocket message to user: {}", userId);
+        } catch (Exception e) {
+            log.error("Failed to send WebSocket message to user: {}", userId, e);
+            // Không throw exception, vì ban user đã thành công
+        }
 
         log.info("User {} has been banned successfully", userId);
     }
