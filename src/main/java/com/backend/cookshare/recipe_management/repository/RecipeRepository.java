@@ -122,4 +122,11 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
 
     @Query("SELECT r FROM Recipe r WHERE r.user.userId IN :followingIds ORDER BY r.createdAt DESC")
     Page<Recipe> findRecipesByFollowingIds(List<UUID> followingIds, Pageable pageable);
+
+    // Thêm vào RecipeRepository.java
+
+    List<Recipe> findByTitleContainingIgnoreCaseAndStatus(String title, String status);
+
+    List<Recipe> findByTitleContainingIgnoreCaseAndStatus(String title, RecipeStatus status);
+
 }

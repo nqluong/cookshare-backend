@@ -12,6 +12,7 @@ import com.backend.cookshare.interaction.repository.SearchHistoryRepository;
 import com.backend.cookshare.recipe_management.dto.response.IngredientResponse;
 import com.backend.cookshare.recipe_management.dto.response.SearchReponse;
 import com.backend.cookshare.recipe_management.entity.Recipe;
+import com.backend.cookshare.recipe_management.enums.RecipeStatus;
 import com.backend.cookshare.recipe_management.mapper.SearchMapper;
 import com.backend.cookshare.recipe_management.repository.IngredientRepository;
 import com.backend.cookshare.recipe_management.repository.RecipeRepository;
@@ -30,6 +31,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -168,5 +170,37 @@ public class SearchServiceImpl implements SearchService {
                 .map(searchMapper::toSearchRecipeResponse)
                 .toList();
         return buildPageResponse(recipePage, content);
+    }
+    @Override
+    public List<String> getUsernameSuggestions(String query, int limit) {
+        String trimmedQuery = query.trim().toLowerCase();
+
+        // Tìm kiếm người dùng có tên chứa từ khóa
+        List<User> users = userRepository.findByFullNameContainingIgnoreCase(trimmedQuery)
+                .stream()
+                .limit(limit)
+                .collect(Collectors.toList());
+
+        // Trả về danh sách tên đầy đủ
+        return users.stream()
+                .map(User::getFullName)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<String> getRecipeSuggestions(String query, int limit) {
+        String trimmedQuery = query.trim().toLowerCase();
+        List<Recipe> recipes = recipeRepository.findByTitleContainingIgnoreCaseAndStatus(
+                        trimmedQuery,
+                        RecipeStatus.APPROVED
+                )
+                .stream()
+                .limit(limit)
+                .collect(Collectors.toList());
+        return recipes.stream()
+                .map(Recipe::getTitle)
+                .distinct()
+                .collect(Collectors.toList());
     }
 }
