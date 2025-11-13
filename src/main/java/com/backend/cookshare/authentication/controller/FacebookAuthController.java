@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -46,6 +47,9 @@ public class FacebookAuthController {
 
     // Lưu trữ tạm thời kết quả đăng nhập
     private final Map<String, LoginResponseDTO> authResults = new ConcurrentHashMap<>();
+
+    // Lưu trữ error results riêng
+    private final Map<String, Map<String, Object>> authErrors = new ConcurrentHashMap<>();
 
     @GetMapping("/login")
     public ResponseEntity<Void> loginWithFacebook(@RequestParam(required = false) String state) {
@@ -137,12 +141,25 @@ public class FacebookAuthController {
         } catch (CustomException e) {
             log.error("Error during Facebook authentication: {}", e.getMessage());
 
+            // Lưu error vào map để polling có thể nhận được
+            if (state != null && !state.isEmpty()) {
+                Map<String, Object> errorData = Map.of(
+                        "status", "error",
+                        "code", e.getErrorCode().getCode(),
+                        "message", e.getMessage());
+                authErrors.put(state, errorData);
+                log.info("Saved error result for state: {}", state);
+
+                // Tự động xóa sau 5 phút
+                scheduleErrorCleanup(state);
+            }
+
             // Trả về HTML error page để browser có thể hiển thị
             model.addAttribute("error", e.getMessage());
             model.addAttribute("errorCode", e.getErrorCode().getCode());
             model.addAttribute("provider", "facebook");
             model.addAttribute("state", state != null ? state : "");
-            return "auth-error"; // Tạo template auth-error.html
+            return "auth-error";
         } catch (Exception e) {
             log.error("❌ Error during Facebook authentication: {}", e.getMessage(), e);
             Map<String, Object> body = Map.of(
@@ -159,8 +176,16 @@ public class FacebookAuthController {
      */
     @GetMapping("/result/{state}")
     @ResponseBody
-    public ResponseEntity<LoginResponseDTO> getAuthResult(@PathVariable String state) {
+    public ResponseEntity<?> getAuthResult(@PathVariable String state) {
         log.info("📊 Polling request for Facebook state: {}", state);
+
+        // Check error trước
+        Map<String, Object> errorResult = authErrors.get(state);
+        if (errorResult != null) {
+            log.info("Error result retrieved for state: {}", state);
+            authErrors.remove(state); // Xóa ngay sau khi lấy
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResult);
+        }
 
         LoginResponseDTO result = authResults.get(state);
 
@@ -220,6 +245,19 @@ public class FacebookAuthController {
                 Thread.sleep(5 * 60 * 1000); // 5 phút
                 authResults.remove(state);
                 log.info("🧹 Auto-cleaned Facebook auth result for state: {}", state);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }).start();
+    }
+
+    // Schedule cleanup cho error map
+    private void scheduleErrorCleanup(String state) {
+        new Thread(() -> {
+            try {
+                Thread.sleep(5 * 60 * 1000); // 5 phút
+                authErrors.remove(state);
+                log.info("Auto-cleaned error result for state: {}", state);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
