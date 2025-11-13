@@ -46,5 +46,5 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT u FROM User u WHERE LOWER(u.fullName) LIKE LOWER(CONCAT('%', :query, '%'))")
     List<User> findByFullNameContainingIgnoreCase(@Param("query") String query);
-
+    Page<User>findByFullNameContainingIgnoreCase(@Param("query") String query,Pageable pageable);
 }
