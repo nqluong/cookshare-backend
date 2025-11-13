@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xác thực thất bại</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .error-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: #fee;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+        }
+
+        h1 {
+            color: #e53e3e;
+            font-size: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        p {
+            color: #4a5568;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .error-code {
+            background: #f7fafc;
+            color: #718096;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            display: inline-block;
+            margin-bottom: 24px;
+        }
+
+        .close-message {
+            color: #718096;
+            font-size: 14px;
+            margin-top: 16px;
+        }
+
+        .provider-badge {
+            display: inline-block;
+            background: #edf2f7;
+            color: #2d3748;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">❌</div>
+        
+        <div class="provider-badge" th:text="${provider == 'google' ? '🔵 Google' : '🔷 Facebook'}"></div>
+        
+        <h1>Xác thực thất bại</h1>
+        
+        <p th:text="${error}">Có lỗi xảy ra trong quá trình đăng nhập</p>
+        
+        <div class="error-code" th:if="${errorCode}">
+            Mã lỗi: <span th:text="${errorCode}"></span>
+        </div>
+        
+        <div class="close-message" id="status">
+            Cửa sổ này sẽ tự động đóng...
+        </div>
+    </div>
+
+    <!-- Truyền state và provider thông qua input ẩn -->
+    <input type="hidden" id="oauth-state" th:value="${state}" />
+    <input type="hidden" id="oauth-provider" th:value="${provider}" />
+    <input type="hidden" id="error-message" th:value="${error}" />
+    <input type="hidden" id="error-code" th:value="${errorCode}" />
+    
+    <script>
+        // Polling giống auth-loading.html để lấy error từ /result/{state}
+        (function(){
+            function getState(){
+                try{ return document.getElementById('oauth-state').value || ''; }catch(e){ return ''; }
+            }
+            function getProvider(){
+                try{ return document.getElementById('oauth-provider').value || 'google'; }catch(e){ return 'google'; }
+            }
+            
+            const state = getState();
+            const provider = getProvider();
+            
+            console.log('🚨 Auth Error Page - State:', state, 'Provider:', provider);
+            
+            // Đợi 1 giây để user thấy error, sau đó polling để close window
+            setTimeout(function(){
+                if(!state){ 
+                    document.getElementById('status').innerText='Vui lòng quay lại ứng dụng.'; 
+                    return; 
+                }
+                
+                // Polling /result/{state} giống auth-loading.html
+                fetch('/auth/' + provider + '/result/' + encodeURIComponent(state), { credentials: 'same-origin' })
+                    .then(function(res){ 
+                        // Backend trả về 401 với error body
+                        if(res.status === 401) {
+                            return res.json();
+                        }
+                        throw new Error('pending'); 
+                    })
+                    .then(function(errorData){
+                        console.log('🚨 Error data received:', errorData);
+                        
+                        try{
+                            // Đóng window giống auth-loading.html
+                            if(window.opener){
+                                window.opener.postMessage({type:'oauth-error', provider:provider, data:errorData}, '*');
+                                window.close();
+                            } else {
+                                document.getElementById('status').innerText='Vui lòng quay lại ứng dụng.';
+                            }
+                        }catch(e){
+                            console.error('Cannot close window:', e);
+                            document.getElementById('status').innerText='Vui lòng quay lại ứng dụng.';
+                        }
+                    })
+                    .catch(function(e){ 
+                        console.error('Polling error:', e);
+                        document.getElementById('status').innerText='Vui lòng quay lại ứng dụng.';
+                    });
+            }, 1000);
+        })();
+    </script>
+</body>
+</html>
