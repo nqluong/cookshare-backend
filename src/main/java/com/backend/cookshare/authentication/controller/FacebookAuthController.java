@@ -99,6 +99,11 @@ public class FacebookAuthController {
             // Xác thực với Facebook và tạo JWT tokens
             LoginResponseDTO response = facebookOAuthService.authenticateFacebookUser(code);
 
+            // Kiểm tra tài khoản có bị khóa không
+            if (response.getUser() != null && !response.getUser().getIsActive()) {
+                throw new CustomException(ErrorCode.USER_NOT_ACTIVE);
+            }
+
             // Lưu kết quả vào map với state làm key
             if (state != null && !state.isEmpty()) {
                 authResults.put(state, response);
@@ -172,6 +177,11 @@ public class FacebookAuthController {
     public ResponseEntity<LoginResponseDTO> authenticateWithCode(@RequestParam("code") String code) {
         try {
             LoginResponseDTO response = facebookOAuthService.authenticateFacebookUser(code);
+
+            // Kiểm tra tài khoản có bị khóa không
+            if (response.getUser() != null && !response.getUser().getIsActive()) {
+                throw new CustomException(ErrorCode.USER_NOT_ACTIVE);
+            }
 
             ResponseCookie refreshCookie = ResponseCookie
                     .from("refresh_token", response.getRefreshToken())
