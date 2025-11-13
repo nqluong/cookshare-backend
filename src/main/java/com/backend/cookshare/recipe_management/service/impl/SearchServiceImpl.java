@@ -2,6 +2,7 @@ package com.backend.cookshare.recipe_management.service.impl;
 
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.repository.UserRepository;
+import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
@@ -23,7 +24,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -44,6 +47,7 @@ public class SearchServiceImpl implements SearchService {
     SearchHistoryRepository searchHistoryRepository;
     UserRepository userRepository;
     SearchHistoryMapper searchHistoryMapper;
+    FirebaseStorageService firebaseStorageService;
     @Override
     public PageResponse<SearchReponse> searchRecipesByName(String keyword, Pageable pageable) {
         if (keyword== null || keyword.trim().isEmpty()) {
@@ -64,6 +68,9 @@ public class SearchServiceImpl implements SearchService {
 
         List<SearchReponse> content = recipePage.getContent().stream()
                 .map(searchMapper::toSearchRecipeResponse)
+                .peek(r -> {
+                    r.setFeaturedImage(firebaseStorageService.convertPathToFirebaseUrl(r.getFeaturedImage()));
+                })
                 .toList();
         saveSearchHistoryAsync(keyword,"recipe", recipePage.getTotalElements());
         return buildPageResponse(recipePage, content);
@@ -88,6 +95,9 @@ public class SearchServiceImpl implements SearchService {
 
        List<SearchReponse> content = recipePage.getContent().stream()
                .map(searchMapper::toSearchRecipeResponse)
+               .peek(r -> {
+                   r.setFeaturedImage(firebaseStorageService.convertPathToFirebaseUrl(r.getFeaturedImage()));
+               })
                .toList();
        if(!content.isEmpty()) {
            var context=SecurityContextHolder.getContext();
@@ -165,9 +175,25 @@ public class SearchServiceImpl implements SearchService {
 
         Specification<Recipe> spec = RecipeSpecification.hasRecipeByName(keyword);
         Page<Recipe> recipePage = recipeRepository.findAll(spec, pageable);
+        if (recipePage.isEmpty()) {
+            Page<User> userPage = userRepository.findByFullNameContainingIgnoreCase(
+                    keyword,
+                    PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by("fullName"))
+            );
+            if (userPage.isEmpty()) {
+                throw new CustomException(ErrorCode.USER_NOT_FOUND);
+            }
 
+            List<SearchReponse> userResponses = userPage.getContent().stream()
+                    .map(searchMapper::toSearchUserResponse)
+                    .toList();
+            return buildPageResponse(userPage, userResponses);
+        }
         List<SearchReponse> content = recipePage.getContent().stream()
                 .map(searchMapper::toSearchRecipeResponse)
+                .peek(r -> {
+                    r.setFeaturedImage(firebaseStorageService.convertPathToFirebaseUrl(r.getFeaturedImage()));
+                })
                 .toList();
         return buildPageResponse(recipePage, content);
     }
