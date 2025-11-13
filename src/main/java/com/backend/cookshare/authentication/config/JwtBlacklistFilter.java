@@ -24,7 +24,6 @@ public class JwtBlacklistFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String requestURI = request.getRequestURI();
 
-        // ✅ QUAN TRỌNG: Bỏ qua WebSocket endpoints
         if (requestURI.startsWith("/ws") || requestURI.startsWith("/ws-sockjs")) {
             filterChain.doFilter(request, response);
             return;
@@ -48,7 +47,6 @@ public class JwtBlacklistFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        // ✅ THÊM: Không filter WebSocket requests
         return path.startsWith("/ws") ||
                 path.startsWith("/ws-sockjs") ||
                 path.equals("/auth/login") ||

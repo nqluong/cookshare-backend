@@ -1,6 +1,7 @@
 package com.backend.cookshare.recipe_management.service.impl;
 
 import com.backend.cookshare.authentication.entity.User;
+import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.authentication.service.UserService;
 import com.backend.cookshare.recipe_management.dto.request.AdminRecipeApprovalRequest;
 import com.backend.cookshare.recipe_management.dto.request.AdminRecipeUpdateRequest;
@@ -38,6 +39,7 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
     private final RecipeLoaderHelper recipeLoaderHelper;
     private final UserService userService;
     private final PageMapper pageMapper;
+    private final FirebaseStorageService firebaseStorageService;
 
 
     @Override
@@ -77,7 +79,7 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
                     .cookTime(recipe.getCookTime())
                     .servings(recipe.getServings())
                     .difficulty(recipe.getDifficulty())
-                    .featuredImage(recipe.getFeaturedImage())
+                    .featuredImage(firebaseStorageService.convertPathToFirebaseUrl(recipe.getFeaturedImage()))
                     .instructions(recipe.getInstructions())
                     .notes(recipe.getNotes())
                     .nutritionInfo(recipe.getNutritionInfo())
@@ -267,7 +269,7 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
                 .cookTime(recipe.getCookTime())
                 .servings(recipe.getServings())
                 .difficulty(recipe.getDifficulty())
-                .featuredImage(recipe.getFeaturedImage())
+                .featuredImage(firebaseStorageService.convertPathToFirebaseUrl(recipe.getFeaturedImage()))
                 .viewCount(recipe.getViewCount())
                 .saveCount(recipe.getSaveCount())
                 .likeCount(recipe.getLikeCount())

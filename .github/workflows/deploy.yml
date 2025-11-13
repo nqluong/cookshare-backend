@@ -1,0 +1,142 @@
+name: CI/CD Backend to DockerHub and GCE VM
+
+# Trigger: Chạy khi push lên nhánh "main"
+on:
+  push:
+    branches:
+      - main 
+
+jobs:
+
+  build-and-push:
+    name: Build and Push to Docker Hub
+    runs-on: ubuntu-latest
+
+    steps:
+      # Lấy code về
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Đăng nhập vào Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Build và Push Docker image
+      # Action này sẽ tự động đọc Dockerfile và build
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/project1:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/project1:${{ github.sha }}
+
+  deploy-to-vm:
+    name: Deploy to GCE VM
+    runs-on: ubuntu-latest
+    needs: build-and-push # Phải chạy sau khi job 1 thành công
+
+    steps:
+      # 1. Tạo file production.env và firebase-credentials.json từ secret
+      - name: Create config files
+        run: |
+          echo "${{ secrets.PRODUCTION_ENV_CONTENT }}" > production.env
+          echo "${{ secrets.FIREBASE_CREDENTIALS_JSON }}" > firebase-credentials.json
+
+      # 2. Copy file và chạy lệnh trên VM qua SSH
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VM_SSH_HOST }}
+          username: ${{ secrets.VM_SSH_USER }}
+          key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+          source: "production.env,firebase-credentials.json"
+          target: "~/cookshare-temp" # Copy vào thư mục tạm trước, sau đó xử lý trong script
+          
+          # Các lệnh sẽ chạy trên VM E2
+          script: |
+            set -e # Dừng ngay nếu có lỗi
+            
+            # Biến môi trường
+            # Vẫn dùng "latest" để đảm bảo luôn chạy image vừa build
+            IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/project1:latest"
+            # Vẫn dùng tên cố định để dễ stop/rm
+            CONTAINER_NAME="cookshare-backend" 
+            CONFIG_PATH="/home/${{ secrets.VM_SSH_USER }}/cookshare"
+            TEMP_PATH="/home/${{ secrets.VM_SSH_USER }}/cookshare-temp"
+
+            echo "--- Creating config and log directories ---"
+            mkdir -p $CONFIG_PATH/logs
+
+            echo "--- Handling production.env file ---"
+            if [ ! -f "$CONFIG_PATH/production.env" ]; then
+              cp $TEMP_PATH/production.env $CONFIG_PATH/production.env
+              chmod 600 $CONFIG_PATH/production.env
+            else
+              echo "✓ production.env already exists - keeping local file unchanged"
+            fi
+
+            echo "--- Handling firebase-credentials.json file ---"
+            if [ ! -f "$CONFIG_PATH/firebase-credentials.json" ]; then
+              cp $TEMP_PATH/firebase-credentials.json $CONFIG_PATH/firebase-credentials.json
+              chmod 600 $CONFIG_PATH/firebase-credentials.json
+            else
+              echo "✓ firebase-credentials.json already exists - keeping local file unchanged"
+            fi
+
+            # Xóa thư mục tạm
+            rm -rf $TEMP_PATH 
+
+            echo "--- Checking SSL keystore ---"
+            # Kiểm tra keystore có tồn tại không
+            if [ ! -f "$CONFIG_PATH/keystore.p12" ]; then
+              echo "WARNING: keystore.p12 not found at $CONFIG_PATH/keystore.p12"
+              echo "Please create keystore first using Let's Encrypt or self-signed certificate"
+              echo "Example: sudo certbot certonly --standalone -d cookshare-app.io.vn"
+              echo "Then convert: sudo openssl pkcs12 -export -in /etc/letsencrypt/live/cookshare-app.io.vn/fullchain.pem -inkey /etc/letsencrypt/live/cookshare-app.io.vn/privkey.pem -out $CONFIG_PATH/keystore.p12 -name cookshare -password pass:YOUR_PASSWORD"
+            else
+              echo "✓ Keystore found at $CONFIG_PATH/keystore.p12"
+              chmod 600 $CONFIG_PATH/keystore.p12 || true
+            fi
+
+            echo "--- Logging in to Docker Hub (for pulling private images) ---"
+            docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+
+            echo "--- Pulling latest image from Docker Hub ---"
+            docker pull $IMAGE_NAME
+
+            echo "--- Stopping and removing old container ---"
+            docker stop $CONTAINER_NAME || true
+            docker rm $CONTAINER_NAME || true
+
+            echo "--- Starting new container with SSL support ---"
+            # Nên chỉ map port 443 (HTTPS). Nếu muốn hỗ trợ cả HTTP, cần cấu hình Spring Boot với 2 connectors
+            if [ -f "$CONFIG_PATH/keystore.p12" ]; then
+              docker run -d \
+                -p 443:8080 \
+                --name $CONTAINER_NAME \
+                --restart always \
+                --env-file $CONFIG_PATH/production.env \
+                -v $CONFIG_PATH/firebase-credentials.json:/app/firebase-credentials.json:ro \
+                -v $CONFIG_PATH/keystore.p12:/app/keystore.p12:ro \
+                -v $CONFIG_PATH/logs:/app/logs \
+                $IMAGE_NAME
+            else
+              # Nếu không có keystore, chỉ chạy HTTP (fallback)
+              echo "WARNING: Running without SSL keystore (HTTP only)"
+              docker run -d \
+                -p 80:8080 \
+                --name $CONTAINER_NAME \
+                --restart always \
+                --env-file $CONFIG_PATH/production.env \
+                -v $CONFIG_PATH/firebase-credentials.json:/app/firebase-credentials.json:ro \
+                -v $CONFIG_PATH/logs:/app/logs \
+                $IMAGE_NAME
+            fi
+            
+            echo "--- Cleaning up old images ---"
+            docker image prune -f

@@ -1,0 +1,43 @@
+# Maven
+target/
+.mvn/
+mvnw
+mvnw.cmd
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Environment files (we'll use production.env values directly in Dockerfile)
+local.env
+
+# Database dumps
+*.sql
+
+# Logs
+logs/
+*.log
+
+# Node modules (if any)
+node_modules/
+
+# Test files
+src/test/
+
+# Other
+.DS_Store
+*.swp
+*.swo
+*~
+

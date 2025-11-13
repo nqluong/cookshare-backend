@@ -18,24 +18,24 @@ import java.util.UUID;
 @Repository
 public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecificationExecutor<Recipe> {
     // Featured recipes
-    @Query("SELECT r FROM Recipe r WHERE r.isPublished = true AND r.isFeatured = true ORDER BY r.updatedAt DESC")
+    @Query("SELECT r FROM Recipe r WHERE r.isPublished = true AND r.isFeatured = true AND r.status = 'APPROVED' ORDER BY r.updatedAt DESC")
     Page<Recipe> findFeaturedRecipes(Pageable pageable);
 
     // Popular recipes - using custom scoring
-    @Query("SELECT r FROM Recipe r WHERE r.isPublished = true ORDER BY " +
+    @Query("SELECT r FROM Recipe r WHERE r.isPublished = true AND r.status = 'APPROVED' ORDER BY " +
             "(r.likeCount * 2.0 + r.viewCount * 0.5 + r.saveCount * 1.5) DESC")
     Page<Recipe> findPopularRecipes(Pageable pageable);
 
     // Newest recipes
-    @Query("SELECT r FROM Recipe r WHERE r.isPublished = true ORDER BY r.createdAt DESC")
+    @Query("SELECT r FROM Recipe r WHERE r.isPublished = true AND r.status = 'APPROVED' ORDER BY r.createdAt DESC")
     Page<Recipe> findNewestRecipes(Pageable pageable);
 
-    @Query("SELECT r FROM Recipe r WHERE r.isPublished = true AND r.ratingCount >= :minRatingCount " +
+    @Query("SELECT r FROM Recipe r WHERE r.isPublished = true AND r.ratingCount >= :minRatingCount AND r.status = 'APPROVED' " +
             "ORDER BY r.averageRating DESC, r.ratingCount DESC")
     Page<Recipe> findTopRatedRecipes(@Param("minRatingCount") int minRatingCount, Pageable pageable);
 
     // Trending recipes - using custom scoring
-    @Query("SELECT r FROM Recipe r WHERE r.isPublished = true ORDER BY " +
+    @Query("SELECT r FROM Recipe r WHERE r.isPublished = true AND r.status = 'APPROVED' ORDER BY " +
             "(r.viewCount + r.likeCount * 3.0 + r.ratingCount * 2.0) DESC, r.createdAt DESC")
     Page<Recipe> findTrendingRecipes(Pageable pageable);
 
@@ -44,16 +44,17 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
     List<Recipe> findByUserIdIn(@Param("userIds") List<UUID> userIds);
 
     // Count total published recipes for pagination
-    @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = true")
+    @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = true AND r.status = 'APPROVED'")
     long countPublishedRecipes();
 
     // Count featured recipes for pagination
-    @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = true AND r.isFeatured = true")
+    @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = true AND r.isFeatured = true AND r.status = 'APPROVED'")
     long countFeaturedRecipes();
 
     @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = true AND r.ratingCount >= :minRatingCount")
     long countTopRatedRecipes(@Param("minRatingCount") int minRatingCount);
     List<Recipe> findByUserId(UUID userId);
+    List<Recipe> findByUserIdAndStatus(UUID userId, RecipeStatus status);
 
     UUID findUserIdByRecipeId(UUID recipeId);
     //Tong so luot thich cua tat ca cac cong thuc
