@@ -24,7 +24,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -104,5 +108,25 @@ public class RecipeLikeServiceImpl implements RecipeLikeService {
     public Boolean isRecipeLiked(UUID recipeId) {
         User currentUser = getCurrentUser();
         return recipeLikeRepository.existsByUserIdAndRecipeId(currentUser.getUserId(), recipeId);
+    }
+    @Override
+    public Map<UUID, Boolean> checkMultipleLikes(List<UUID> recipeIds) {
+        User currentUser = getCurrentUser();
+
+        // Query 1 lần duy nhất cho tất cả recipes
+        List<RecipeLike> likes = recipeLikeRepository
+                .findAllByUserIdAndRecipeIdIn(currentUser.getUserId(), recipeIds);
+
+        // Convert thành Map để tra cứu nhanh
+        Set<UUID> likedRecipeIds = likes.stream()
+                .map(RecipeLike::getRecipeId)
+                .collect(Collectors.toSet());
+
+        // Trả về Map với tất cả recipeIds
+        return recipeIds.stream()
+                .collect(Collectors.toMap(
+                        id -> id,
+                        likedRecipeIds::contains
+                ));
     }
 }

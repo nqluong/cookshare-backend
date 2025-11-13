@@ -14,8 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -91,5 +93,56 @@ public class SearchController {
         return ApiResponse.<PageResponse<SearchReponse>>builder()
                 .result(results)
                 .build();
+    }
+    @GetMapping("/user/suggestions")
+    public ResponseEntity<ApiResponse<List<String>>> getUserSuggestions(
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "5") int limit) {
+
+        if (query == null || query.trim().length() < 2) {
+            return ResponseEntity.ok(
+                    ApiResponse.<List<String>>builder()
+                            .code(1000)
+                            .message("Query too short")
+                            .result(Collections.emptyList())
+                            .build()
+            );
+        }
+
+        List<String> suggestions = searchService.getUsernameSuggestions(query.trim(), limit);
+
+        return ResponseEntity.ok(
+                ApiResponse.<List<String>>builder()
+                        .code(1000)
+                        .message("Success")
+                        .result(suggestions)
+                        .build()
+        );
+    }
+
+    @GetMapping("/recipe/suggestions")
+    public ResponseEntity<ApiResponse<List<String>>> getRecipeSuggestions(
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "5") int limit) {
+
+        if (query == null || query.trim().length() < 2) {
+            return ResponseEntity.ok(
+                    ApiResponse.<List<String>>builder()
+                            .code(1000)
+                            .message("Query too short")
+                            .result(Collections.emptyList())
+                            .build()
+            );
+        }
+
+        List<String> suggestions = searchService.getRecipeSuggestions(query.trim(), limit);
+
+        return ResponseEntity.ok(
+                ApiResponse.<List<String>>builder()
+                        .code(1000)
+                        .message("Success")
+                        .result(suggestions)
+                        .build()
+        );
     }
 }
