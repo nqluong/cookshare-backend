@@ -1,6 +1,7 @@
 package com.backend.cookshare.recipe_management.dto.response;
 
 import com.backend.cookshare.recipe_management.enums.Difficulty;
+import com.backend.cookshare.recipe_management.enums.RecipeStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -48,6 +49,7 @@ public class RecipeResponse {
 
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
+    RecipeStatus status;
 
     // 🔹 Liên kết đến các thành phần chi tiết
     List<RecipeStepResponse> steps;

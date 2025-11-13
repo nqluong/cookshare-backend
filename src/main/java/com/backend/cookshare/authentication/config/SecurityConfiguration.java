@@ -50,8 +50,9 @@ public class SecurityConfiguration implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        String uploadPath = System.getProperty("user.dir") + "/uploads/recipe_images/";
         registry.addResourceHandler("/recipe_images/**")
-                .addResourceLocations("file:src/main/resources/static/recipe_images/");
+                .addResourceLocations("file:" + uploadPath);
     }
 
     @Bean

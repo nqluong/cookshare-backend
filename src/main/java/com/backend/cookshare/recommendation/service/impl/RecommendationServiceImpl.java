@@ -2,6 +2,7 @@ package com.backend.cookshare.recommendation.service.impl;
 
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.repository.UserRepository;
+import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
 import com.backend.cookshare.recipe_management.entity.Recipe;
@@ -37,6 +38,7 @@ public class RecommendationServiceImpl implements RecommendationService {
     
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
+    private final FirebaseStorageService firebaseStorageService;
     
     // Thread pool for parallel processing
     private final Executor executor = Executors.newFixedThreadPool(5);
@@ -312,7 +314,7 @@ public class RecommendationServiceImpl implements RecommendationService {
                         .title(recipe.getTitle())
                         .slug(recipe.getSlug())
                         .description(recipe.getDescription())
-                        .featuredImage(recipe.getFeaturedImage())
+                        .featuredImage(firebaseStorageService.convertPathToFirebaseUrl(recipe.getFeaturedImage()))
                         .prepTime(recipe.getPrepTime())
                         .cookTime(recipe.getCookTime())
                         .servings(recipe.getServings())

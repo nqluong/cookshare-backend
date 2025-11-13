@@ -38,10 +38,14 @@ public class RecipeRequest {
 
     String featuredImage;
 
-    // 🔥 Thêm danh sách nguyên liệu
+    // 🔥 Giữ nguyên cho backward compatibility
     @Valid
-    @NotEmpty(message = "Phải có ít nhất 1 nguyên liệu")
     List<UUID> ingredients;
+
+    // 🔥 THÊM MỚI: Nhận chi tiết nguyên liệu với quantity + unit
+    @Valid
+    @NotEmpty(message = "Phải có ít nhất 1 nguyên liệu với đầy đủ thông tin")
+    List<IngredientDetailRequest> ingredientDetails;
 
     // 🔥 Thêm danh sách bước nấu
     @Valid
@@ -61,4 +65,5 @@ public class RecipeRequest {
     String metaKeywords;
     String seasonalTags;
     String instruction;
+    String status;
 }

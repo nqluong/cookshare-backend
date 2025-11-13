@@ -27,16 +27,21 @@ import java.util.UUID;
 public class CollectionController {
 
     private final CollectionService collectionService;
-    private final Path root = Paths.get("src/main/resources/static/recipe_images");
+    private final Path root = Paths.get(System.getProperty("user.dir"), "uploads", "recipe_images");
 
     @PostConstruct
     public void init() {
         try {
-            Files.createDirectories(root);
-            log.info("Created directory for recipe images: {}", root.toAbsolutePath());
+            if (!Files.exists(root)) {
+                Files.createDirectories(root);
+                log.info("Created directory for recipe images: {}", root.toAbsolutePath());
+            } else {
+                log.info("Directory already exists: {}", root.toAbsolutePath());
+            }
         } catch (IOException e) {
-            log.error("Could not create upload directory!", e);
-            throw new RuntimeException("Không thể tạo thư mục uploads!");
+            log.error("Could not create upload directory! Path: {}", root.toAbsolutePath(), e);
+            log.warn("Upload functionality may not work properly. Please check directory permissions.");
+            // Không throw exception để ứng dụng vẫn có thể khởi động
         }
     }
 
@@ -68,7 +73,7 @@ public class CollectionController {
             Path filePath = root.resolve(fileName);
             Files.copy(file.getInputStream(), filePath);
 
-            String url = "recipe_images\\" + fileName;
+            String url = "recipe_images/" + fileName;
             log.info("File uploaded successfully: {}", url);
 
             return ResponseEntity.ok(Map.of("url", url));

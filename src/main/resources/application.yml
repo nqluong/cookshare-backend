@@ -1,13 +1,23 @@
 server:
   port: 8080
-  username-admin: admin
-  password-admin: admin
+  username-admin: ${USERNAME-ADMIN}
+  password-admin: ${PASSWORD-ADMIN}
+  ssl:
+    enabled: ${SSL_ENABLED:false}
+    key-store: ${SSL_KEYSTORE_PATH:}
+    key-store-password: ${SSL_KEYSTORE_PASSWORD:}
+    key-store-type: ${SSL_KEYSTORE_TYPE:PKCS12}
+    key-alias: ${SSL_KEY_ALIAS:}
+  http2:
+    enabled: ${HTTP2_ENABLED:false}
+  forward-headers-strategy: framework
+  use-forward-headers: true
 
 spring:
   datasource:
-    url: "jdbc:postgresql://localhost:5433/cookshare_db"
-    username: project1
-    password: pass_project1
+    url: "jdbc:postgresql://${HOST}:${PORT}/${DATABASE}"
+    username: ${USERNAME-DB:project1}
+    password: ${PASSWORD-DB:pass_project1}
     driver-class-name: "org.postgresql.Driver"
   application:
     name: cookshare
@@ -15,7 +25,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -25,8 +35,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: nhatplbn2004@gmail.com
-    password: uelhjrmvojruvmiv
+    username: ${USERNAME-MAIL}
+    password: ${PASSWORD-MAIL}
     properties:
       mail:
         smtp:
@@ -44,17 +54,17 @@ spring:
     oauth2:
       registration:
         google:
-          client-id: 930367083527-chtbv453jhlmdllanvtrf18sfigeqsvj.apps.googleusercontent.com
-          client-secret: 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
-          redirect-uri: "${GOOGLE_REDIRECT_URI:http://localhost:8080/auth/google/callback}"
+          client-id: ${GG-CLIENT-ID}
+          client-secret: ${GG-CLIENT-SECRET}
+          redirect-uri: "${GOOGLE_REDIRECT_URI}"
           user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
           resource-server:
             opaque-token:
                 introspection-uri: "https://www.googleapis.com"
         facebook:
-          client-id: 1213805893870945
-          client-secret: e13f0d954f2dd935931198e1486fa047
-          redirect-uri: "${FACEBOOK_REDIRECT_URI:http://localhost:8080/auth/facebook/callback}"
+          client-id: ${FB-CLIENT-ID}
+          client-secret: ${FB-CLIENT-SECRET}
+          redirect-uri: "${FACEBOOK_REDIRECT_URI}"
           auth-uri: https://www.facebook.com/v21.0/dialog/oauth
           token-uri: https://graph.facebook.com/v21.0/oauth/access_token
           user-info-uri: https://graph.facebook.com/me?fields=id,name,email,picture.type(large)
@@ -67,21 +77,34 @@ spring:
 
 cookshare:
   jwt:
-    base64-secret: qoAEABDke07+AVLepXB4aCMtsT0wMAqR5x2VFyldsnx6e75YQkJH2UcZKTjEyoNgG71SBCXfq5N6NVZxWOfsHQ==
+    base64-secret: ${JWT-SECRET}
     access-token-validity-in-seconds: 86400
     refresh-token-validity-in-seconds: 8640000
     # WebSocket Configuration
     websocket:
-      allowed-origins:
-        - http://localhost:3000
-        - http://localhost:4200
-        - http://localhost:5173
+      allowed-origins: ${WEBSOCKET_ORIGINS:http://localhost:3000,http://localhost:5173, http://localhost:4200}
       message-size-limit: 524288  # 512KB
       send-buffer-size-limit: 524288  # 512KB
       send-time-limit: 20000  # 20 seconds
 
 firebase:
   storage:
-    bucket: ${FIREBASE_STORAGE_BUCKET:cookshare-app-33834.firebasestorage.app}
+    bucket: ${FIREBASE_STORAGE_BUCKET}
   credentials:
-    path: ${FIREBASE_CREDENTIALS_PATH:src/main/resources/firebase-credentials.json}
+    path: ${FIREBASE_CREDENTIALS_PATH}
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.backend.cookshare: DEBUG
+  file:
+    name: /app/logs/cookshare.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
+      total-size-cap: 1GB
