@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
 
 @Repository
 public interface RecipeTagRepository extends JpaRepository<RecipeTag, UUID> {
@@ -47,6 +48,7 @@ public interface RecipeTagRepository extends JpaRepository<RecipeTag, UUID> {
     @Query(value = "DELETE FROM recipe_tags WHERE recipe_id = :recipeId", nativeQuery = true)
     void deleteAllByRecipeId(@Param("recipeId") UUID recipeId);
 
-
+    @Query(value = "SELECT tag_id FROM recipe_tags WHERE recipe_id = :recipeId", nativeQuery = true)
+    List<Map<String, Object>> findTagIdsByRecipeId(@Param("recipeId") UUID recipeId);
 
 }
