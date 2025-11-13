@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Repository
@@ -63,4 +64,6 @@ public interface RecipeIngredientRepository extends JpaRepository<RecipeIngredie
     @Transactional
     @Query(value = "DELETE FROM recipe_ingredients WHERE recipe_id = :recipeId", nativeQuery = true)
     void deleteAllByRecipeId(@Param("recipeId") UUID recipeId);
+    @Query(value = "SELECT ingredient_id, quantity, unit, notes FROM recipe_ingredients WHERE recipe_id = :recipeId", nativeQuery = true)
+    List<Map<String, Object>> findIngredientDetailsByRecipeId(@Param("recipeId") UUID recipeId);
 }
