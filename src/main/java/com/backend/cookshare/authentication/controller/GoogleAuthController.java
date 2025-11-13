@@ -124,13 +124,13 @@ public class GoogleAuthController {
 
         } catch (CustomException e) {
             log.error("Error during Google authentication: {}", e.getMessage());
-            Map<String, Object> body = Map.of(
-                    "status", "error",
-                    "message", e.getMessage());
 
-            return ResponseEntity.status(500)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body);
+            // Trả về HTML error page để browser có thể hiển thị
+            model.addAttribute("error", e.getMessage());
+            model.addAttribute("errorCode", e.getErrorCode().getCode());
+            model.addAttribute("provider", "google");
+            model.addAttribute("state", state != null ? state : "");
+            return "auth-error"; // Tạo template auth-error.html
         } catch (Exception e) {
             log.error("Unexpected error during Google authentication: {}", e.getMessage());
             Map<String, Object> body = Map.of(
