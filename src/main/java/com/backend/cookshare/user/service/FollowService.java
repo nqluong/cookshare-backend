@@ -2,6 +2,7 @@ package com.backend.cookshare.user.service;
 
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.repository.UserRepository;
+import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
@@ -38,6 +39,7 @@ public class FollowService {
     private final PageMapper pageMapper;
     private final RecipeRepository recipeRepository;
     private final RecipeMapper recipeMapper;
+    private final FirebaseStorageService firebaseStorageService;
 
     //Xử lý hành động follow một người dùng khác.
     @Transactional
@@ -204,6 +206,9 @@ public class FollowService {
         Page<Recipe> recipes = recipeRepository.findRecipesByFollowingIds(followingIds, pageable);
         Page<RecipeByFollowingResponse> responsePage = recipes.map(recipe -> {
             var summary = recipeMapper.toRecipeSummary(recipe);
+            if (summary != null && summary.getFeaturedImage() != null) {
+                summary.setFeaturedImage(firebaseStorageService.convertPathToFirebaseUrl(summary.getFeaturedImage()));
+            }
             var response = recipeMapper.toRecipeByFollowingResponse(recipe, summary);
             response.setFollowerId(currentUser.getUserId());
             return response;
@@ -217,6 +222,8 @@ public class FollowService {
                 .build();
 
     }
+
+
     private User getCurrentUser() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByUsername(username)
