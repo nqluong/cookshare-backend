@@ -187,6 +187,7 @@ public class CommentService {
                 .recipeId(comment.getRecipeId())
                 .userId(comment.getUserId())
                 .userName(comment.getUser() != null ? comment.getUser().getUsername() : null)
+                .fullName(comment.getUser() != null ? comment.getUser().getFullName() : null)
                 .userAvatar(comment.getUser() != null ? comment.getUser().getAvatarUrl() : null)
                 .content(comment.getContent())
                 .parentCommentId(comment.getParentCommentId())
