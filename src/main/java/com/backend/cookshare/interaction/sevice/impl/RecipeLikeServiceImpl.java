@@ -2,6 +2,7 @@ package com.backend.cookshare.interaction.sevice.impl;
 
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.repository.UserRepository;
+import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
@@ -39,7 +40,7 @@ public class RecipeLikeServiceImpl implements RecipeLikeService {
     UserRepository userRepository;
     RecipeRepository recipeRepository;
     RecipeLikeMapper recipeLikeMapper;
-
+    FirebaseStorageService firebaseStorageService;
     private User getCurrentUser() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByUsername(username)
@@ -94,14 +95,23 @@ public class RecipeLikeServiceImpl implements RecipeLikeService {
             Recipe recipe = recipeRepository.findById(like.getRecipeId()).orElse(null);
             if (recipe == null) return null;
             var summary = recipeLikeMapper.toRecipeSummary(recipe);
+            if (summary != null && summary.getFeaturedImage() != null) {
+                summary.setFeaturedImage(firebaseStorageService.convertPathToFirebaseUrl(summary.getFeaturedImage()));
+            }
             return recipeLikeMapper.toRecipeResponse(like, summary);
         });
+
+        // Filter out null values
+        List<RecipeLikeResponse> filteredContent = responsePage.getContent().stream()
+                .filter(response -> response != null)
+                .collect(Collectors.toList());
+
         return PageResponse.<RecipeLikeResponse>builder()
                 .page(page)
                 .size(size)
                 .totalPages(responsePage.getTotalPages())
                 .totalElements(responsePage.getTotalElements())
-                .content(responsePage.getContent())
+                .content(filteredContent)
                 .build();
     }
     @Override
