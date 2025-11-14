@@ -61,6 +61,56 @@ public class AdminUserServiceImpl implements AdminUserService {
         userService.deleteUserByAdmin(userId);
     }
 
+    @Override
+    public AdminUserDetailResponseDTO updateUser(UUID userId, com.backend.cookshare.authentication.dto.request.AdminUpdateUserRequest request) {
+        log.info("Admin đang cập nhật thông tin người dùng: {}", userId);
+        
+        User user = userService.getUserById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với ID: " + userId));
+        
+        if (request.getUsername() != null && !request.getUsername().equals(user.getUsername())) {
+            if (userService.existsByUsername(request.getUsername())) {
+                throw new RuntimeException("Username đã tồn tại");
+            }
+            user.setUsername(request.getUsername());
+        }
+        
+        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
+            if (userService.existsByEmail(request.getEmail())) {
+                throw new RuntimeException("Email đã tồn tại");
+            }
+            user.setEmail(request.getEmail());
+        }
+        
+        if (request.getFullName() != null) {
+            user.setFullName(request.getFullName());
+        }
+        
+        if (request.getAvatarUrl() != null) {
+            user.setAvatarUrl(request.getAvatarUrl());
+        }
+        
+        if (request.getBio() != null) {
+            user.setBio(request.getBio());
+        }
+        
+        if (request.getRole() != null) {
+            user.setRole(request.getRole());
+        }
+        
+        if (request.getIsActive() != null) {
+            user.setIsActive(request.getIsActive());
+        }
+        
+        if (request.getEmailVerified() != null) {
+            user.setEmailVerified(request.getEmailVerified());
+        }
+        
+        User updatedUser = userService.updateUser(user);
+        
+        return mapToDetailResponseDTO(updatedUser);
+    }
+
 
     // Chuyển đổi User entity thành AdminUserListResponseDTO
     private AdminUserListResponseDTO mapToListResponseDTO(User user) {

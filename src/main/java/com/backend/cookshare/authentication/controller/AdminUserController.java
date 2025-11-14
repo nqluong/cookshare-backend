@@ -1,11 +1,13 @@
 package com.backend.cookshare.authentication.controller;
 
+import com.backend.cookshare.authentication.dto.request.AdminUpdateUserRequest;
 import com.backend.cookshare.authentication.dto.request.BanUserRequest;
 import com.backend.cookshare.authentication.dto.response.AdminUserDetailResponseDTO;
 import com.backend.cookshare.authentication.dto.response.AdminUserListResponseDTO;
 import com.backend.cookshare.authentication.service.AdminUserService;
 import com.backend.cookshare.common.dto.ApiResponse;
 import com.backend.cookshare.common.dto.PageResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -144,6 +146,31 @@ public class AdminUserController {
                 .success(true)
                 .code(HttpStatus.OK.value())
                 .message("Xóa người dùng thành công")
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * PUT /api/admin/users/{id} - Cập nhật thông tin người dùng (dành cho admin)
+     * @param id ID của người dùng
+     * @param request Thông tin cập nhật
+     * @return Thông tin người dùng đã được cập nhật
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<AdminUserDetailResponseDTO>> updateUser(
+            @PathVariable UUID id,
+            @Valid @RequestBody AdminUpdateUserRequest request) {
+        
+        log.info("Admin đang cập nhật thông tin người dùng: {}", id);
+        
+        AdminUserDetailResponseDTO updatedUser = adminUserService.updateUser(id, request);
+
+        ApiResponse<AdminUserDetailResponseDTO> response = ApiResponse.<AdminUserDetailResponseDTO>builder()
+                .success(true)
+                .code(HttpStatus.OK.value())
+                .message("Cập nhật thông tin người dùng thành công")
+                .data(updatedUser)
                 .build();
 
         return ResponseEntity.ok(response);
