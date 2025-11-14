@@ -157,7 +157,7 @@ public class NotificationService {
     // Tạo notification cho follow
     @Transactional
     public void createFollowNotification(UUID recipientId, UUID actorId) {
-        User actor = userRepository.findById(actorId).orElse(null);
+        User actor = userRepository.findById(recipientId).orElse(null);
         if (actor == null) return;
 
         String title = "Người theo dõi mới";
@@ -176,7 +176,7 @@ public class NotificationService {
 
         notification = notificationRepository.save(notification);
 
-        sendNotificationWebSocketMessage("NEW", convertToDto(notification), recipientId);
+        sendNotificationWebSocketMessage("NEW", convertToDto(notification), actorId);
     }
 
     // Convert entity to DTO
