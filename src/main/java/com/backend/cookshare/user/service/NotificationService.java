@@ -161,14 +161,14 @@ public class NotificationService {
         if (actor == null) return;
 
         String title = "Người theo dõi mới";
-        String message = actor.getUsername() + " đã bắt đầu theo dõi bạn";
+        String message = actor.getFullName() + " đã bắt đầu theo dõi bạn";
 
         Notification notification = Notification.builder()
-                .userId(recipientId)
+                .userId(actorId)
                 .type(NotificationType.FOLLOW)
                 .title(title)
                 .message(message)
-                .relatedId(actorId)
+                .relatedId(recipientId)
                 .relatedType(RelatedType.user)
                 .isRead(false)
                 .isSent(false)
