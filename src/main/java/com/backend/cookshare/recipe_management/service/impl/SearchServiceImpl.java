@@ -2,6 +2,7 @@ package com.backend.cookshare.recipe_management.service.impl;
 
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.repository.UserRepository;
+import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
@@ -12,6 +13,7 @@ import com.backend.cookshare.interaction.repository.SearchHistoryRepository;
 import com.backend.cookshare.recipe_management.dto.response.IngredientResponse;
 import com.backend.cookshare.recipe_management.dto.response.SearchReponse;
 import com.backend.cookshare.recipe_management.entity.Recipe;
+import com.backend.cookshare.recipe_management.enums.RecipeStatus;
 import com.backend.cookshare.recipe_management.mapper.SearchMapper;
 import com.backend.cookshare.recipe_management.repository.IngredientRepository;
 import com.backend.cookshare.recipe_management.repository.RecipeRepository;
@@ -22,7 +24,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -30,6 +34,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +47,7 @@ public class SearchServiceImpl implements SearchService {
     SearchHistoryRepository searchHistoryRepository;
     UserRepository userRepository;
     SearchHistoryMapper searchHistoryMapper;
+    FirebaseStorageService firebaseStorageService;
     @Override
     public PageResponse<SearchReponse> searchRecipesByName(String keyword, Pageable pageable) {
         if (keyword== null || keyword.trim().isEmpty()) {
@@ -62,6 +68,9 @@ public class SearchServiceImpl implements SearchService {
 
         List<SearchReponse> content = recipePage.getContent().stream()
                 .map(searchMapper::toSearchRecipeResponse)
+                .peek(r -> {
+                    r.setFeaturedImage(firebaseStorageService.convertPathToFirebaseUrl(r.getFeaturedImage()));
+                })
                 .toList();
         saveSearchHistoryAsync(keyword,"recipe", recipePage.getTotalElements());
         return buildPageResponse(recipePage, content);
@@ -86,6 +95,9 @@ public class SearchServiceImpl implements SearchService {
 
        List<SearchReponse> content = recipePage.getContent().stream()
                .map(searchMapper::toSearchRecipeResponse)
+               .peek(r -> {
+                   r.setFeaturedImage(firebaseStorageService.convertPathToFirebaseUrl(r.getFeaturedImage()));
+               })
                .toList();
        if(!content.isEmpty()) {
            var context=SecurityContextHolder.getContext();
@@ -163,10 +175,58 @@ public class SearchServiceImpl implements SearchService {
 
         Specification<Recipe> spec = RecipeSpecification.hasRecipeByName(keyword);
         Page<Recipe> recipePage = recipeRepository.findAll(spec, pageable);
+        if (recipePage.isEmpty()) {
+            Page<User> userPage = userRepository.findByFullNameContainingIgnoreCase(
+                    keyword,
+                    PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by("fullName"))
+            );
+            if (userPage.isEmpty()) {
+                throw new CustomException(ErrorCode.USER_NOT_FOUND);
+            }
 
+            List<SearchReponse> userResponses = userPage.getContent().stream()
+                    .map(searchMapper::toSearchUserResponse)
+                    .toList();
+            return buildPageResponse(userPage, userResponses);
+        }
         List<SearchReponse> content = recipePage.getContent().stream()
                 .map(searchMapper::toSearchRecipeResponse)
+                .peek(r -> {
+                    r.setFeaturedImage(firebaseStorageService.convertPathToFirebaseUrl(r.getFeaturedImage()));
+                })
                 .toList();
         return buildPageResponse(recipePage, content);
+    }
+    @Override
+    public List<String> getUsernameSuggestions(String query, int limit) {
+        String trimmedQuery = query.trim().toLowerCase();
+
+        // Tìm kiếm người dùng có tên chứa từ khóa
+        List<User> users = userRepository.findByFullNameContainingIgnoreCase(trimmedQuery)
+                .stream()
+                .limit(limit)
+                .collect(Collectors.toList());
+
+        // Trả về danh sách tên đầy đủ
+        return users.stream()
+                .map(User::getFullName)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<String> getRecipeSuggestions(String query, int limit) {
+        String trimmedQuery = query.trim().toLowerCase();
+        List<Recipe> recipes = recipeRepository.findByTitleContainingIgnoreCaseAndStatus(
+                        trimmedQuery,
+                        RecipeStatus.APPROVED
+                )
+                .stream()
+                .limit(limit)
+                .collect(Collectors.toList());
+        return recipes.stream()
+                .map(Recipe::getTitle)
+                .distinct()
+                .collect(Collectors.toList());
     }
 }

@@ -11,6 +11,8 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -49,5 +51,10 @@ public class RecipeLikeController {
                 .result(likedRecipes)
                 .build();
     }
-
+    @PostMapping("/check-likes")
+    public ApiResponse<Map<UUID, Boolean>> checkMultipleLikes(@RequestBody List<UUID> recipeIds) {
+        return ApiResponse.<Map<UUID, Boolean>>builder()
+                .result(recipeLikeService.checkMultipleLikes(recipeIds))
+                .build();
+    }
 }

@@ -56,7 +56,8 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
     List<Recipe> findByUserId(UUID userId);
     List<Recipe> findByUserIdAndStatus(UUID userId, RecipeStatus status);
 
-    UUID findUserIdByRecipeId(UUID recipeId);
+    @Query("SELECT r.userId FROM Recipe r WHERE r.id = :recipeId")
+    UUID findUserIdByRecipeId(@Param("recipeId") UUID recipeId);
     //Tong so luot thich cua tat ca cac cong thuc
     @Query("SELECT COALESCE(SUM(r.likeCount), 0) FROM Recipe r WHERE r.userId = :userId")
     Integer getTotalLikeCountByUserId(@Param("userId") UUID userId);
@@ -123,4 +124,11 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
 
     @Query("SELECT r FROM Recipe r WHERE r.user.userId IN :followingIds ORDER BY r.createdAt DESC")
     Page<Recipe> findRecipesByFollowingIds(List<UUID> followingIds, Pageable pageable);
+
+    // Thêm vào RecipeRepository.java
+
+    List<Recipe> findByTitleContainingIgnoreCaseAndStatus(String title, String status);
+
+    List<Recipe> findByTitleContainingIgnoreCaseAndStatus(String title, RecipeStatus status);
+
 }

@@ -1,5 +1,6 @@
 package com.backend.cookshare.recipe_management.mapper;
 
+import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.recipe_management.dto.response.IngredientResponse;
 import com.backend.cookshare.recipe_management.dto.response.SearchReponse;
 import com.backend.cookshare.recipe_management.entity.Ingredient;
@@ -23,6 +24,24 @@ public interface SearchMapper {
                 .ingredientId(UUID.fromString(row[0].toString()))
                 .name((String) row[1])
                 .recipeCount(((Number) row[2]).intValue())
+                .build();
+    }
+    default SearchReponse toSearchUserResponse(User user) {
+        if (user == null) return null;
+
+        return SearchReponse.builder()
+                .recipeId(null)
+                .userId(user.getUserId())
+                .title(null)
+                .slug(null)
+                .description(null)
+                .fullName(user.getFullName())
+                .avatarUrl(user.getAvatarUrl())
+                .featuredImage(null)
+                .cookTime(null)
+                .viewCount(null)
+                .likeCount(null)
+                .saveCount(null)
                 .build();
     }
 }

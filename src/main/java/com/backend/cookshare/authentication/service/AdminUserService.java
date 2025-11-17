@@ -40,4 +40,12 @@ public interface AdminUserService {
      * @param userId ID của người dùng
      */
     void deleteUser(java.util.UUID userId);
+    
+    /**
+     * Cập nhật thông tin người dùng bởi Admin
+     * @param userId ID của người dùng
+     * @param request Yêu cầu cập nhật thông tin
+     * @return AdminUserDetailResponseDTO chứa thông tin đã cập nhật
+     */
+    AdminUserDetailResponseDTO updateUser(java.util.UUID userId, com.backend.cookshare.authentication.dto.request.AdminUpdateUserRequest request);
 }

@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -42,6 +43,9 @@ public class GoogleAuthController {
 
     // Lưu trữ tạm thời kết quả đăng nhập (trong production nên dùng Redis)
     private final Map<String, LoginResponseDTO> authResults = new ConcurrentHashMap<>();
+
+    // Lưu trữ error results riêng
+    private final Map<String, Map<String, Object>> authErrors = new ConcurrentHashMap<>();
 
     @GetMapping("/login")
     @ResponseBody
@@ -90,6 +94,11 @@ public class GoogleAuthController {
             // Xác thực với Google và tạo JWT tokens
             LoginResponseDTO response = googleOAuthService.authenticateGoogleUser(code);
 
+            // Kiểm tra tài khoản có bị khóa không
+            if (response.getUser() != null && !response.getUser().getIsActive()) {
+                throw new CustomException(ErrorCode.USER_NOT_ACTIVE);
+            }
+
             // Lưu kết quả vào map với state làm key
             if (state != null && !state.isEmpty()) {
                 authResults.put(state, response);
@@ -119,13 +128,26 @@ public class GoogleAuthController {
 
         } catch (CustomException e) {
             log.error("Error during Google authentication: {}", e.getMessage());
-            Map<String, Object> body = Map.of(
-                    "status", "error",
-                    "message", e.getMessage());
 
-            return ResponseEntity.status(500)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body);
+            // Lưu error vào map để polling có thể nhận được
+            if (state != null && !state.isEmpty()) {
+                Map<String, Object> errorData = Map.of(
+                        "status", "error",
+                        "code", e.getErrorCode().getCode(),
+                        "message", e.getMessage());
+                authErrors.put(state, errorData);
+                log.info("Saved error result for state: {}", state);
+
+                // Tự động xóa sau 5 phút
+                scheduleErrorCleanup(state);
+            }
+
+            // Trả về HTML error page để browser có thể hiển thị
+            model.addAttribute("error", e.getMessage());
+            model.addAttribute("errorCode", e.getErrorCode().getCode());
+            model.addAttribute("provider", "google");
+            model.addAttribute("state", state != null ? state : "");
+            return "auth-error";
         } catch (Exception e) {
             log.error("Unexpected error during Google authentication: {}", e.getMessage());
             Map<String, Object> body = Map.of(
@@ -143,7 +165,16 @@ public class GoogleAuthController {
      */
     @GetMapping("/result/{state}")
     @ResponseBody
-    public ResponseEntity<LoginResponseDTO> getAuthResult(@PathVariable String state) {
+    public ResponseEntity<?> getAuthResult(@PathVariable String state) {
+        // Check error trước
+        Map<String, Object> errorResult = authErrors.get(state);
+        if (errorResult != null) {
+            log.info("Error result retrieved for state: {}", state);
+            authErrors.remove(state); // Xóa ngay sau khi lấy
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResult);
+        }
+
+        // Check success result
         LoginResponseDTO result = authResults.get(state);
 
         if (result != null) {
@@ -167,6 +198,11 @@ public class GoogleAuthController {
     public ResponseEntity<LoginResponseDTO> authenticateWithCode(@RequestParam("code") String code) {
         try {
             LoginResponseDTO response = googleOAuthService.authenticateGoogleUser(code);
+
+            // Kiểm tra tài khoản có bị khóa không
+            if (response.getUser() != null && !response.getUser().getIsActive()) {
+                throw new CustomException(ErrorCode.USER_NOT_ACTIVE);
+            }
 
             ResponseCookie refreshCookie = ResponseCookie
                     .from("refresh_token", response.getRefreshToken())
@@ -193,6 +229,19 @@ public class GoogleAuthController {
                 Thread.sleep(5 * 60 * 1000); // 5 phút
                 authResults.remove(state);
                 log.info("Auto-cleaned auth result for state: {}", state);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }).start();
+    }
+
+    // Schedule cleanup cho error map
+    private void scheduleErrorCleanup(String state) {
+        new Thread(() -> {
+            try {
+                Thread.sleep(5 * 60 * 1000); // 5 phút
+                authErrors.remove(state);
+                log.info("Auto-cleaned error result for state: {}", state);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
