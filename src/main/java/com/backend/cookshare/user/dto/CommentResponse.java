@@ -15,6 +15,7 @@ public class CommentResponse {
     private UUID recipeId;
     private UUID userId;
     private String userName;
+    private String fullName;
     private String userAvatar;
     private String content;
     private UUID parentCommentId;

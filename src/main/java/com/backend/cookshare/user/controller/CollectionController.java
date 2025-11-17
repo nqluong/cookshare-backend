@@ -1,23 +1,21 @@
 package com.backend.cookshare.user.controller;
 
+import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.common.dto.ApiResponse;
 import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.user.dto.*;
 import com.backend.cookshare.user.service.CollectionService;
-import jakarta.annotation.PostConstruct;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -27,65 +25,31 @@ import java.util.UUID;
 public class CollectionController {
 
     private final CollectionService collectionService;
-    private final Path root = Paths.get(System.getProperty("user.dir"), "uploads", "recipe_images");
+    private final ObjectMapper objectMapper;
 
-    @PostConstruct
-    public void init() {
-        try {
-            if (!Files.exists(root)) {
-                Files.createDirectories(root);
-                log.info("Created directory for recipe images: {}", root.toAbsolutePath());
-            } else {
-                log.info("Directory already exists: {}", root.toAbsolutePath());
-            }
-        } catch (IOException e) {
-            log.error("Could not create upload directory! Path: {}", root.toAbsolutePath(), e);
-            log.warn("Upload functionality may not work properly. Please check directory permissions.");
-            // Không throw exception để ứng dụng vẫn có thể khởi động
-        }
-    }
-
-    @PostMapping("/upload")
-    public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file) {
-        try {
-            if (file.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "File rỗng"));
-            }
-
-            // Validate file type
-            String contentType = file.getContentType();
-            if (contentType == null || !contentType.startsWith("image/")) {
-                return ResponseEntity.badRequest().body(Map.of("error", "File phải là ảnh"));
-            }
-
-            // Validate file size (max 5MB)
-            if (file.getSize() > 5 * 1024 * 1024) {
-                return ResponseEntity.badRequest().body(Map.of("error", "File không được vượt quá 5MB"));
-            }
-
-            String originalFilename = file.getOriginalFilename();
-            String fileExtension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-
-            String fileName = UUID.randomUUID() + fileExtension;
-            Path filePath = root.resolve(fileName);
-            Files.copy(file.getInputStream(), filePath);
-
-            String url = "recipe_images/" + fileName;
-            log.info("File uploaded successfully: {}", url);
-
-            return ResponseEntity.ok(Map.of("url", url));
-        } catch (Exception e) {
-            log.error("Error uploading file", e);
-            return ResponseEntity.status(500).body(Map.of("error", "Lỗi khi upload ảnh: " + e.getMessage()));
-        }
-    }
-
-    // Tạo bộ sưu tập mới
-    @PostMapping("/{userId}/collections")
+    // Tạo bộ sưu tập mới với ảnh
+    @PostMapping(value = "/{userId}/collections", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     public ResponseEntity<ApiResponse<CollectionResponse>> createCollection(
+            @PathVariable UUID userId,
+            @RequestPart("data") String data,
+            @RequestPart(value = "coverImage", required = false) MultipartFile coverImage) throws IOException {
+
+        log.info("POST /users/{}/collections - Creating collection with image", userId);
+
+        CreateCollectionRequest request = objectMapper.readValue(data, CreateCollectionRequest.class);
+        CollectionResponse response = collectionService.createCollectionWithImage(userId, request, coverImage);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.<CollectionResponse>builder()
+                        .code(HttpStatus.CREATED.value())
+                        .message("Tạo bộ sưu tập thành công")
+                        .data(response)
+                        .build());
+    }
+
+    // Tạo bộ sưu tập mới không có ảnh (JSON)
+    @PostMapping(value = "/{userId}/collections", consumes = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<ApiResponse<CollectionResponse>> createCollectionJson(
             @PathVariable UUID userId,
             @RequestBody @Valid CreateCollectionRequest request) {
 
@@ -154,9 +118,29 @@ public class CollectionController {
                 .build());
     }
 
-    // Cập nhật bộ sưu tập
-    @PutMapping("/{userId}/collections/{collectionId}")
+    // Cập nhật bộ sưu tập với ảnh
+    @PutMapping(value = "/{userId}/collections/{collectionId}", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     public ResponseEntity<ApiResponse<CollectionResponse>> updateCollection(
+            @PathVariable UUID userId,
+            @PathVariable UUID collectionId,
+            @RequestPart("data") String data,
+            @RequestPart(value = "coverImage", required = false) MultipartFile coverImage) throws IOException {
+
+        log.info("PUT /users/{}/collections/{} - Updating collection with image", userId, collectionId);
+
+        UpdateCollectionRequest request = objectMapper.readValue(data, UpdateCollectionRequest.class);
+        CollectionResponse response = collectionService.updateCollectionWithImage(collectionId, userId, request, coverImage);
+
+        return ResponseEntity.ok(ApiResponse.<CollectionResponse>builder()
+                .code(HttpStatus.OK.value())
+                .message("Cập nhật bộ sưu tập thành công")
+                .data(response)
+                .build());
+    }
+
+    // Cập nhật bộ sưu tập không có ảnh (JSON)
+    @PutMapping(value = "/{userId}/collections/{collectionId}", consumes = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<ApiResponse<CollectionResponse>> updateCollectionJson(
             @PathVariable UUID userId,
             @PathVariable UUID collectionId,
             @RequestBody @Valid UpdateCollectionRequest request) {

@@ -56,7 +56,7 @@ public class AuthController {
                 UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                                 loginDto.getUsername(), loginDto.getPassword());
 
-                // xác thực người dùng => cần viết hàm loadUserByUsername
+                // xác thực người dùng
                 Authentication authentication = authenticationManagerBuilder.getObject()
                                 .authenticate(authenticationToken);
 
@@ -66,6 +66,11 @@ public class AuthController {
                 // Lấy thông tin user từ database
                 User user = userService.getUserByUsernameOrEmail(loginDto.getUsername())
                                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+                // Kiểm tra tài khoản có bị khóa không
+                if (!user.getIsActive()) {
+                        throw new CustomException(ErrorCode.USER_NOT_ACTIVE);
+                }
 
                 // Cập nhật last active
                 user.setLastActive(LocalDateTime.now());
@@ -83,6 +88,9 @@ public class AuthController {
                                 .role(user.getRole())
                                 .isActive(user.getIsActive())
                                 .emailVerified(user.getEmailVerified())
+                                .followingCount(user.getFollowingCount())
+                                .followerCount(user.getFollowerCount())
+                                .recipeCount(user.getRecipeCount())
                                 .build();
                 res.setUser(userInfo);
 
@@ -138,6 +146,9 @@ public class AuthController {
                                 .role(user.getRole())
                                 .isActive(user.getIsActive())
                                 .emailVerified(user.getEmailVerified())
+                                .followingCount(user.getFollowingCount())
+                                .followerCount(user.getFollowerCount())
+                                .recipeCount(user.getRecipeCount())
                                 .build();
                 return ResponseEntity.ok().body(userInfo);
         }
@@ -175,6 +186,9 @@ public class AuthController {
                                 .role(user.getRole())
                                 .isActive(user.getIsActive())
                                 .emailVerified(user.getEmailVerified())
+                                .followingCount(user.getFollowingCount())
+                                .followerCount(user.getFollowerCount())
+                                .recipeCount(user.getRecipeCount())
                                 .build();
                 res.setUser(userInfo);
 

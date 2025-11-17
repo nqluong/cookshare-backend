@@ -36,5 +36,8 @@ public class LoginResponseDTO {
         private UserRole role;
         private Boolean isActive;
         private Boolean emailVerified;
+        private Integer followingCount;
+        private Integer followerCount;
+        private Integer recipeCount;
     }
 }

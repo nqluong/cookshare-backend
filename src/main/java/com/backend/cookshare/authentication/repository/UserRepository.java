@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,4 +43,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = :isActive")
     long countByIsActive(@Param("isActive") Boolean isActive);
+
+    @Query("SELECT u FROM User u WHERE LOWER(u.fullName) LIKE LOWER(CONCAT('%', :query, '%'))")
+    List<User> findByFullNameContainingIgnoreCase(@Param("query") String query);
+    Page<User>findByFullNameContainingIgnoreCase(@Param("query") String query,Pageable pageable);
 }
