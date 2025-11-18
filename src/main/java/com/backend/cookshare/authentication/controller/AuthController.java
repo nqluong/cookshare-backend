@@ -88,6 +88,9 @@ public class AuthController {
                                 .role(user.getRole())
                                 .isActive(user.getIsActive())
                                 .emailVerified(user.getEmailVerified())
+                                .followingCount(user.getFollowingCount())
+                                .followerCount(user.getFollowerCount())
+                                .recipeCount(user.getRecipeCount())
                                 .build();
                 res.setUser(userInfo);
 
@@ -143,6 +146,9 @@ public class AuthController {
                                 .role(user.getRole())
                                 .isActive(user.getIsActive())
                                 .emailVerified(user.getEmailVerified())
+                                .followingCount(user.getFollowingCount())
+                                .followerCount(user.getFollowerCount())
+                                .recipeCount(user.getRecipeCount())
                                 .build();
                 return ResponseEntity.ok().body(userInfo);
         }
@@ -180,6 +186,9 @@ public class AuthController {
                                 .role(user.getRole())
                                 .isActive(user.getIsActive())
                                 .emailVerified(user.getEmailVerified())
+                                .followingCount(user.getFollowingCount())
+                                .followerCount(user.getFollowerCount())
+                                .recipeCount(user.getRecipeCount())
                                 .build();
                 res.setUser(userInfo);
 

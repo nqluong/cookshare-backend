@@ -166,12 +166,12 @@
                                 document.getElementById('status').innerText='Vui lòng quay lại ứng dụng.';
                             }
                         }catch(e){
-                            console.error('Cannot close window:', e);
+                            console.log('Cannot close window:', e);
                             document.getElementById('status').innerText='Vui lòng quay lại ứng dụng.';
                         }
                     })
                     .catch(function(e){ 
-                        console.error('Polling error:', e);
+                        console.log('Polling error:', e);
                         document.getElementById('status').innerText='Vui lòng quay lại ứng dụng.';
                     });
             }, 1000);

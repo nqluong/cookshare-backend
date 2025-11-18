@@ -30,15 +30,12 @@ public class CommentService {
     private final NotificationService notificationService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    // Lấy danh sách comment gốc của recipe
     public Page<CommentResponse> getRecipeComments(UUID recipeId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Comment> comments = commentRepository.findRootCommentsByRecipeId(recipeId, pageable);
-
         return comments.map(this::convertToResponse);
     }
 
-    // Lấy danh sách reply của comment
     public List<CommentResponse> getCommentReplies(UUID commentId) {
         List<Comment> replies = commentRepository.findRepliesByParentCommentId(commentId);
         return replies.stream()
@@ -46,21 +43,17 @@ public class CommentService {
                 .collect(Collectors.toList());
     }
 
-    // Thêm comment mới
     @Transactional
     public CommentResponse createComment(CommentRequest request, UUID userId) {
-        // Validate recipe exists
         Recipe recipe = recipeRepository.findById(request.getRecipeId())
                 .orElseThrow(() -> new RuntimeException("Recipe not found"));
 
-        // Validate parent comment if exists
         Comment parentComment = null;
         if (request.getParentCommentId() != null) {
             parentComment = commentRepository.findById(request.getParentCommentId())
                     .orElseThrow(() -> new RuntimeException("Parent comment not found"));
         }
 
-        // Create comment
         Comment comment = Comment.builder()
                 .recipeId(request.getRecipeId())
                 .userId(userId)
@@ -70,35 +63,29 @@ public class CommentService {
 
         comment = commentRepository.save(comment);
 
-        // Load user info
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         comment.setUser(user);
 
         CommentResponse response = convertToResponse(comment);
 
-        // Send WebSocket message to all users viewing this recipe
         sendCommentWebSocketMessage("CREATE", response, request.getRecipeId());
 
-        // Create notification
+        // Tạo notification
         if (parentComment != null) {
-            // Notify parent comment owner
-            notificationService.createCommentNotification(
+            notificationService.createCommentReplyNotification(
                     parentComment.getUserId(),
                     userId,
                     comment.getCommentId(),
-                    request.getRecipeId(),
-                    true
+                    request.getRecipeId()
             );
         } else {
-            // Notify recipe owner
             if (!recipe.getUserId().equals(userId)) {
                 notificationService.createCommentNotification(
                         recipe.getUserId(),
                         userId,
                         comment.getCommentId(),
-                        request.getRecipeId(),
-                        false
+                        request.getRecipeId()
                 );
             }
         }
@@ -106,13 +93,11 @@ public class CommentService {
         return response;
     }
 
-    // Cập nhật comment
     @Transactional
     public CommentResponse updateComment(UUID commentId, CommentRequest request, UUID userId) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new RuntimeException("Comment not found"));
 
-        // Check ownership
         if (!comment.getUserId().equals(userId)) {
             throw new RuntimeException("You can only update your own comments");
         }
@@ -120,35 +105,40 @@ public class CommentService {
         comment.setContent(request.getContent());
         comment = commentRepository.save(comment);
 
-        // Load user info
         User user = userRepository.findById(userId).orElse(null);
         comment.setUser(user);
 
         CommentResponse response = convertToResponse(comment);
 
-        // Send WebSocket message
         sendCommentWebSocketMessage("UPDATE", response, comment.getRecipeId());
 
         return response;
     }
 
-    // Xóa comment
     @Transactional
     public void deleteComment(UUID commentId, UUID userId) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new RuntimeException("Comment not found"));
 
-        // Check ownership
         if (!comment.getUserId().equals(userId)) {
             throw new RuntimeException("You can only delete your own comments");
         }
 
         UUID recipeId = comment.getRecipeId();
 
+        // XÓA THÔNG BÁO: Xóa notification của comment này
+        notificationService.deleteCommentNotifications(commentId, userId);
+
         // CASCADE DELETE: Xóa tất cả replies trước
         if (comment.getParentCommentId() == null) {
-            // Đây là comment cha, xóa tất cả replies
             List<Comment> replies = commentRepository.findRepliesByParentCommentId(commentId);
+
+            // XÓA THÔNG BÁO: Xóa notification của tất cả replies
+            List<UUID> replyIds = replies.stream()
+                    .map(Comment::getCommentId)
+                    .collect(Collectors.toList());
+
+            notificationService.deleteReplyNotifications(replyIds, userId);
 
             // Send WebSocket message cho từng reply bị xóa
             for (Comment reply : replies) {
@@ -160,25 +150,21 @@ public class CommentService {
                 sendCommentWebSocketMessage("DELETE", replyResponse, recipeId);
             }
 
-            // Xóa tất cả replies
             commentRepository.deleteAll(replies);
         }
 
         // Xóa comment chính
         commentRepository.delete(comment);
 
-        // Create a minimal response for deletion
         CommentResponse response = CommentResponse.builder()
                 .commentId(commentId)
                 .recipeId(recipeId)
                 .parentCommentId(comment.getParentCommentId())
                 .build();
 
-        // Send WebSocket message
         sendCommentWebSocketMessage("DELETE", response, recipeId);
     }
 
-    // Convert entity to DTO
     private CommentResponse convertToResponse(Comment comment) {
         Integer replyCount = commentRepository.countRepliesByParentCommentId(comment.getCommentId());
 
@@ -198,7 +184,6 @@ public class CommentService {
                 .build();
     }
 
-    // Send WebSocket message for comment
     private void sendCommentWebSocketMessage(String action, CommentResponse comment, UUID recipeId) {
         CommentWebSocketMessage message = CommentWebSocketMessage.builder()
                 .action(action)
@@ -207,7 +192,6 @@ public class CommentService {
                 .timestamp(LocalDateTime.now())
                 .build();
 
-        // Send to all users subscribed to this recipe's comments
         messagingTemplate.convertAndSend("/topic/recipe/" + recipeId + "/comments", message);
     }
 }

@@ -88,10 +88,7 @@ public class FollowService {
         userRepository.save(follower);
 
         // ========== 🔔 TẠO FOLLOW NOTIFICATION ==========
-        notificationService.createFollowNotification(followerId, followingId);
-
-        // Gửi realtime notification via WebSocket
-        //webSocketNotificationSender.sendFollowNotification(followerId, followingId, follower.getUsername());
+        notificationService.createFollowNotification(followingId, followerId);
 
         log.info("User {} successfully followed user {}", followerId, followingId);
 
@@ -114,6 +111,7 @@ public class FollowService {
         Follow follow = followRepository.findByFollowerIdAndFollowingId(followerId, followingId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOLLOWING));
 
+        notificationService.deleteFollowNotification(followingId, followerId);
         // Xóa quan hệ follow
         followRepository.delete(follow);
 

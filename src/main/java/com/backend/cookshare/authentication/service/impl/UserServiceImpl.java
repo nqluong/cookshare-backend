@@ -59,6 +59,9 @@ public class UserServiceImpl implements UserService {
                 .isActive(true)
                 .createdAt(LocalDateTime.now())
                 .lastActive(LocalDateTime.now())
+                .followerCount(0)
+                .followingCount(0)
+                .recipeCount(0)
                 .build();
         userRepository.save(saveUser);
         return "Ban da dang ky thanh cong!";

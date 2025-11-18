@@ -56,7 +56,8 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
     List<Recipe> findByUserId(UUID userId);
     List<Recipe> findByUserIdAndStatus(UUID userId, RecipeStatus status);
 
-    UUID findUserIdByRecipeId(UUID recipeId);
+    @Query("SELECT r.userId FROM Recipe r WHERE r.id = :recipeId")
+    UUID findUserIdByRecipeId(@Param("recipeId") UUID recipeId);
     //Tong so luot thich cua tat ca cac cong thuc
     @Query("SELECT COALESCE(SUM(r.likeCount), 0) FROM Recipe r WHERE r.userId = :userId")
     Integer getTotalLikeCountByUserId(@Param("userId") UUID userId);
