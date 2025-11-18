@@ -147,8 +147,6 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
             user.setFullName(facebookUserInfo.getName());
 
             // CHỈ upload avatar từ Facebook nếu:
-            // 1. User chưa có avatar, HOẶC
-            // 2. Avatar hiện tại vẫn là từ OAuth (chưa tùy chỉnh)
             if (facebookUserInfo.getPictureUrl() != null && !facebookUserInfo.getPictureUrl().isEmpty()) {
                 String oldAvatarUrl = user.getAvatarUrl();
                 boolean shouldUpdateAvatar = false;
@@ -190,8 +188,6 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
                 user.setFacebookId(facebookUserInfo.getFacebookId());
 
                 // CHỈ upload avatar từ Facebook nếu:
-                // 1. User chưa có avatar, HOẶC
-                // 2. Avatar hiện tại vẫn là từ OAuth (chưa tùy chỉnh)
                 if (facebookUserInfo.getPictureUrl() != null && !facebookUserInfo.getPictureUrl().isEmpty()) {
                     String oldAvatarUrl = user.getAvatarUrl();
                     boolean shouldUpdateAvatar = false;
