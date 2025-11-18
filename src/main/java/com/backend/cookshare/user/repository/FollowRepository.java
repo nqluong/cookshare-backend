@@ -38,4 +38,8 @@ public interface FollowRepository extends JpaRepository<Follow,FollowId> {
     //Lấy danh sách ID của các follower của một người dùng theo phân trang.
     @Query("SELECT f.followerId FROM Follow f WHERE f.followingId = :userId")
     Page<UUID> findFollowerIds(@Param("userId") UUID userId, Pageable pageable);
+
+    // Lấy tất cả follower IDs (không phân trang) - DÙNG ĐỂ GỬI NOTIFICATION
+    @Query("SELECT f.followerId FROM Follow f WHERE f.followingId = :userId")
+    List<UUID> findAllFollowerIdsByUser(@Param("userId") UUID userId);
 }

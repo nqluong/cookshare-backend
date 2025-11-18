@@ -1,6 +1,7 @@
 package com.backend.cookshare.user.repository;
 
 import com.backend.cookshare.user.entity.Notification;
+import com.backend.cookshare.user.enums.NotificationType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
@@ -24,12 +25,41 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     @Query("UPDATE Notification n SET n.isRead = true, n.readAt = CURRENT_TIMESTAMP WHERE n.userId = :userId AND n.isRead = false")
     void markAllAsRead(@Param("userId") UUID userId);
 
-    // Lấy notification chưa gửi qua WebSocket
-    @Query("SELECT n FROM Notification n WHERE n.isSent = false ORDER BY n.createdAt ASC")
-    List<Notification> findUnsentNotifications();
+    // Tìm thông báo theo relatedId và type
+    @Query("SELECT n FROM Notification n WHERE n.relatedId = :relatedId AND n.type = :type")
+    List<Notification> findByRelatedIdAndType(
+            @Param("relatedId") UUID relatedId,
+            @Param("type") NotificationType type
+    );
 
-    // Đánh dấu notification đã gửi
+    // Tìm thông báo theo userId, relatedId và type (dùng cho unlike, unfollow)
+    @Query("SELECT n FROM Notification n WHERE n.userId = :userId AND n.relatedId = :relatedId AND n.type = :type")
+    List<Notification> findByUserIdAndRelatedIdAndType(
+            @Param("userId") UUID userId,
+            @Param("relatedId") UUID relatedId,
+            @Param("type") NotificationType type
+    );
+
+    // Xóa tất cả thông báo liên quan đến một comment
     @Modifying
-    @Query("UPDATE Notification n SET n.isSent = true WHERE n.notificationId = :notificationId")
-    void markAsSent(@Param("notificationId") UUID notificationId);
+    @Query("DELETE FROM Notification n WHERE n.relatedId = :commentId AND n.type = :type")
+    void deleteByRelatedIdAndType(
+            @Param("commentId") UUID commentId,
+            @Param("type") NotificationType type
+    );
+
+    // Xóa thông báo theo danh sách commentIds (dùng cho cascade delete replies)
+    @Modifying
+    @Query("DELETE FROM Notification n WHERE n.relatedId IN :commentIds AND n.type = :type")
+    void deleteByRelatedIdInAndType(
+            @Param("commentIds") List<UUID> commentIds,
+            @Param("type") NotificationType type
+    );
+
+    // Tìm thông báo theo relatedId và nhiều types (dùng cho xóa recipe)
+    @Query("SELECT n FROM Notification n WHERE n.relatedId = :relatedId AND n.type IN :types")
+    List<Notification> findByRelatedIdAndTypes(
+            @Param("relatedId") UUID relatedId,
+            @Param("types") List<NotificationType> types
+    );
 }

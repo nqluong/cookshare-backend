@@ -33,7 +33,7 @@ public class ActivityLog {
     @Column(name = "target_id", columnDefinition = "uuid")
     private UUID targetId;
 
-    @Column(name = "ip_address", columnDefinition = "inet")
+    @Column(name = "ip_address")
     private String ipAddress;
 
     @Column(name = "user_agent", length = 255)

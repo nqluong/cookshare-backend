@@ -15,6 +15,9 @@ import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.common.mapper.PageMapper;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
+import com.backend.cookshare.user.service.NotificationService;
+import com.backend.cookshare.user.service.ActivityLogService;
+import com.backend.cookshare.user.repository.FollowRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -40,19 +43,21 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
     private final UserService userService;
     private final PageMapper pageMapper;
     private final FirebaseStorageService firebaseStorageService;
-
+    private final NotificationService notificationService;
+    private final ActivityLogService activityLogService;
+    private final FollowRepository followRepository;
 
     @Override
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional(readOnly = true)
     public PageResponse<AdminRecipeListResponseDTO> getAllRecipesWithPagination(
             String search, Boolean isPublished, Boolean isFeatured, RecipeStatus status, Pageable pageable) {
-        
-        log.info("Admin đang lấy danh sách công thức với tìm kiếm: {}, xuất bản: {}, nổi bật: {}, trạng thái: {}, trang: {}, kích thước: {}", 
+
+        log.info("Admin đang lấy danh sách công thức với tìm kiếm: {}, xuất bản: {}, nổi bật: {}, trạng thái: {}, trang: {}, kích thước: {}",
                 search, isPublished, isFeatured, status, pageable.getPageNumber(), pageable.getPageSize());
-        
+
         Page<Recipe> recipePage = recipeRepository.findAllWithAdminFilters(search, isPublished, isFeatured, status, pageable);
-        
+
         return pageMapper.toPageResponse(recipePage, this::mapToListResponseDTO);
     }
 
@@ -116,10 +121,10 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
     @Transactional
     public AdminRecipeDetailResponseDTO updateRecipe(UUID recipeId, AdminRecipeUpdateRequest request) {
         log.info("Admin đang cập nhật công thức: {} với thông tin: {}", recipeId, request);
-        
+
         Recipe recipe = recipeRepository.findById(recipeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
-        
+
         // Cập nhật thông tin công thức
         if (request.getTitle() != null) recipe.setTitle(request.getTitle());
         if (request.getDescription() != null) recipe.setDescription(request.getDescription());
@@ -137,10 +142,13 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
         if (request.getSeasonalTags() != null) recipe.setSeasonalTags(request.getSeasonalTags());
         if (request.getAverageRating() != null) recipe.setAverageRating(request.getAverageRating());
         if (request.getRatingCount() != null) recipe.setRatingCount(request.getRatingCount());
-        
+
         recipe.setUpdatedAt(LocalDateTime.now());
         recipeRepository.save(recipe);
-        
+
+        // LOG ACTIVITY: Admin cập nhật recipe
+        activityLogService.logRecipeActivity(recipe.getUserId(), recipeId, "UPDATE");
+
         log.info("Cập nhật công thức thành công: {}", recipeId);
         return getRecipeDetailById(recipeId);
     }
@@ -148,7 +156,7 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
     @Override
     public void approveRecipe(UUID recipeId, AdminRecipeApprovalRequest request) {
         log.info("Admin đang phê duyệt công thức: {} với trạng thái: {}", recipeId, request.getApproved());
-        
+
         Recipe recipe = recipeRepository.findById(recipeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
 
@@ -158,17 +166,52 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
         }
 
         if (request.getApproved()) {
-            // Phê duyệt công thức
+            // ========== PHÊ DUYỆT CÔNG THỨC ==========
             recipe.setStatus(RecipeStatus.APPROVED);
             recipe.setIsPublished(true);
             log.info("Công thức {} đã được phê duyệt", recipeId);
+
+            // LOG ACTIVITY: Admin duyệt recipe
+            activityLogService.logRecipeActivity(recipe.getUserId(), recipeId, "APPROVE");
+
+            // ========== 🔔 THÔNG BÁO CHO CHỦ CÔNG THỨC ==========
+            notificationService.createRecipeApprovedNotification(
+                    recipe.getUserId(),
+                    recipeId,
+                    recipe.getTitle()
+            );
+
+            // ========== 🔔 THÔNG BÁO CHO FOLLOWERS ==========
+            // Lấy danh sách followers của chủ công thức
+            List<UUID> followerIds = followRepository.findAllFollowerIdsByUser(recipe.getUserId());
+
+            if (!followerIds.isEmpty()) {
+                // Lấy thông tin chủ công thức
+                User recipeOwner = userService.getUserById(recipe.getUserId())
+                        .orElse(null);
+
+                if (recipeOwner != null) {
+                    notificationService.createNewRecipeNotificationForFollowers(
+                            followerIds,
+                            recipe.getUserId(),
+                            recipeOwner.getFullName(),
+                            recipeId,
+                            recipe.getTitle()
+                    );
+                    log.info("Đã gửi thông báo công thức mới đến {} followers", followerIds.size());
+                }
+            }
+
         } else {
-            // Từ chối công thức
+            // ========== TỪ CHỐI CÔNG THỨC ==========
             recipe.setStatus(RecipeStatus.REJECTED);
             recipe.setIsPublished(false);
             log.info("Công thức {} đã bị từ chối với lý do: {}", recipeId, request.getRejectionReason());
+
+            // LOG ACTIVITY: Admin từ chối recipe
+            activityLogService.logRecipeActivity(recipe.getUserId(), recipeId, "REJECT");
         }
-        
+
         recipe.setUpdatedAt(LocalDateTime.now());
         recipeRepository.save(recipe);
     }
@@ -176,52 +219,58 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
     @Override
     public void deleteRecipe(UUID recipeId) {
         log.info("Admin đang xóa công thức: {}", recipeId);
-        
+
         Recipe recipe = recipeRepository.findById(recipeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
-        
+
+        // ========== XÓA TẤT CẢ THÔNG BÁO LIÊN QUAN ==========
+        notificationService.deleteRecipeNotifications(recipeId);
+
+        // LOG ACTIVITY: Admin xóa recipe
+        activityLogService.logRecipeActivity(recipe.getUserId(), recipeId, "DELETE");
+
         recipeRepository.delete(recipe);
         log.info("Công thức {} đã được xóa thành công", recipeId);
     }
 
     @Override
     public PageResponse<AdminRecipeListResponseDTO> getRecipesByStatus(RecipeStatus status, Pageable pageable) {
-        log.info("Admin đang lấy danh sách công thức theo trạng thái: {} - trang: {}, kích thước: {}", 
+        log.info("Admin đang lấy danh sách công thức theo trạng thái: {} - trang: {}, kích thước: {}",
                 status, pageable.getPageNumber(), pageable.getPageSize());
-        
+
         Page<Recipe> recipePage = recipeRepository.findByStatusOrderByCreatedAtDesc(status, pageable);
-        
+
         return pageMapper.toPageResponse(recipePage, this::mapToListResponseDTO);
     }
 
     @Override
     public PageResponse<AdminRecipeListResponseDTO> getPendingRecipes(String search, Pageable pageable) {
-        log.info("Admin đang lấy danh sách công thức chờ phê duyệt - trang: {}, kích thước: {}, tìm kiếm: {}", 
+        log.info("Admin đang lấy danh sách công thức chờ phê duyệt - trang: {}, kích thước: {}, tìm kiếm: {}",
                 pageable.getPageNumber(), pageable.getPageSize(), search);
-        
+
         return getAllRecipesWithPagination(search, null, null, RecipeStatus.PENDING, pageable);
     }
 
     @Override
     public PageResponse<AdminRecipeListResponseDTO> getApprovedRecipes(String search, Pageable pageable) {
-        log.info("Admin đang lấy danh sách công thức đã được phê duyệt - trang: {}, kích thước: {}, tìm kiếm: {}", 
+        log.info("Admin đang lấy danh sách công thức đã được phê duyệt - trang: {}, kích thước: {}, tìm kiếm: {}",
                 pageable.getPageNumber(), pageable.getPageSize(), search);
-        
+
         return getAllRecipesWithPagination(search, null, null, RecipeStatus.APPROVED, pageable);
     }
 
     @Override
     public PageResponse<AdminRecipeListResponseDTO> getRejectedRecipes(String search, Pageable pageable) {
-        log.info("Admin đang lấy danh sách công thức bị từ chối - trang: {}, kích thước: {}, tìm kiếm: {}", 
+        log.info("Admin đang lấy danh sách công thức bị từ chối - trang: {}, kích thước: {}, tìm kiếm: {}",
                 pageable.getPageNumber(), pageable.getPageSize(), search);
-        
+
         return getAllRecipesWithPagination(search, null, null, RecipeStatus.REJECTED, pageable);
     }
 
     @Override
     public void setFeaturedRecipe(UUID recipeId, Boolean isFeatured) {
         log.info("Admin đang đặt công thức {} làm nổi bật: {}", recipeId, isFeatured);
-        
+
         Recipe recipe = recipeRepository.findById(recipeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
 
@@ -232,14 +281,14 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
         recipe.setIsFeatured(isFeatured);
         recipe.setUpdatedAt(LocalDateTime.now());
         recipeRepository.save(recipe);
-        
+
         log.info("Công thức {} đã được đặt làm nổi bật: {}", recipeId, isFeatured);
     }
 
     @Override
     public void setPublishedRecipe(UUID recipeId, Boolean isPublished) {
         log.info("Admin đang xuất bản công thức {}: {}", recipeId, isPublished);
-        
+
         Recipe recipe = recipeRepository.findById(recipeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
 
@@ -250,15 +299,13 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
         recipe.setIsPublished(isPublished);
         recipe.setUpdatedAt(LocalDateTime.now());
         recipeRepository.save(recipe);
-        
+
         log.info("Công thức {} đã được xuất bản: {}", recipeId, isPublished);
     }
 
-
-
     private AdminRecipeListResponseDTO mapToListResponseDTO(Recipe recipe) {
         User user = userService.getUserById(recipe.getUserId()).orElse(null);
-        
+
         return AdminRecipeListResponseDTO.builder()
                 .recipeId(recipe.getRecipeId())
                 .userId(recipe.getUserId())
@@ -287,5 +334,4 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
                 .userEmail(user != null ? user.getEmail() : null)
                 .build();
     }
-
 }

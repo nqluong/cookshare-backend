@@ -11,6 +11,8 @@ import com.backend.cookshare.recipe_management.mapper.RecipeMapper;
 import com.backend.cookshare.recipe_management.repository.*;
 import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.recipe_management.service.RecipeService;
+import com.backend.cookshare.user.service.ActivityLogService;
+import com.backend.cookshare.user.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -42,6 +44,8 @@ public class RecipeServiceImpl implements RecipeService {
     private final RecipeMapper recipeMapper;
     private final RecipeLoaderHelper recipeLoaderHelper;
     private final FirebaseStorageService fileStorageService;
+    private final ActivityLogService activityLogService;
+    private final NotificationService notificationService;
 
     // ================= CREATE =================
 
@@ -88,6 +92,7 @@ public class RecipeServiceImpl implements RecipeService {
         UUID recipeId = savedRecipe.getRecipeId();
 
         saveRecipeRelations(recipeId, request);
+        activityLogService.logRecipeActivity(savedRecipe.getUserId(), recipeId, "CREATE");
         return loadRecipeResponse(savedRecipe);
     }
 
@@ -272,6 +277,7 @@ public class RecipeServiceImpl implements RecipeService {
         recipeCategoryRepository.deleteAllByRecipeId(id);
 
         saveRecipeRelations(id, request);
+        activityLogService.logRecipeActivity(updatedRecipe.getUserId(), id, "UPDATE");
 
         log.info("✅ Recipe {} cập nhật thành công", id);
 
@@ -285,6 +291,7 @@ public class RecipeServiceImpl implements RecipeService {
     public RecipeResponse getRecipeById(UUID id) {
         Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
+        recipe.setViewCount(recipe.getViewCount()+1);
         return loadRecipeResponse(recipe);
     }
 
@@ -293,6 +300,7 @@ public class RecipeServiceImpl implements RecipeService {
     public void deleteRecipe(UUID id) {
         Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
+        notificationService.deleteRecipeNotifications(id);
 
         if (recipe.getFeaturedImage() != null) {
             fileStorageService.deleteFile(recipe.getFeaturedImage());
@@ -304,6 +312,7 @@ public class RecipeServiceImpl implements RecipeService {
         recipeTagRepository.deleteAllByRecipeId(id);
         recipeCategoryRepository.deleteAllByRecipeId(id);
 
+        activityLogService.logRecipeActivity(recipe.getUserId(), id, "DELETE");
         recipeRepository.deleteById(id);
     }
 

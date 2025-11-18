@@ -118,6 +118,9 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
                 .emailVerified(user.getEmailVerified())
                 .avatarUrl(user.getAvatarUrl()) // Thêm avatarUrl từ Firebase
                 .bio(user.getBio()) // Thêm bio
+                .followingCount(user.getFollowingCount())
+                .followerCount(user.getFollowerCount())
+                .recipeCount(user.getRecipeCount())
                 .build();
 
         String accessToken = securityUtil.createAccessToken(user.getUsername(), userInfo);
