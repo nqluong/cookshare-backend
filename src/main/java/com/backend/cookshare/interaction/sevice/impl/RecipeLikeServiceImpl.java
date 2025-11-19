@@ -83,7 +83,7 @@ public class RecipeLikeServiceImpl implements RecipeLikeService {
         RecipeLike recipeLike = recipeLikeRepository.findByUserIdAndRecipeId(currentUser.getUserId(), recipeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_LIKED));
 
-        notificationService.deleteLikeNotification(recipeRepository.findUserIdByRecipeId(recipeId), currentUser.getUserId(), recipeId);
+//        notificationService.deleteLikeNotification(recipeRepository.findUserIdByRecipeId(recipeId), currentUser.getUserId(), recipeId);
         recipeLikeRepository.delete(recipeLike);
         recipe.setLikeCount(Math.max(0, recipe.getLikeCount() - 1));
         recipeRepository.save(recipe);
