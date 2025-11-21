@@ -41,42 +41,52 @@ public class RecipeRatingServiceimpl implements RecipeRatingService {
     @Override
     @Transactional
     public RecipeRatingResponse ratingrecipe(UUID recipeId, Integer rate) {
+
         User currentUser = getCurrentUser();
         Recipe recipe = recipeRepository.findById(recipeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
 
-        // Tìm xem user đã rate chưa
         Optional<RecipeRating> existingRating = recipeRatingRespository
                 .findByUserIdAndRecipeId(currentUser.getUserId(), recipeId);
-        log.info("rate: {}", existingRating);
+
         RecipeRating rating;
+
         if (existingRating.isPresent()) {
-            // ĐÃ RATE → CẬP NHẬT
+            // update đánh giá
             rating = existingRating.get();
             rating.setRating(rate);
             rating.setUpdatedAt(LocalDateTime.now());
         } else {
-            // CHƯA RATE → TẠO MỚI
+            // tạo đánh giá mới
             rating = RecipeRating.builder()
                     .userId(currentUser.getUserId())
                     .recipeId(recipeId)
                     .rating(rate)
                     .review(null)
                     .build();
-        }
 
-        rating = recipeRatingRespository.save(rating);
-
-        // Cập nhật lại average rating
-        BigDecimal avg = recipeRatingRespository.getAverageRatingByRecipeId(recipeId);
-        recipe.setAverageRating(avg);
-
-        if (existingRating.isEmpty()) {
             recipe.setRatingCount(recipe.getRatingCount() + 1);
         }
+
+        recipeRatingRespository.save(rating);
+
+        // cập nhật avg mới
+        BigDecimal avg = recipeRatingRespository.getAverageRatingByRecipeId(recipeId);
+        recipe.setAverageRating(avg);
         recipeRepository.save(recipe);
-        log.info("recipe: {}",recipe);
-        return recipeRatingMapper.toRecipeRatingResponse(rating);
+
+        // trả về response kèm avg + count
+        return RecipeRatingResponse.builder()
+                .ratingId(rating.getRatingId())
+                .userId(rating.getUserId())
+                .recipeId(rating.getRecipeId())
+                .rating(rating.getRating())
+                .review(rating.getReview())
+                .createdAt(rating.getCreatedAt())
+                .updatedAt(rating.getUpdatedAt())
+                .averageRating(recipe.getAverageRating())
+                .ratingCount(recipe.getRatingCount())
+                .build();
     }
     @Override
     public Boolean isRecipeRated(UUID recipeId) {
