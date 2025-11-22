@@ -3,11 +3,20 @@ package com.backend.cookshare.recipe_management.service.impl;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
 import com.backend.cookshare.recipe_management.dto.request.RecipeRequest;
+import com.backend.cookshare.recipe_management.dto.request.CategoryRequest;
+import com.backend.cookshare.recipe_management.dto.request.TagRequest;
+import com.backend.cookshare.recipe_management.dto.request.IngredientRequest;
 import com.backend.cookshare.recipe_management.dto.response.RecipeDetailsResult;
 import com.backend.cookshare.recipe_management.dto.response.RecipeResponse;
 import com.backend.cookshare.recipe_management.entity.Recipe;
+import com.backend.cookshare.recipe_management.entity.Category;
+import com.backend.cookshare.recipe_management.entity.Tag;
+import com.backend.cookshare.recipe_management.entity.Ingredient;
 import com.backend.cookshare.recipe_management.enums.RecipeStatus;
 import com.backend.cookshare.recipe_management.mapper.RecipeMapper;
+import com.backend.cookshare.recipe_management.mapper.CategoryMapper;
+import com.backend.cookshare.recipe_management.mapper.TagMapper;
+import com.backend.cookshare.recipe_management.mapper.IngredientMapper;
 import com.backend.cookshare.recipe_management.repository.*;
 import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.recipe_management.service.RecipeService;
@@ -22,14 +31,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.ArrayList;
+import java.text.Normalizer;
 
 @Service
 @RequiredArgsConstructor
@@ -41,13 +46,19 @@ public class RecipeServiceImpl implements RecipeService {
     private final RecipeIngredientRepository recipeIngredientRepository;
     private final RecipeTagRepository recipeTagRepository;
     private final RecipeCategoryRepository recipeCategoryRepository;
+    private final CategoryRepository categoryRepository;
+    private final TagRepository tagRepository;
+    private final IngredientRepository ingredientRepository;
     private final RecipeMapper recipeMapper;
+    private final CategoryMapper categoryMapper;
+    private final TagMapper tagMapper;
+    private final IngredientMapper ingredientMapper;
     private final RecipeLoaderHelper recipeLoaderHelper;
     private final FirebaseStorageService fileStorageService;
     private final ActivityLogService activityLogService;
     private final NotificationService notificationService;
 
-    // ================= CREATE =================
+    // ================= CREATE WITH BATCH SUPPORT =================
 
     @Override
     @Transactional
@@ -60,10 +71,7 @@ public class RecipeServiceImpl implements RecipeService {
 
         // Upload và map ảnh cho từng bước theo stepNumber
         if (request.getSteps() != null && stepImages != null && !stepImages.isEmpty()) {
-            // Tạo map từ stepNumber -> imageUrl
             Map<Integer, String> stepImageMap = mapStepImages(stepImages);
-
-            // Gán ảnh cho đúng step dựa trên stepNumber
             request.getSteps().forEach(step -> {
                 Integer stepNumber = step.getStepNumber();
                 if (stepNumber != null && stepImageMap.containsKey(stepNumber)) {
@@ -76,9 +84,65 @@ public class RecipeServiceImpl implements RecipeService {
         return createRecipe(request);
     }
 
+
     @Override
     @Transactional
     public RecipeResponse createRecipe(RecipeRequest request) {
+        log.info("🚀 Bắt đầu tạo recipe với batch data");
+
+        // 1️⃣ TẠO CÁC CATEGORIES MỚI (nếu có)
+        List<UUID> finalCategoryIds = new ArrayList<>();
+        if (request.getNewCategories() != null && !request.getNewCategories().isEmpty()) {
+            log.info("📁 Tạo {} categories mới", request.getNewCategories().size());
+            for (CategoryRequest catReq : request.getNewCategories()) {
+                Category category = createCategoryIfNotExists(catReq);
+                finalCategoryIds.add(category.getCategoryId());
+            }
+        }
+        // Thêm các category đã có sẵn
+        if (request.getCategoryIds() != null) {
+            finalCategoryIds.addAll(request.getCategoryIds());
+        }
+        request.setCategoryIds(finalCategoryIds);
+
+        // 2️⃣ TẠO CÁC TAGS MỚI (nếu có)
+        List<UUID> finalTagIds = new ArrayList<>();
+        if (request.getNewTags() != null && !request.getNewTags().isEmpty()) {
+            log.info("🏷️ Tạo {} tags mới", request.getNewTags().size());
+            for (TagRequest tagReq : request.getNewTags()) {
+                Tag tag = createTagIfNotExists(tagReq);
+                finalTagIds.add(tag.getTagId());
+            }
+        }
+        // Thêm các tag đã có sẵn
+        if (request.getTagIds() != null) {
+            finalTagIds.addAll(request.getTagIds());
+        }
+        request.setTagIds(finalTagIds);
+
+        // 3️⃣ TẠO CÁC INGREDIENTS MỚI (nếu có)
+        if (request.getNewIngredients() != null && !request.getNewIngredients().isEmpty()) {
+            log.info("🥕 Tạo {} ingredients mới", request.getNewIngredients().size());
+
+            // Collect created ingredient UUIDs and append to request.ingredients
+            List<UUID> createdIngredientIds = new ArrayList<>();
+            for (IngredientRequest ingReq : request.getNewIngredients()) {
+                Ingredient ingredient = createIngredientIfNotExists(ingReq);
+                createdIngredientIds.add(ingredient.getIngredientId());
+                log.info("Created ingredient {} -> {}", ingredient.getName(), ingredient.getIngredientId());
+            }
+
+            // Merge created ingredient IDs into request.ingredients so saveRecipeRelations can persist them
+            List<UUID> mergedIngredients = new ArrayList<>();
+            if (request.getIngredients() != null) {
+                mergedIngredients.addAll(request.getIngredients());
+            }
+            mergedIngredients.addAll(createdIngredientIds);
+            request.setIngredients(mergedIngredients);
+
+        }
+
+        // 5️⃣ TẠO RECIPE VỚI DỮ LIỆU ĐÃ HOÀN CHỈNH
         Recipe recipe = recipeMapper.toEntity(request);
 
         if (recipe.getSlug() == null || recipe.getSlug().isEmpty()) {
@@ -93,10 +157,77 @@ public class RecipeServiceImpl implements RecipeService {
 
         saveRecipeRelations(recipeId, request);
         activityLogService.logRecipeActivity(savedRecipe.getUserId(), recipeId, "CREATE");
+
+        log.info("✅ Recipe {} tạo thành công với tất cả dữ liệu mới", recipeId);
+
         return loadRecipeResponse(savedRecipe);
     }
 
-    // ================= UPDATE =================
+
+
+    // ================= HELPER: TẠO CATEGORY NẾU CHƯA TỒN TẠI =================
+
+    private Category createCategoryIfNotExists(CategoryRequest request) {
+        // Kiểm tra đã tồn tại chưa (theo tên)
+        Optional<Category> existing = categoryRepository.findByName(request.getName());
+        if (existing.isPresent()) {
+            log.info("Category '{}' đã tồn tại, sử dụng lại", request.getName());
+            return existing.get();
+        }
+
+        // Tạo mới
+        Category category = categoryMapper.toEntity(request);
+        category.setSlug(generateSlugVietnamese(request.getName()));
+        category.setCreatedAt(LocalDateTime.now());
+
+        Category saved = categoryRepository.save(category);
+        log.info("✅ Đã tạo category mới: {} ({})", saved.getName(), saved.getCategoryId());
+        return saved;
+    }
+
+    // ================= HELPER: TẠO TAG NẾU CHƯA TỒN TẠI =================
+
+    private Tag createTagIfNotExists(TagRequest request) {
+        // Kiểm tra đã tồn tại chưa
+        if (tagRepository.existsByNameIgnoreCase(request.getName())) {
+            Optional<Tag> existing = tagRepository.findByNameIgnoreCase(request.getName());
+            if (existing.isPresent()) {
+                log.info("Tag '{}' đã tồn tại, sử dụng lại", request.getName());
+                return existing.get();
+            }
+        }
+
+        // Tạo mới
+        Tag tag = tagMapper.toEntity(request);
+        tag.setSlug(generateSlug(request.getName()));
+        tag.setCreatedAt(LocalDateTime.now());
+        tag.setUsageCount(0);
+
+        Tag saved = tagRepository.save(tag);
+        log.info("✅ Đã tạo tag mới: {} ({})", saved.getName(), saved.getTagId());
+        return saved;
+    }
+
+    // ================= HELPER: TẠO INGREDIENT NẾU CHƯA TỒN TẠI =================
+
+    private Ingredient createIngredientIfNotExists(IngredientRequest request) {
+        // Kiểm tra đã tồn tại chưa
+        Optional<Ingredient> existing = ingredientRepository.findByNameIgnoreCase(request.getName());
+        if (existing.isPresent()) {
+            log.info("Ingredient '{}' đã tồn tại, sử dụng lại", request.getName());
+            return existing.get();
+        }
+
+        // Tạo mới
+        Ingredient ingredient = ingredientMapper.toEntity(request);
+        ingredient.setSlug(generateSlug(request.getName()));
+        ingredient.setCreatedAt(LocalDateTime.now());
+        ingredient.setUsageCount(0);
+
+        Ingredient saved = ingredientRepository.save(ingredient);
+        log.info("✅ Đã tạo ingredient mới: {} ({})", saved.getName(), saved.getIngredientId());
+        return saved;
+    }
 
     @Override
     @Transactional
@@ -193,6 +324,62 @@ public class RecipeServiceImpl implements RecipeService {
             }
         }
 
+        // ========== TẠO CATEGORIES MỚI (nếu có) ==========
+
+        List<UUID> finalCategoryIds = new ArrayList<>();
+        if (request.getNewCategories() != null && !request.getNewCategories().isEmpty()) {
+            log.info("📁 Tạo {} categories mới", request.getNewCategories().size());
+            for (CategoryRequest catReq : request.getNewCategories()) {
+                Category category = createCategoryIfNotExists(catReq);
+                finalCategoryIds.add(category.getCategoryId());
+            }
+        }
+        if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
+            finalCategoryIds.addAll(request.getCategoryIds());
+        } else if (finalCategoryIds.isEmpty()) {
+            finalCategoryIds.addAll(oldCategoryIds);
+            log.info("↩️ Giữ lại {} categories cũ", oldCategoryIds.size());
+        }
+        request.setCategoryIds(finalCategoryIds);
+
+        // ========== TẠO TAGS MỚI (nếu có) ==========
+
+        List<UUID> finalTagIds = new ArrayList<>();
+        if (request.getNewTags() != null && !request.getNewTags().isEmpty()) {
+            log.info("🏷️ Tạo {} tags mới", request.getNewTags().size());
+            for (TagRequest tagReq : request.getNewTags()) {
+                Tag tag = createTagIfNotExists(tagReq);
+                finalTagIds.add(tag.getTagId());
+            }
+        }
+        if (request.getTagIds() != null && !request.getTagIds().isEmpty()) {
+            finalTagIds.addAll(request.getTagIds());
+        } else if (finalTagIds.isEmpty()) {
+            finalTagIds.addAll(oldTagIds);
+            log.info("↩️ Giữ lại {} tags cũ", oldTagIds.size());
+        }
+        request.setTagIds(finalTagIds);
+
+        // ========== TẠO INGREDIENTS MỚI (nếu có) ==========
+
+        if (request.getNewIngredients() != null && !request.getNewIngredients().isEmpty()) {
+            log.info("🥕 Tạo {} ingredients mới", request.getNewIngredients().size());
+
+            List<UUID> createdIngredientIds = new ArrayList<>();
+            for (IngredientRequest ingReq : request.getNewIngredients()) {
+                Ingredient ingredient = createIngredientIfNotExists(ingReq);
+                createdIngredientIds.add(ingredient.getIngredientId());
+                log.info("Created ingredient {} -> {}", ingredient.getName(), ingredient.getIngredientId());
+            }
+
+            List<UUID> mergedIngredients = new ArrayList<>();
+            if (request.getIngredients() != null) {
+                mergedIngredients.addAll(request.getIngredients());
+            }
+            mergedIngredients.addAll(createdIngredientIds);
+            request.setIngredients(mergedIngredients);
+        }
+
         // ========== INGREDIENT DETAILS ==========
 
         if (request.getIngredientDetails() != null && !request.getIngredientDetails().isEmpty()) {
@@ -215,7 +402,6 @@ public class RecipeServiceImpl implements RecipeService {
                 }
             }
         } else {
-            // Nếu không gửi gì -> giữ nguyên toàn bộ nguyên liệu cũ
             request.setIngredientDetails(oldIngredientMap.entrySet().stream().map(entry -> {
                 UUID ingredientId = entry.getKey();
                 Map<String, String> details = entry.getValue();
@@ -233,18 +419,6 @@ public class RecipeServiceImpl implements RecipeService {
             log.info("↩️ Giữ nguyên toàn bộ nguyên liệu cũ ({} items)", request.getIngredientDetails().size());
         }
 
-        // ========== TAGS & CATEGORIES ==========
-
-        if (request.getTagIds() == null || request.getTagIds().isEmpty()) {
-            request.setTagIds(oldTagIds);
-            log.info("↩️ Giữ lại {} tags cũ", oldTagIds.size());
-        }
-
-        if (request.getCategoryIds() == null || request.getCategoryIds().isEmpty()) {
-            request.setCategoryIds(oldCategoryIds);
-            log.info("↩️ Giữ lại {} categories cũ", oldCategoryIds.size());
-        }
-
         // ========== CẬP NHẬT THÔNG TIN RECIPE ==========
 
         RecipeStatus oldStatus = recipe.getStatus();
@@ -252,13 +426,11 @@ public class RecipeServiceImpl implements RecipeService {
         recipeMapper.updateRecipeFromDto(request, recipe);
         recipe.setUpdatedAt(LocalDateTime.now());
 
-        // Giữ lại status cũ nếu request không gửi
         if (request.getStatus() == null) {
             recipe.setStatus(oldStatus);
             log.info("Giữ lại status cũ: {}", oldStatus);
         }
 
-        // Cập nhật slug nếu tiêu đề thay đổi
         if (request.getTitle() != null && !request.getTitle().equalsIgnoreCase(recipe.getTitle())) {
             recipe.setSlug(generateSlug(request.getTitle()));
         } else if (recipe.getSlug() == null || recipe.getSlug().isEmpty()) {
@@ -277,6 +449,7 @@ public class RecipeServiceImpl implements RecipeService {
         recipeCategoryRepository.deleteAllByRecipeId(id);
 
         saveRecipeRelations(id, request);
+
         activityLogService.logRecipeActivity(updatedRecipe.getUserId(), id, "UPDATE");
 
         log.info("✅ Recipe {} cập nhật thành công", id);
@@ -284,8 +457,7 @@ public class RecipeServiceImpl implements RecipeService {
         return loadRecipeResponse(updatedRecipe);
     }
 
-
-    // ================= READ / DELETE =================
+    // ================= READ / DELETE (GIỮ NGUYÊN) =================
 
     @Override
     public RecipeResponse getRecipeById(UUID id) {
@@ -306,7 +478,6 @@ public class RecipeServiceImpl implements RecipeService {
             fileStorageService.deleteFile(recipe.getFeaturedImage());
         }
 
-        // Xóa các liên kết phụ
         recipeStepRepository.deleteAllByRecipeId(id);
         recipeIngredientRepository.deleteAllByRecipeId(id);
         recipeTagRepository.deleteAllByRecipeId(id);
@@ -351,19 +522,15 @@ public class RecipeServiceImpl implements RecipeService {
         response.setCategories(details.categories);
         response.setFullName(details.fullName);
 
-        // Convert tất cả URL ảnh sang Firebase URL đầy đủ
         convertImageUrlsToFirebase(response);
-
         return response;
     }
 
     private void convertImageUrlsToFirebase(RecipeResponse response) {
-        // Convert featured image
         if (response.getFeaturedImage() != null) {
             response.setFeaturedImage(fileStorageService.convertPathToFirebaseUrl(response.getFeaturedImage()));
         }
 
-        // Convert step images
         if (response.getSteps() != null) {
             response.getSteps().forEach(step -> {
                 if (step.getImageUrl() != null) {
@@ -377,6 +544,16 @@ public class RecipeServiceImpl implements RecipeService {
         return title.toLowerCase()
                 .replaceAll("[^a-z0-9]+", "-")
                 .replaceAll("(^-|-$)", "");
+    }
+
+    private String generateSlugVietnamese(String input) {
+        if (input == null) return null;
+        String normalized = Normalizer.normalize(input, Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+        return normalized.toLowerCase()
+                .trim()
+                .replaceAll("[^a-z0-9\\s-]", "")
+                .replaceAll("\\s+", "-");
     }
 
     private Map<Integer, String> mapStepImages(List<MultipartFile> stepImages) {
@@ -397,8 +574,6 @@ public class RecipeServiceImpl implements RecipeService {
                         } catch (NumberFormatException e) {
                             log.warn("Invalid step number in filename: {}", originalFilename);
                         }
-                    } else {
-                        log.warn("Filename doesn't match step pattern: {}", originalFilename);
                     }
                 }
             }
@@ -424,20 +599,18 @@ public class RecipeServiceImpl implements RecipeService {
         }
 
         // Lưu nguyên liệu
-        // Ưu tiên lưu từ ingredientDetails (có đầy đủ quantity + unit)
         if (request.getIngredientDetails() != null && !request.getIngredientDetails().isEmpty()) {
             request.getIngredientDetails().forEach(detail ->
                     recipeIngredientRepository.insertRecipeIngredient(
                             recipeId,
                             detail.getIngredientId(),
-                            detail.getQuantity().toString(),  // ✅ Lưu quantity
-                            detail.getUnit(),                 // ✅ Lưu unit
+                            detail.getQuantity().toString(),
+                            detail.getUnit(),
                             detail.getNotes(),
                             detail.getOrderIndex()
                     )
             );
         } else if (request.getIngredients() != null) {
-            // Fallback cho API cũ
             request.getIngredients().forEach(ingredientId ->
                     recipeIngredientRepository.insertRecipeIngredient(
                             recipeId, ingredientId, null, null, null, null
