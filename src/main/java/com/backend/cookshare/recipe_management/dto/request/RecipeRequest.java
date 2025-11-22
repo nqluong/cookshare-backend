@@ -55,6 +55,9 @@ public class RecipeRequest {
     // 🔥 Thêm tag + category
     List<UUID> tagIds;
     List<UUID> categoryIds;
+    private List<CategoryRequest> newCategories;
+    private List<TagRequest> newTags;
+    private List<IngredientRequest> newIngredients;
 
     Boolean isPublished;
     Boolean isFeatured;
