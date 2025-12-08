@@ -1,4 +1,5 @@
 package com.backend.cookshare.system.entity;
+import com.backend.cookshare.system.enums.ReportActionType;
 import com.backend.cookshare.system.enums.ReportStatus;
 import com.backend.cookshare.system.enums.ReportType;
 import lombok.AllArgsConstructor;
@@ -48,6 +49,16 @@ public class Report {
     @Column(name = "status", length = 50)
     @Builder.Default
     private ReportStatus status = ReportStatus.PENDING;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "action_taken")
+    private ReportActionType actionTaken;
+
+    @Column(name = "action_description", columnDefinition = "TEXT")
+    private String actionDescription;
+
+    @Column(name = "reporters_notified")
+    private Boolean reportersNotified = false;
 
     @Column(name = "admin_note", columnDefinition = "TEXT")
     private String adminNote;
