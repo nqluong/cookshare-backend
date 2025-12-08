@@ -15,11 +15,19 @@ import java.util.UUID;
 public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> {
 
     // Tổng số công thức
-    @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = true")
+    @Query("""
+            SELECT COUNT(r) FROM Recipe r 
+            WHERE r.isPublished = true AND r.status = 'APPROVED'
+            """)
     Long countTotalRecipes();
 
     // Công thức mới theo khoảng thời gian
-    @Query("SELECT COUNT(r) FROM Recipe r WHERE r.createdAt >= :startDate AND r.isPublished = true")
+    @Query("""
+            SELECT COUNT(r) FROM Recipe r 
+            WHERE r.createdAt >= :startDate 
+            AND r.isPublished = true 
+            AND r.status = 'APPROVED'
+            """)
     Long countNewRecipes(@Param("startDate") LocalDateTime startDate);
 
     // Phân bố theo danh mục
@@ -27,7 +35,9 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
         SELECT c.name as name, COUNT(rc.recipe_id) as count
         FROM categories c
         LEFT JOIN recipe_categories rc ON c.category_id = rc.category_id
-        LEFT JOIN recipes r ON rc.recipe_id = r.recipe_id AND r.is_published = true
+        LEFT JOIN recipes r ON rc.recipe_id = r.recipe_id 
+          AND r.is_published = true 
+          AND r.status = 'APPROVED'
         WHERE c.is_active = true
         GROUP BY c.category_id, c.name
         ORDER BY count DESC
@@ -38,7 +48,9 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
     @Query(value = """
         SELECT difficulty, COUNT(*) as count
         FROM recipes
-        WHERE is_published = true AND difficulty IS NOT NULL
+        WHERE is_published = true 
+        AND status = 'APPROVED'
+        AND difficulty IS NOT NULL
         GROUP BY difficulty
         ORDER BY count DESC
         """, nativeQuery = true)
@@ -59,7 +71,7 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
             r.created_at as createdAt
         FROM recipes r
         INNER JOIN users u ON r.user_id = u.user_id
-        WHERE r.is_published = true
+        WHERE r.is_published = true AND r.status = 'APPROVED'
         ORDER BY r.view_count DESC
         LIMIT :limit
         """, nativeQuery = true)
@@ -80,7 +92,7 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
             r.created_at as createdAt
         FROM recipes r
         INNER JOIN users u ON r.user_id = u.user_id
-        WHERE r.is_published = true
+        WHERE r.is_published = true AND r.status = 'APPROVED'
         ORDER BY r.like_count DESC
         LIMIT :limit
         """, nativeQuery = true)
@@ -102,7 +114,7 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
             r.created_at as createdAt
         FROM recipes r
         INNER JOIN users u ON r.user_id = u.user_id
-        WHERE r.is_published = true
+        WHERE r.is_published = true AND r.status = 'APPROVED'
         ORDER BY r.save_count DESC
         LIMIT :limit
         """, nativeQuery = true)
@@ -126,7 +138,7 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
         FROM recipes r
         INNER JOIN users u ON r.user_id = u.user_id
         LEFT JOIN comments c ON r.recipe_id = c.recipe_id
-        WHERE r.is_published = true
+        WHERE r.is_published = true AND r.status = 'APPROVED'
         GROUP BY r.recipe_id, r.title, r.slug, r.view_count, r.like_count,
                  r.save_count, r.average_rating, r.rating_count, 
                  u.full_name, r.created_at
@@ -147,7 +159,8 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
             (r.view_count + r.like_count * 3.0 + r.rating_count * 2.0) as trendingScore,
             r.created_at as createdAt
         FROM recipes r
-        WHERE r.is_published = true 
+        WHERE r.is_published = true
+        AND r.status = 'APPROVED'
         AND r.created_at >= :startDate
         ORDER BY trendingScore DESC
         LIMIT :limit
@@ -173,6 +186,7 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
         FROM recipes r
         INNER JOIN users u ON r.user_id = u.user_id
         WHERE r.is_published = true
+        AND r.status = 'APPROVED'
         AND r.created_at <= :thresholdDate
         ORDER BY (r.view_count + r.like_count + r.save_count) ASC
         LIMIT :limit
@@ -189,7 +203,8 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
             AVG(prep_time) as avgPrepTime,
             AVG(cook_time + prep_time) as avgTotalTime
         FROM recipes
-        WHERE is_published = true 
+        WHERE is_published = true
+        AND status = 'APPROVED'
         AND cook_time IS NOT NULL 
         AND prep_time IS NOT NULL
         """, nativeQuery = true)
@@ -202,7 +217,7 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
             SELECT r.recipe_id, COUNT(ri.ingredient_id) as ingredient_count
             FROM recipes r
             LEFT JOIN recipe_ingredients ri ON r.recipe_id = ri.recipe_id
-            WHERE r.is_published = true
+            WHERE r.is_published = true AND r.status = 'APPROVED'
             GROUP BY r.recipe_id
         ) subquery
         """, nativeQuery = true)
@@ -215,7 +230,7 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
             SELECT r.recipe_id, COUNT(rs.step_id) as step_count
             FROM recipes r
             LEFT JOIN recipe_steps rs ON r.recipe_id = rs.recipe_id
-            WHERE r.is_published = true
+            WHERE r.is_published = true AND r.status = 'APPROVED'
             GROUP BY r.recipe_id
         ) subquery
         """, nativeQuery = true)
@@ -232,7 +247,7 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
             ) THEN 1 END) as recipesWithVideo,
             COUNT(*) as totalRecipes
         FROM recipes r
-        WHERE r.is_published = true
+        WHERE r.is_published = true AND r.status = 'APPROVED'
         """, nativeQuery = true)
     MediaStats getMediaStatistics();
 
@@ -243,7 +258,8 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
             AVG(LENGTH(description)) as avgDescriptionLength,
             AVG(LENGTH(instructions)) as avgInstructionLength
         FROM recipes
-        WHERE is_published = true 
+        WHERE is_published = true
+        AND status = 'APPROVED'
         AND description IS NOT NULL 
         AND instructions IS NOT NULL
         """, nativeQuery = true)
@@ -258,6 +274,7 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
             SUM(r.like_count) as totalLikes
         FROM recipes r
         WHERE r.is_published = true
+        AND r.status = 'APPROVED'
         AND r.created_at >= :startDate 
         AND r.created_at <= :endDate
         GROUP BY DATE(r.created_at)
@@ -279,7 +296,7 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
             AVG(r.average_rating) as avgRating
         FROM users u
         INNER JOIN recipes r ON u.user_id = r.user_id
-        WHERE r.is_published = true
+        WHERE r.is_published = true AND r.status = 'APPROVED'
         GROUP BY u.user_id, u.full_name, u.username
         ORDER BY recipeCount DESC
         LIMIT :limit
@@ -299,6 +316,7 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
             END as engagementRate
         FROM recipes r
         WHERE r.is_published = true
+        AND r.status = 'APPROVED'
         AND r.view_count > 0
         ORDER BY engagementRate DESC
         LIMIT :limit
@@ -322,7 +340,7 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
         FROM categories c
         INNER JOIN recipe_categories rc ON c.category_id = rc.category_id
         INNER JOIN recipes r ON rc.recipe_id = r.recipe_id
-        WHERE r.is_published = true
+        WHERE r.is_published = true AND r.status = 'APPROVED'
         GROUP BY c.category_id, c.name
         ORDER BY totalViews DESC
         """, nativeQuery = true)
@@ -360,7 +378,7 @@ public interface RecipeStatisticsRepository extends JpaRepository<Recipe, UUID> 
                 THEN 1 
             END) * 100.0 / COUNT(*) as completionRate
         FROM recipes r
-        WHERE is_published = true
+        WHERE is_published = true AND status = 'APPROVED'
         """, nativeQuery = true)
     RecipeCompletionStats getRecipeCompletionStats();
 }

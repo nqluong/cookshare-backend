@@ -9,6 +9,7 @@ import com.backend.cookshare.recipe_management.repository.RecipeStepRepository;
 import com.backend.cookshare.recipe_management.repository.RecipeTagRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -17,7 +18,6 @@ import java.util.UUID;
 import java.util.concurrent.*;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class RecipeLoaderHelper {
     private final RecipeStepRepository recipeStepRepository;
@@ -25,21 +25,22 @@ public class RecipeLoaderHelper {
     private final RecipeTagRepository recipeTagRepository;
     private final RecipeCategoryRepository recipeCategoryRepository;
     private final UserService userService;
+    private final Executor executorService;
 
-    private final ExecutorService executorService = Executors.newFixedThreadPool(
-            Math.min(Runtime.getRuntime().availableProcessors(), 4),
-            new ThreadFactory() {
-                private int counter = 0;
-                @Override
-                public Thread newThread(Runnable r) {
-                    Thread thread = new Thread(r);
-                    thread.setName("recipe-loader-" + counter++);
-                    thread.setDaemon(true);
-                    return thread;
-                }
-            }
-    );
+    public RecipeLoaderHelper(RecipeStepRepository recipeStepRepository,
+                              RecipeIngredientRepository recipeIngredientRepository,
+                              RecipeTagRepository recipeTagRepository,
+                              RecipeCategoryRepository recipeCategoryRepository,
+                              UserService userService,
+                              @Qualifier("recipeLoaderExecutor") Executor executorService) {
+        this.recipeStepRepository = recipeStepRepository;
+        this.recipeIngredientRepository = recipeIngredientRepository;
+        this.recipeTagRepository = recipeTagRepository;
+        this.recipeCategoryRepository = recipeCategoryRepository;
+        this.userService = userService;
+        this.executorService = executorService;
 
+    }
 
     public CompletableFuture<List<RecipeStepResponse>> loadStepsAsync(UUID recipeId) {
         return CompletableFuture.supplyAsync(

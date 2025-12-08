@@ -6,6 +6,7 @@ import com.backend.cookshare.admin_report.repository.recipe_projection.*;
 import com.backend.cookshare.admin_report.service.RecipeStatisticsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,20 +15,23 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class RecipeStatisticsServiceImpl implements RecipeStatisticsService {
     private final RecipeStatisticsRepository statisticsRepository;
+    private final Executor executorService;
 
-    private final ExecutorService executorService = Executors.newFixedThreadPool(
-            Runtime.getRuntime().availableProcessors()
-    );
+    public RecipeStatisticsServiceImpl(RecipeStatisticsRepository statisticsRepository,
+                                       @Qualifier("statisticsExecutor") Executor executorService) {
+        this.statisticsRepository = statisticsRepository;
+        this.executorService = executorService;
+    }
 
     @Override
     public RecipeStatisticsResponse getComprehensiveStatistics(
@@ -431,7 +435,4 @@ public class RecipeStatisticsServiceImpl implements RecipeStatisticsService {
         return ((current - previous) * 100.0) / previous;
     }
 
-    public void destroy() {
-        executorService.shutdown();
-    }
 }

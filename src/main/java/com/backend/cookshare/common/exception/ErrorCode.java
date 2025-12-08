@@ -70,7 +70,18 @@ public enum ErrorCode {
     NOTIFICATION_NOT_FOUND(5001, "Không tìm thấy thông báo", HttpStatus.NOT_FOUND),
     NOTIFICATION_FORBIDDEN(5002, "Không có quyền truy cập thông báo này", HttpStatus.FORBIDDEN),
     RECIPE_ALREADY_LIKED(6003,"Công thức đã được thích", HttpStatus.CONFLICT),
-    RECIPE_NOT_LIKED(6004,"Công thức chưa được thích", HttpStatus.BAD_REQUEST);
+    RECIPE_NOT_LIKED(6004,"Công thức chưa được thích", HttpStatus.BAD_REQUEST),
+
+    REPORT_NOT_FOUND(7001, "Không tìm thấy báo cáo", HttpStatus.NOT_FOUND),
+    REPORT_ALREADY_EXISTS(7002, "Bạn đã báo cáo công thức này rồi", HttpStatus.CONFLICT),
+    REPORT_ALREADY_REVIEWED(7003, "Báo cáo này đã được xem xét", HttpStatus.BAD_REQUEST),
+    CANNOT_REPORT_YOURSELF(7004, "Không thể tự báo cáo chính mình", HttpStatus.BAD_REQUEST),
+    REPORT_TARGET_REQUIRED(7005, "Phải chỉ định người dùng hoặc công thức để báo cáo", HttpStatus.BAD_REQUEST),
+    REPORTED_USER_NOT_FOUND(7006, "Người dùng bị báo cáo không tồn tại", HttpStatus.NOT_FOUND),
+    REPORTED_RECIPE_NOT_FOUND(7007, "Công thức bị báo cáo không tồn tại", HttpStatus.NOT_FOUND),
+    REPORT_FORBIDDEN(7008, "Bạn không có quyền truy cập báo cáo này", HttpStatus.FORBIDDEN),
+    INVALID_REPORT_STATUS(7009, "Trạng thái báo cáo không hợp lệ", HttpStatus.BAD_REQUEST),
+    USER_NOT_AUTHENTICATED(7010, "Người dùng chưa đăng nhập", HttpStatus.UNAUTHORIZED);
 
     private final int code;
     private final String message;
