@@ -21,6 +21,14 @@ import java.util.UUID;
 @Repository
 public interface ReportQueryRepository extends JpaRepository<Report, UUID> {
 
+    @Modifying
+    @Query(value = """
+        UPDATE users 
+        SET suspension_end_date = NOW() + INTERVAL ':days days'
+        WHERE user_id = :userId
+    """, nativeQuery = true)
+    void suspendUser(@Param("userId") UUID userId, @Param("days") int days);
+
     @Query(value = """
         SELECT u.user_id as userId, u.username, u.avatar_url as avatarUrl
         FROM users u
@@ -109,13 +117,6 @@ public interface ReportQueryRepository extends JpaRepository<Report, UUID> {
     List<RecipeTitleProjection> findRecipeTitlesByIds(@Param("ids") List<UUID> ids);
 
     @Query(value = """
-        SELECT user_id 
-        FROM users 
-        WHERE role = 'ADMIN' AND is_active = true
-        """, nativeQuery = true)
-    List<UUID> findAdminUserIds();
-
-    @Query(value = """
         SELECT username 
         FROM users 
         WHERE role = 'ADMIN' AND is_active = true
@@ -125,14 +126,6 @@ public interface ReportQueryRepository extends JpaRepository<Report, UUID> {
     @Modifying
     @Query(value = "UPDATE users SET is_active = false WHERE user_id = :userId", nativeQuery = true)
     void disableUser(@Param("userId") UUID userId);
-
-    @Modifying
-    @Query(value = """
-        UPDATE recipes 
-        SET is_published = false, status = 'DRAFT' 
-        WHERE recipe_id = :recipeId
-        """, nativeQuery = true)
-    void unpublishRecipeToDraft(@Param("recipeId") UUID recipeId);
 
     @Modifying
     @Query(value = "UPDATE recipes SET is_published = false WHERE recipe_id = :recipeId", nativeQuery = true)

@@ -29,4 +29,5 @@ public class ReportResponse {
     ReviewerInfo reviewer;
     LocalDateTime reviewedAt;
     LocalDateTime createdAt;
+    Boolean reportersNotified;
 }
