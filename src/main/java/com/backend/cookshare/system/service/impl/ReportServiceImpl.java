@@ -23,7 +23,9 @@ import com.backend.cookshare.system.service.status.ReportStatusManager;
 import com.backend.cookshare.system.service.sync.ReportSynchronizer;
 import com.backend.cookshare.system.service.validation.ReportValidator;
 import com.backend.cookshare.system.service.action.ReportActionExecutor;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -38,20 +40,21 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ReportServiceImpl implements ReportService {
 
-    private final ReportRepository reportRepository;
-    private final ReportQueryRepository reportQueryRepository;
-    private final SecurityUtil securityUtil;
+    ReportRepository reportRepository;
+    ReportQueryRepository reportQueryRepository;
+    SecurityUtil securityUtil;
 
-    private final ReportValidator validator;
-    private final ReportMapper mapper;
-    private final ReportStatusManager statusManager;
-    private final ReportActionExecutor actionExecutor;
-    private final ReportSynchronizer synchronizer;
-    private final ReportNotificationOrchestrator notificationOrchestrator;
-    private final ReportAutoModerator autoModerator;
-    private final ReportNotificationService notificationService;
+    ReportValidator validator;
+    ReportMapper mapper;
+    ReportStatusManager statusManager;
+    ReportActionExecutor actionExecutor;
+    ReportSynchronizer synchronizer;
+    ReportNotificationOrchestrator notificationOrchestrator;
+    ReportAutoModerator autoModerator;
+    ReportNotificationService notificationService;
 
 
     /**

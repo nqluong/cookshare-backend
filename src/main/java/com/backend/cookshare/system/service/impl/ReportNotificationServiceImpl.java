@@ -9,7 +9,9 @@ import com.backend.cookshare.system.service.notification.persistence.Notificatio
 import com.backend.cookshare.system.service.notification.resolver.ReportTargetResolver;
 import com.backend.cookshare.system.service.notification.sender.WebSocketNotificationSender;
 import com.backend.cookshare.user.enums.NotificationType;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -19,12 +21,14 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class ReportNotificationServiceImpl implements ReportNotificationService {
-    private final ReportQueryRepository queryRepository;
-    private final NotificationMessageBuilder messageBuilder;
-    private final WebSocketNotificationSender webSocketSender;
-    private final NotificationPersistenceService persistenceService;
-    private final ReportTargetResolver targetResolver;
+
+    ReportQueryRepository queryRepository;
+    NotificationMessageBuilder messageBuilder;
+    WebSocketNotificationSender webSocketSender;
+    NotificationPersistenceService persistenceService;
+    ReportTargetResolver targetResolver;
 
     @Override
     public void notifyAdminsNewReport(Report report, String reporterUsername) {
