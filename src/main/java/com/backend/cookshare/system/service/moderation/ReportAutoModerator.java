@@ -56,7 +56,7 @@ public class ReportAutoModerator {
         String username = reportQueryRepository.findUsernameById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        notificationService.notifyAutoDisableUser(userId, username, reportCount);
+//        notificationService.notifyAutoDisableUser(userId, username, reportCount);
 
         log.warn("Auto-disabled user {} due to {} pending reports", username, reportCount);
     }
@@ -68,12 +68,12 @@ public class ReportAutoModerator {
                 .findReportedRecipeInfoById(recipeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.REPORTED_RECIPE_NOT_FOUND));
 
-        notificationService.notifyAutoUnpublishRecipe(
-                recipeId,
-                recipeInfo.getAuthorUsername(),
-                recipeInfo.getTitle(),
-                reportCount
-        );
+//        notificationService.notifyAutoUnpublishRecipe(
+//                recipeId,
+//                recipeInfo.getAuthorUsername(),
+//                recipeInfo.getTitle(),
+//                reportCount
+//        );
 
         log.warn("Auto-unpublished recipe {} due to {} pending reports", recipeId, reportCount);
     }
