@@ -61,8 +61,30 @@ public class AuthServiceImpl implements AuthService {
 
         // Kiểm tra tài khoản có bị khóa không
         if (!user.getIsActive()) {
-            log.warn("Login attempt for inactive user: {}", user.getUsername());
-            throw new CustomException(ErrorCode.USER_NOT_ACTIVE);
+            // Kiểm tra xem đã qua 30 ngày kể từ khi bị ban chưa
+            if (user.getBannedAt() != null) {
+                LocalDateTime bannedAt = user.getBannedAt();
+                LocalDateTime now = LocalDateTime.now();
+                long daysSinceBan = java.time.Duration.between(bannedAt, now).toDays();
+
+                if (daysSinceBan >= 30) {
+                    // Tự động unban sau 30 ngày
+                    log.info("Auto-unbanning user {} after {} days", user.getUsername(), daysSinceBan);
+                    user.setIsActive(true);
+                    user.setBannedAt(null);
+                    userService.updateUser(user);
+                } else {
+                    long daysRemaining = 30 - daysSinceBan;
+                    log.warn("Login attempt for banned user: {} (banned {} days ago, {} days remaining)",
+                            user.getUsername(), daysSinceBan, daysRemaining);
+                    String message = String.format("Tài khoản của bạn đã bị khóa. Còn %d ngày nữa sẽ tự động mở khóa.",
+                            daysRemaining);
+                    throw new CustomException(ErrorCode.USER_NOT_ACTIVE, message);
+                }
+            } else {
+                log.warn("Login attempt for inactive user: {}", user.getUsername());
+                throw new CustomException(ErrorCode.USER_NOT_ACTIVE);
+            }
         }
 
         // Cập nhật last active
@@ -213,4 +235,3 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 }
-

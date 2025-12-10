@@ -51,17 +51,44 @@ public class OAuthServiceImpl implements OAuthService {
             throw new CustomException(ErrorCode.INVALID_OAUTH_PROVIDER);
         }
 
-        // Kiểm tra tài khoản có bị khóa không
-        if (response.getUser() != null && !response.getUser().getIsActive()) {
-            log.warn("Login attempt for inactive user: {}", response.getUser().getUsername());
-            throw new CustomException(ErrorCode.USER_NOT_ACTIVE);
-        }
-
-        // Cập nhật last active
+        // Kiểm tra tài khoản có bị khóa không và tự động unban sau 30 ngày
         if (response.getUser() != null && response.getUser().getUserId() != null) {
             userService.getUserById(response.getUser().getUserId()).ifPresent(user -> {
-                user.setLastActive(LocalDateTime.now());
-                userService.updateUser(user);
+                if (!user.getIsActive()) {
+                    // Kiểm tra xem đã qua 30 ngày kể từ khi bị ban chưa
+                    if (user.getBannedAt() != null) {
+                        LocalDateTime bannedAt = user.getBannedAt();
+                        LocalDateTime now = LocalDateTime.now();
+                        long daysSinceBan = java.time.Duration.between(bannedAt, now).toDays();
+
+                        if (daysSinceBan >= 30) {
+                            // Tự động unban sau 30 ngày
+                            log.info("Auto-unbanning user {} after {} days (OAuth login)", user.getUsername(),
+                                    daysSinceBan);
+                            user.setIsActive(true);
+                            user.setBannedAt(null);
+                            user.setLastActive(LocalDateTime.now());
+                            userService.updateUser(user);
+
+                            // Cập nhật response với trạng thái mới
+                            response.getUser().setIsActive(true);
+                        } else {
+                            long daysRemaining = 30 - daysSinceBan;
+                            log.warn("OAuth login attempt for banned user: {} (banned {} days ago, {} days remaining)",
+                                    user.getUsername(), daysSinceBan, daysRemaining);
+                            String message = String.format(
+                                    "Tài khoản của bạn đã bị khóa. Còn %d ngày nữa sẽ tự động mở khóa.", daysRemaining);
+                            throw new CustomException(ErrorCode.USER_NOT_ACTIVE, message);
+                        }
+                    } else {
+                        log.warn("OAuth login attempt for inactive user: {}", user.getUsername());
+                        throw new CustomException(ErrorCode.USER_NOT_ACTIVE);
+                    }
+                } else {
+                    // User đang active, chỉ cập nhật last active
+                    user.setLastActive(LocalDateTime.now());
+                    userService.updateUser(user);
+                }
             });
         }
 
@@ -175,4 +202,3 @@ public class OAuthServiceImpl implements OAuthService {
         }).start();
     }
 }
-

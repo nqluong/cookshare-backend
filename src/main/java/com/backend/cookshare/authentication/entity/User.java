@@ -56,6 +56,9 @@ public class User {
     @Column(name = "email_verified")
     Boolean emailVerified = false;
 
+    @Column(name = "banned_at")
+    LocalDateTime bannedAt;
+
     @Column(name = "last_active")
     LocalDateTime lastActive;
 
