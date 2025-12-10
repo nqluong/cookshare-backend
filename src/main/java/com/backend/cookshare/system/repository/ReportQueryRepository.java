@@ -35,6 +35,18 @@ public interface ReportQueryRepository extends JpaRepository<Report, UUID> {
     Optional<String> findUsernameById(@Param("userId") UUID userId);
 
     /**
+     * Kiểm tra recipe đã bị unpublish chưa
+     */
+    @Query("SELECT CASE WHEN r.isPublished = false THEN true ELSE false END FROM Recipe r WHERE r.recipeId = :recipeId")
+    boolean isRecipeAlreadyUnpublished(@Param("recipeId") UUID recipeId);
+
+    /**
+     * Kiểm tra user đã bị disable chưa
+     */
+    @Query("SELECT CASE WHEN u.isActive = false THEN true ELSE false END FROM User u WHERE u.userId = :userId")
+    boolean isUserAlreadyDisabled(@Param("userId") UUID userId);
+
+    /**
      * Tìm thông tin recipe và author
      */
     @Query("""

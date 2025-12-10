@@ -35,7 +35,7 @@ public class ReportNotificationOrchestrator {
             try {
                 notifyAllReporters(reviewedReport);
             } catch (Exception e) {
-                log.error("Error notifying reporters: {}", e.getMessage(), e);
+                log.error("Lỗi khi thông báo cho người báo cáo: {}", e.getMessage(), e);
             }
         }, asyncExecutor);
     }
@@ -44,7 +44,7 @@ public class ReportNotificationOrchestrator {
         List<Report> relatedReports = reportSynchronizer.findRelatedReports(reviewedReport);
 
         if (relatedReports.isEmpty()) {
-            log.warn("No related reports found for report {}", reviewedReport.getReportId());
+            log.warn("Không tìm thấy báo cáo liên quan cho báo cáo {}", reviewedReport.getReportId());
             return;
         }
 
@@ -53,7 +53,7 @@ public class ReportNotificationOrchestrator {
                 .distinct()
                 .collect(Collectors.toList());
 
-        log.info("Notifying {} reporters about report {} review",
+        log.info("Đang thông báo {} người báo cáo về kết quả xem xét báo cáo {}",
                 reporterIds.size(), reviewedReport.getReportId());
 
         List<UsernameProjection> reporters = reportQueryRepository.findUsernamesByIds(reporterIds);
@@ -66,14 +66,14 @@ public class ReportNotificationOrchestrator {
                         reporter.getUserId()
                 );
             } catch (Exception e) {
-                log.error("Failed to notify reporter {}: {}",
+                log.error("Không thể thông báo cho người báo cáo {}: {}",
                         reporter.getUserId(), e.getMessage());
             }
         }
 
         markReportsAsNotified(relatedReports);
 
-        log.info("Successfully notified {} reporters", reporters.size());
+        log.info("Đã thông báo thành công {} người báo cáo", reporters.size());
     }
 
     private void markReportsAsNotified(List<Report> reports) {

@@ -21,6 +21,15 @@ import java.util.UUID;
 @Repository
 public interface ReportRepository extends JpaRepository<Report, UUID> {
 
+    @Query("SELECT r FROM Report r WHERE r.recipeId = :recipeId AND r.status = 'PENDING'")
+    List<Report> findPendingReportsByRecipeId(@Param("recipeId") UUID recipeId);
+
+    /**
+     * Lấy tất cả pending reports của user (để tính weighted score)
+     */
+    @Query("SELECT r FROM Report r WHERE r.reportedId = :userId AND r.status = 'PENDING'")
+    List<Report> findPendingReportsByUserId(@Param("userId") UUID userId);
+
     @Query("SELECT r FROM Report r WHERE r.recipeId = :recipeId")
     List<Report> findAllByRecipeId(@Param("recipeId") UUID recipeId);
 

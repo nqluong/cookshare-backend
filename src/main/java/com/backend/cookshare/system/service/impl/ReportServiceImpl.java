@@ -92,7 +92,7 @@ public class ReportServiceImpl implements ReportService {
         // Update pending count
         broadcastPendingCountUpdate();
 
-        log.info("Report {} created by user {}", report.getReportId(), username);
+        log.info("Báo cáo {} đã được tạo bởi người dùng {}", report.getReportId(), username);
 
         return mapper.toResponse(report);
     }
@@ -169,7 +169,7 @@ public class ReportServiceImpl implements ReportService {
         // Update pending count
         broadcastPendingCountUpdate();
 
-        log.info("Report {} reviewed by admin {} with action {}: {}",
+        log.info("Báo cáo {} đã được xem xét bởi quản trị viên {} với hành động {}: {}",
                 reportId, reviewerUsername, request.getActionType(), report.getStatus());
 
         return mapper.toResponse(report);
@@ -190,7 +190,7 @@ public class ReportServiceImpl implements ReportService {
         reportRepository.deleteById(reportId);
         broadcastPendingCountUpdate();
 
-        log.info("Report deleted: {}", reportId);
+        log.info("Báo cáo đã bị xóa: {}", reportId);
     }
 
     /**

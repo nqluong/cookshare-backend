@@ -34,12 +34,17 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
     ReportTargetResolver targetResolver;
 
     @Override
+    public void notifyRecipeUnpublished(Report report, UUID recipeId) {
+
+    }
+
+    @Override
     public void notifyAdminsNewReport(Report report, String reporterUsername) {
         try {
             List<String> adminUsernames = queryRepository.findAdminUsernames();
 
             if (adminUsernames.isEmpty()) {
-                log.warn("No active admins to notify about report {}", report.getReportId());
+                log.warn("Không có quản trị viên nào đang hoạt động để thông báo về báo cáo {}", report.getReportId());
                 return;
             }
 
@@ -54,10 +59,10 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
 
             webSocketSender.broadcastToUsers(adminUsernames, message);
 
-            log.info("Notified {} admins about new report {}", adminUsernames.size(), report.getReportId());
+            log.info("Đã thông báo {} quản trị viên về báo cáo mới {}", adminUsernames.size(), report.getReportId());
 
         } catch (Exception e) {
-            log.error("Failed to notify admins about report {}", report.getReportId(), e);
+            log.error("Không thể thông báo cho quản trị viên về báo cáo {}", report.getReportId(), e);
         }
     }
 
@@ -83,10 +88,10 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
 
             webSocketSender.sendToUser(reporterUsername, wsMessage);
 
-            log.info("Notified reporter {} about review result for report {}", reporterUsername, report.getReportId());
+            log.info("Đã thông báo người báo cáo {} về kết quả xem xét cho báo cáo {}", reporterUsername, report.getReportId());
 
         } catch (Exception e) {
-            log.error("Failed to notify reporter about review result", e);
+            log.error("Không thể thông báo cho người báo cáo về kết quả xem xét", e);
         }
     }
 
@@ -99,9 +104,9 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
 
             webSocketSender.broadcastToUsers(adminUsernames, message);
 
-            log.debug("Broadcasted pending count update to {} admins", adminUsernames.size());
+            log.debug("Đã phát cập nhật số lượng báo cáo chờ xử lý đến {} quản trị viên", adminUsernames.size());
         } catch (Exception e) {
-            log.error("Failed to broadcast pending count update", e);
+            log.error("Không thể phát cập nhật số lượng báo cáo chờ xử lý", e);
         }
     }
 
@@ -130,11 +135,11 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
 
             webSocketSender.broadcastToUsers(adminUsernames, message);
 
-            log.info("Notified {} admins about completed action for report {}",
+            log.info("Đã thông báo {} quản trị viên về hành động đã hoàn thành cho báo cáo {}",
                     adminUsernames.size(), report.getReportId());
 
         } catch (Exception e) {
-            log.error("Failed to notify admins about completed action", e);
+            log.error("Không thể thông báo cho quản trị viên về hành động đã hoàn thành", e);
         }
     }
 
@@ -162,10 +167,10 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
             // Send WebSocket
             webSocketSender.sendToUser(username, message);
 
-            log.info("Notified user {} about warning", username);
+            log.info("Đã thông báo người dùng {} về cảnh báo", username);
 
         } catch (Exception e) {
-            log.error("Failed to notify user about warning", e);
+            log.error("Không thể thông báo cho người dùng về cảnh báo", e);
         }
     }
 
@@ -190,10 +195,10 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
             // Send WebSocket
             webSocketSender.sendToUser(username, message);
 
-            log.info("Notified user {} about suspension", username);
+            log.info("Đã thông báo người dùng {} về việc bị tạm khóa", username);
 
         } catch (Exception e) {
-            log.error("Failed to notify user about suspension", e);
+            log.error("Không thể thông báo cho người dùng về việc bị tạm khóa", e);
         }
     }
 
@@ -218,49 +223,10 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
             // Send WebSocket
             webSocketSender.sendToUser(username, message);
 
-            log.info("Notified user {} about ban", username);
+            log.info("Đã thông báo người dùng {} về việc bị cấm", username);
 
         } catch (Exception e) {
-            log.error("Failed to notify user about ban", e);
-        }
-    }
-
-    @Override
-    public void notifyRecipeUnpublished(Report report, UUID recipeId) {
-        try {
-            // Lấy thông tin recipe và author
-            RecipeInfo recipeInfo = queryRepository.findRecipeInfoById(recipeId);
-            if (recipeInfo == null) {
-                log.warn("Recipe not found: {}", recipeId);
-                return;
-            }
-
-            String reason = report.getActionDescription() != null
-                    ? report.getActionDescription()
-                    : "Vi phạm chính sách cộng đồng";
-
-            NotificationMessage message = messageBuilder.buildRecipeUnpublishedMessage(
-                    recipeId,
-                    recipeInfo.title(),
-                    reason
-            );
-
-            // Save to database
-            persistenceService.saveNotification(
-                    recipeInfo.authorId(),
-                    message.getTitle(),
-                    message.getMessage(),
-                    NotificationType.RECIPE_STATUS,
-                    report.getReportId()
-            );
-
-            // Send WebSocket
-            webSocketSender.sendToUser(recipeInfo.authorUsername(), message);
-
-            log.info("Notified recipe author {} about unpublish", recipeInfo.authorUsername());
-
-        } catch (Exception e) {
-            log.error("Failed to notify about recipe unpublish", e);
+            log.error("Không thể thông báo cho người dùng về việc bị cấm", e);
         }
     }
 
@@ -270,7 +236,7 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
             // Lấy thông tin recipe và author
             RecipeInfo recipeInfo = queryRepository.findRecipeInfoById(recipeId);
             if (recipeInfo == null) {
-                log.warn("Recipe not found: {}", recipeId);
+                log.warn("Không tìm thấy công thức: {}", recipeId);
                 return;
             }
 
@@ -296,10 +262,10 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
             // Send WebSocket
             webSocketSender.sendToUser(recipeInfo.authorUsername(), message);
 
-            log.info("Notified recipe author {} about edit requirement", recipeInfo.authorUsername());
+            log.info("Đã thông báo tác giả công thức {} về yêu cầu chỉnh sửa", recipeInfo.authorUsername());
 
         } catch (Exception e) {
-            log.error("Failed to notify about edit requirement", e);
+            log.error("Không thể thông báo về yêu cầu chỉnh sửa", e);
         }
     }
 
@@ -308,7 +274,7 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
         try {
             RecipeInfo recipeInfo = queryRepository.findRecipeInfoById(recipeId);
             if (recipeInfo == null) {
-                log.warn("Recipe not found: {}", recipeId);
+                log.warn("Không tìm thấy công thức: {}", recipeId);
                 return;
             }
 
@@ -334,10 +300,63 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
             // Send WebSocket
             webSocketSender.sendToUser(recipeInfo.authorUsername(), message);
 
-            log.info("Notified recipe author {} about content removal", recipeInfo.authorUsername());
+            log.info("Đã thông báo tác giả công thức {} về việc xóa nội dung", recipeInfo.authorUsername());
 
         } catch (Exception e) {
-            log.error("Failed to notify about content removal", e);
+            log.error("Không thể thông báo về việc xóa nội dung", e);
+        }
+    }
+
+    @Override
+    public void notifyAutoDisableUser(UUID userId, String username, long reportCount) {
+        try {
+            NotificationMessage message = messageBuilder.buildAutoDisableUserMessage(reportCount);
+
+            // Save to database
+            persistenceService.saveNotification(
+                    userId,
+                    message.getTitle(),
+                    message.getMessage(),
+                    NotificationType.ACCOUNT_STATUS,
+                    null // Không có reportId cụ thể vì là tổng hợp nhiều reports
+            );
+
+            // Send WebSocket
+            webSocketSender.sendToUser(username, message);
+
+            log.warn("Notified user {} about auto-disable due to {} reports", username, reportCount);
+
+        } catch (Exception e) {
+            log.error("Failed to notify user about auto-disable", e);
+        }
+    }
+
+    @Override
+    public void notifyAutoUnpublishRecipe(UUID recipeId, UUID authorId, String authorUsername, String recipeTitle, long reportCount) {
+        try {
+            NotificationMessage message = messageBuilder.buildAutoUnpublishRecipeMessage(
+                    recipeId,
+                    recipeTitle,
+                    reportCount
+            );
+
+            // Save to database
+            persistenceService.saveNotification(
+                    authorId,
+                    message.getTitle(),
+                    message.getMessage(),
+                    NotificationType.RECIPE_STATUS,
+                    null // Không có reportId cụ thể vì là tổng hợp nhiều reports
+            );
+
+            // Send WebSocket
+            webSocketSender.sendToUser(authorUsername, message);
+
+            log.warn("Notified recipe author {} about auto-unpublish of '{}' due to {} reports",
+                    authorUsername, recipeTitle, reportCount);
+
+        } catch (Exception e) {
+            log.error("Failed to notify about auto-unpublish", e);
         }
     }
 

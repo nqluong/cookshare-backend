@@ -34,9 +34,9 @@ public class NotificationPersistenceService {
 
             notificationRepository.save(notification);
 
-            log.debug("Saved notification for user {}: {}", userId, title);
+            log.debug("Lưu thông báo cho người dùng {}: {}", userId, title);
         } catch (Exception e) {
-            log.error("Failed to save notification for user {}", userId, e);
+            log.error("Lưu thông báo thất bại cho người dùng {}", userId);
         }
     }
 }
