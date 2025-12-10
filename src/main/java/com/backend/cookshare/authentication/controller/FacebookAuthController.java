@@ -1,7 +1,7 @@
 package com.backend.cookshare.authentication.controller;
 
 import com.backend.cookshare.authentication.dto.response.LoginResponseDTO;
-import com.backend.cookshare.authentication.service.FacebookOAuthService;
+import com.backend.cookshare.authentication.service.OAuthService;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +19,6 @@ import org.springframework.ui.Model;
 import jakarta.servlet.http.HttpServletResponse;
 import java.net.URI;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
 
 @Controller
@@ -28,7 +27,7 @@ import java.util.UUID;
 @Slf4j
 public class FacebookAuthController {
 
-    private final FacebookOAuthService facebookOAuthService;
+    private final OAuthService oAuthService;
 
     @Value("${spring.security.oauth2.registration.facebook.client-id}")
     private String clientId;
@@ -45,20 +44,15 @@ public class FacebookAuthController {
     @Value("${cookshare.jwt.refresh-token-validity-in-seconds}")
     private long refreshTokenExpiration;
 
-    // Lưu trữ tạm thời kết quả đăng nhập
-    private final Map<String, LoginResponseDTO> authResults = new ConcurrentHashMap<>();
-
-    // Lưu trữ error results riêng
-    private final Map<String, Map<String, Object>> authErrors = new ConcurrentHashMap<>();
 
     @GetMapping("/login")
     public ResponseEntity<Void> loginWithFacebook(@RequestParam(required = false) String state) {
         // Nếu không có state, tạo mới
         if (state == null || state.isEmpty()) {
             state = UUID.randomUUID().toString();
-            log.warn("⚠️ No state provided, generated new state: {}", state);
+            log.warn("No state provided, generated new state: {}", state);
         } else {
-            log.info("✅ Received state from client: {}", state);
+            log.info("Received state from client: {}", state);
         }
 
         String authUrl = String.format(
@@ -69,8 +63,8 @@ public class FacebookAuthController {
                 scope.replace(",", "%2C"),
                 state);
 
-        log.info("🔗 Redirecting to Facebook with state: {}", state);
-        log.info("🌐 Auth URL: {}", authUrl);
+        log.info("Redirecting to Facebook with state: {}", state);
+        log.info("Auth URL: {}", authUrl);
 
         return ResponseEntity.status(302)
                 .location(URI.create(authUrl))
@@ -86,7 +80,7 @@ public class FacebookAuthController {
             HttpServletResponse servletResponse,
             Model model) {
         try {
-            log.info("📥 Facebook callback received");
+            log.info("Facebook callback received");
             log.info("  Code: {}", code != null ? code.substring(0, Math.min(20, code.length())) + "..." : "null");
             log.info("  State: {}", state);
 
@@ -100,25 +94,11 @@ public class FacebookAuthController {
                         .body(body);
             }
 
-            // Xác thực với Facebook và tạo JWT tokens
-            LoginResponseDTO response = facebookOAuthService.authenticateFacebookUser(code);
+            // Xác thực với Facebook và tạo JWT tokens (business logic in service)
+            LoginResponseDTO response = oAuthService.authenticateWithOAuth(code, "facebook");
 
-            // Kiểm tra tài khoản có bị khóa không
-            if (response.getUser() != null && !response.getUser().getIsActive()) {
-                throw new CustomException(ErrorCode.USER_NOT_ACTIVE);
-            }
-
-            // Lưu kết quả vào map với state làm key
-            if (state != null && !state.isEmpty()) {
-                authResults.put(state, response);
-                log.info("✅ Saved Facebook auth result for state: {}", state);
-                log.info("📦 Current states in map: {}", authResults.keySet());
-
-                // Tự động xóa sau 5 phút
-                scheduleResultCleanup(state);
-            } else {
-                log.error("❌ No state in callback, cannot save result!");
-            }
+            // Lưu kết quả để polling
+            oAuthService.saveAuthResult(state, response);
 
             // Set refresh token cookie
             ResponseCookie refreshCookie = ResponseCookie
@@ -129,10 +109,9 @@ public class FacebookAuthController {
                     .maxAge(refreshTokenExpiration)
                     .build();
 
-            // Đưa cookie vào HttpServletResponse header
             servletResponse.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
-            // Trả về view template 'auth-loading' và truyền state
+            // Trả về view template 'auth-loading'
             String s = (state == null) ? "" : state;
             model.addAttribute("state", s);
             model.addAttribute("provider", "facebook");
@@ -141,27 +120,19 @@ public class FacebookAuthController {
         } catch (CustomException e) {
             log.error("Error during Facebook authentication: {}", e.getMessage());
 
-            // Lưu error vào map để polling có thể nhận được
-            if (state != null && !state.isEmpty()) {
-                Map<String, Object> errorData = Map.of(
-                        "status", "error",
-                        "code", e.getErrorCode().getCode(),
-                        "message", e.getMessage());
-                authErrors.put(state, errorData);
-                log.info("Saved error result for state: {}", state);
+            // Lưu error để polling có thể nhận được
+            oAuthService.saveAuthError(state,
+                    String.valueOf(e.getErrorCode().getCode()),
+                    e.getMessage());
 
-                // Tự động xóa sau 5 phút
-                scheduleErrorCleanup(state);
-            }
-
-            // Trả về HTML error page để browser có thể hiển thị
+            // Trả về HTML error page
             model.addAttribute("error", e.getMessage());
             model.addAttribute("errorCode", e.getErrorCode().getCode());
             model.addAttribute("provider", "facebook");
             model.addAttribute("state", state != null ? state : "");
             return "auth-error";
         } catch (Exception e) {
-            log.error("❌ Error during Facebook authentication: {}", e.getMessage(), e);
+            log.error("Error during Facebook authentication: {}", e.getMessage(), e);
             Map<String, Object> body = Map.of(
                     "status", "error",
                     "message", "Authentication failed");
@@ -177,29 +148,21 @@ public class FacebookAuthController {
     @GetMapping("/result/{state}")
     @ResponseBody
     public ResponseEntity<?> getAuthResult(@PathVariable String state) {
-        log.info("📊 Polling request for Facebook state: {}", state);
+        log.info("Polling request for Facebook state: {}", state);
 
         // Check error trước
-        Map<String, Object> errorResult = authErrors.get(state);
+        Map<String, Object> errorResult = oAuthService.getAuthError(state);
         if (errorResult != null) {
-            log.info("Error result retrieved for state: {}", state);
-            authErrors.remove(state); // Xóa ngay sau khi lấy
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResult);
         }
 
-        LoginResponseDTO result = authResults.get(state);
-
+        // Check success result
+        LoginResponseDTO result = oAuthService.getAuthResult(state);
         if (result != null) {
-            log.info("✅ Facebook auth result retrieved for state: {}", state);
-
-            // Không xóa ngay, đánh dấu đã lấy và để auto-cleanup xóa sau 30s
-            // Điều này tránh race condition khi frontend có nhiều request pending
-            scheduleResultRemoval(state, 30000); // Xóa sau 30 giây
-
             return ResponseEntity.ok(result);
         }
 
-        log.info("⏳ No Facebook result yet for state: {}", state);
+        log.info("No Facebook result yet for state: {}", state);
         return ResponseEntity.notFound().build();
     }
 
@@ -210,12 +173,7 @@ public class FacebookAuthController {
     @ResponseBody
     public ResponseEntity<LoginResponseDTO> authenticateWithCode(@RequestParam("code") String code) {
         try {
-            LoginResponseDTO response = facebookOAuthService.authenticateFacebookUser(code);
-
-            // Kiểm tra tài khoản có bị khóa không
-            if (response.getUser() != null && !response.getUser().getIsActive()) {
-                throw new CustomException(ErrorCode.USER_NOT_ACTIVE);
-            }
+            LoginResponseDTO response = oAuthService.authenticateWithOAuth(code, "facebook");
 
             ResponseCookie refreshCookie = ResponseCookie
                     .from("refresh_token", response.getRefreshToken())
@@ -236,44 +194,5 @@ public class FacebookAuthController {
             log.error("Unexpected error during Facebook code authentication: {}", e.getMessage());
             throw new CustomException(ErrorCode.FACEBOOK_AUTH_ERROR);
         }
-    }
-
-    private void scheduleResultCleanup(String state) {
-        // Tự động xóa kết quả sau 5 phút để tránh memory leak
-        new Thread(() -> {
-            try {
-                Thread.sleep(5 * 60 * 1000); // 5 phút
-                authResults.remove(state);
-                log.info("🧹 Auto-cleaned Facebook auth result for state: {}", state);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }).start();
-    }
-
-    // Schedule cleanup cho error map
-    private void scheduleErrorCleanup(String state) {
-        new Thread(() -> {
-            try {
-                Thread.sleep(5 * 60 * 1000); // 5 phút
-                authErrors.remove(state);
-                log.info("Auto-cleaned error result for state: {}", state);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }).start();
-    }
-
-    private void scheduleResultRemoval(String state, long delayMillis) {
-        // Xóa result sau khoảng thời gian delay (để tránh race condition)
-        new Thread(() -> {
-            try {
-                Thread.sleep(delayMillis);
-                authResults.remove(state);
-                log.info("🧹 Removed Facebook auth result after delay for state: {}", state);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }).start();
     }
 }
