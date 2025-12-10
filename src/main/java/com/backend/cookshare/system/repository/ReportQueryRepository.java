@@ -8,6 +8,7 @@ import com.backend.cookshare.system.repository.projection.RecipeTitleProjection;
 import com.backend.cookshare.system.repository.projection.ReportedRecipeInfoProjection;
 import com.backend.cookshare.system.repository.projection.ReportedUserInfoProjection;
 import com.backend.cookshare.system.repository.projection.UsernameProjection;
+import com.backend.cookshare.system.service.impl.ReportNotificationServiceImpl;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -21,13 +22,71 @@ import java.util.UUID;
 @Repository
 public interface ReportQueryRepository extends JpaRepository<Report, UUID> {
 
+    /**
+     * Tìm tất cả username của admins
+     */
+    @Query("SELECT u.username FROM User u WHERE u.role = 'ADMIN' AND u.isActive = true")
+    List<String> findAdminUsernames();
+
+    /**
+     * Tìm username theo userId
+     */
+    @Query("SELECT u.username FROM User u WHERE u.userId = :userId")
+    Optional<String> findUsernameById(@Param("userId") UUID userId);
+
+    /**
+     * Tìm thông tin recipe và author
+     */
+    @Query("""
+        SELECT new com.backend.cookshare.system.service.impl.ReportNotificationServiceImpl.RecipeInfo(
+            r.recipeId, 
+            r.title, 
+            r.user.userId, 
+            r.user.username
+        )
+        FROM Recipe r
+        WHERE r.recipeId = :recipeId
+    """)
+    ReportNotificationServiceImpl.RecipeInfo findRecipeInfoById(@Param("recipeId") UUID recipeId);
+
+    /**
+     * Tạm khóa user trong số ngày nhất định
+     */
     @Modifying
-    @Query(value = """
-        UPDATE users 
-        SET suspension_end_date = NOW() + INTERVAL ':days days'
-        WHERE user_id = :userId
-    """, nativeQuery = true)
+    @Query("""
+        UPDATE User u 
+        SET u.isActive = false,
+            u.suspendedUntil = CURRENT_TIMESTAMP + :days DAY,
+            u.updatedAt = CURRENT_TIMESTAMP
+        WHERE u.userId = :userId
+    """)
     void suspendUser(@Param("userId") UUID userId, @Param("days") int days);
+
+    /**
+     * Vô hiệu hóa user vĩnh viễn
+     */
+    @Modifying
+    @Query("""
+        UPDATE User u 
+        SET u.isActive = false,
+            u.bannedAt = CURRENT_TIMESTAMP,
+            u.updatedAt = CURRENT_TIMESTAMP
+        WHERE u.userId = :userId
+    """)
+    void disableUser(@Param("userId") UUID userId);
+
+    /**
+     * Gỡ xuống công thức (unpublish)
+     */
+    @Modifying
+    @Query("""
+        UPDATE Recipe r 
+        SET r.isPublished = false,
+            r.unpublishedAt = CURRENT_TIMESTAMP,
+            r.updatedAt = CURRENT_TIMESTAMP
+        WHERE r.recipeId = :recipeId
+    """)
+    void unpublishRecipe(@Param("recipeId") UUID recipeId);
 
     @Query(value = """
         SELECT u.user_id as userId, u.username, u.avatar_url as avatarUrl
@@ -93,9 +152,6 @@ public interface ReportQueryRepository extends JpaRepository<Report, UUID> {
         """, nativeQuery = true)
     Optional<ReviewerInfo> findReviewerInfoById(@Param("id") UUID id);
 
-    @Query(value = "SELECT username FROM users WHERE user_id = :userId", nativeQuery = true)
-    Optional<String> findUsernameById(@Param("userId") UUID userId);
-
     @Query(value = "SELECT user_id FROM users WHERE username = :username", nativeQuery = true)
     Optional<UUID> findUserIdByUsername(@Param("username") String username);
 
@@ -115,21 +171,6 @@ public interface ReportQueryRepository extends JpaRepository<Report, UUID> {
         WHERE r.recipe_id IN :ids
         """, nativeQuery = true)
     List<RecipeTitleProjection> findRecipeTitlesByIds(@Param("ids") List<UUID> ids);
-
-    @Query(value = """
-        SELECT username 
-        FROM users 
-        WHERE role = 'ADMIN' AND is_active = true
-        """, nativeQuery = true)
-    List<String> findAdminUsernames();
-
-    @Modifying
-    @Query(value = "UPDATE users SET is_active = false WHERE user_id = :userId", nativeQuery = true)
-    void disableUser(@Param("userId") UUID userId);
-
-    @Modifying
-    @Query(value = "UPDATE recipes SET is_published = false WHERE recipe_id = :recipeId", nativeQuery = true)
-    void unpublishRecipe(@Param("recipeId") UUID recipeId);
 
 
 }

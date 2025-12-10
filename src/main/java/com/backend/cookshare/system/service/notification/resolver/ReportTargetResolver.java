@@ -15,8 +15,9 @@ public class ReportTargetResolver {
 
     public ReportTarget resolve(Report report) {
         if (report.getReportedId() != null) {
-            String username = queryRepository.findUsernameById(report.getReportedId())
-                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+            String username = queryRepository.findUsernameById(report.getReporterId()).orElseThrow(
+                    () -> new CustomException(ErrorCode.USER_NOT_FOUND)
+            );
 
             return new ReportTarget("USER", username);
         }
