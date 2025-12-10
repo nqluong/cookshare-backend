@@ -17,9 +17,9 @@ public class WebSocketNotificationSender {
     public void sendToUser(String username, NotificationMessage message) {
         try {
             webSocketHandler.sendToUser(username, message);
-            log.debug("Sent WebSocket notification to user: {}", username);
+            log.debug("Đã gửi thông báo WebSocket tới người dùng: {}", username);
         } catch (Exception e) {
-            log.error("Failed to send WebSocket notification to user {}", username, e);
+            log.error("Không thể gửi thông báo WebSocket tới người dùng {}", username, e);
         }
     }
 
@@ -28,10 +28,10 @@ public class WebSocketNotificationSender {
             try {
                 webSocketHandler.sendToUser(username, message);
             } catch (Exception e) {
-                log.error("Failed to send WebSocket notification to user {}", username, e);
+                log.error("Không thể gửi thông báo WebSocket tới người dùng {}", username, e);
             }
         });
 
-        log.info("Broadcasted WebSocket notification to {} users", usernames.size());
+        log.info("Đã phát thông báo WebSocket tới {} người dùng", usernames.size());
     }
 }
