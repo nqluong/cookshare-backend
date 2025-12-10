@@ -292,6 +292,7 @@ public class UserServiceImpl implements UserService {
         }
 
         user.setIsActive(false);
+        user.setBannedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
 
@@ -327,6 +328,7 @@ public class UserServiceImpl implements UserService {
         }
 
         user.setIsActive(true);
+        user.setBannedAt(null);
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
 

@@ -163,21 +163,21 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
 
                 if (oldAvatarUrl == null || oldAvatarUrl.isEmpty()) {
                     // Trường hợp 1: Chưa có avatar
-                    log.info("✅ User chưa có avatar, sẽ upload từ Google");
+                    log.info("User chưa có avatar, sẽ upload từ Google");
                     shouldUpdateAvatar = true;
                 } else if (oldAvatarUrl.contains("oauth_google_") || oldAvatarUrl.contains("oauth_facebook_")) {
                     // Trường hợp 2: Avatar hiện tại vẫn là từ OAuth (chưa tùy chỉnh)
-                    log.info("✅ Avatar hiện tại là từ OAuth, sẽ cập nhật từ Google");
+                    log.info("Avatar hiện tại là từ OAuth, sẽ cập nhật từ Google");
                     shouldUpdateAvatar = true;
                 } else {
                     // Trường hợp 3: User đã tùy chỉnh avatar -> KHÔNG ghi đè
-                    log.info("⚠️ User đã tùy chỉnh avatar, giữ nguyên avatar hiện tại");
+                    log.info("User đã tùy chỉnh avatar, giữ nguyên avatar hiện tại");
                 }
 
                 if (shouldUpdateAvatar) {
                     // Xóa avatar OAuth cũ
                     if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
-                        log.info("🗑️ Xóa avatar OAuth cũ: {}", oldAvatarUrl);
+                        log.info("Xóa avatar OAuth cũ: {}", oldAvatarUrl);
                         firebaseStorageService.deleteAvatar(oldAvatarUrl);
                     }
 
@@ -209,19 +209,19 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
                 boolean shouldUpdateAvatar = false;
 
                 if (oldAvatarUrl == null || oldAvatarUrl.isEmpty()) {
-                    log.info("✅ User chưa có avatar khi link Google, sẽ upload từ Google");
+                    log.info("User chưa có avatar khi link Google, sẽ upload từ Google");
                     shouldUpdateAvatar = true;
                 } else if (oldAvatarUrl.contains("oauth_google_") || oldAvatarUrl.contains("oauth_facebook_")) {
-                    log.info("✅ Avatar hiện tại là từ OAuth khi link Google, sẽ cập nhật");
+                    log.info("Avatar hiện tại là từ OAuth khi link Google, sẽ cập nhật");
                     shouldUpdateAvatar = true;
                 } else {
-                    log.info("⚠️ User đã tùy chỉnh avatar khi link Google, giữ nguyên");
+                    log.info("User đã tùy chỉnh avatar khi link Google, giữ nguyên");
                 }
 
                 if (shouldUpdateAvatar) {
                     // Xóa avatar OAuth cũ
                     if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
-                        log.info("🗑️ Xóa avatar OAuth cũ khi link Google: {}", oldAvatarUrl);
+                        log.info("Xóa avatar OAuth cũ khi link Google: {}", oldAvatarUrl);
                         firebaseStorageService.deleteAvatar(oldAvatarUrl);
                     }
 
@@ -284,7 +284,7 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
      */
     private String uploadAvatarToFirebase(String imageUrl, UUID userId) {
         try {
-            log.info("📥 Bắt đầu tải avatar từ Google: {}", imageUrl);
+            log.info("Bắt đầu tải avatar từ Google: {}", imageUrl);
 
             // Tải ảnh từ URL của Google
             URL url = new URL(imageUrl);
@@ -292,23 +292,23 @@ public class GoogleOAuthServiceImpl implements GoogleOAuthService {
             byte[] imageBytes = inputStream.readAllBytes();
             inputStream.close();
 
-            log.info("✅ Đã tải {} bytes từ Google", imageBytes.length);
+            log.info("Đã tải {} bytes từ Google", imageBytes.length);
 
             // Tạo tên file unique
             String fileName = "oauth_google_" + userId + "_" + System.currentTimeMillis() + ".jpg";
 
             // Upload lên Firebase Storage
             firebaseStorageService.uploadAvatar(fileName, imageBytes, "image/jpeg");
-            log.info("✅ Đã upload avatar lên Firebase Storage: {}", fileName);
+            log.info("Đã upload avatar lên Firebase Storage: {}", fileName);
 
             // Lấy public URL
             String publicUrl = firebaseStorageService.getAvatarPublicUrl(fileName);
-            log.info("✅ Firebase avatar URL: {}", publicUrl);
+            log.info("Firebase avatar URL: {}", publicUrl);
 
             return publicUrl;
 
         } catch (IOException e) {
-            log.error("❌ Lỗi khi tải/upload avatar từ Google lên Firebase: {}", e.getMessage(), e);
+            log.error("Lỗi khi tải/upload avatar từ Google lên Firebase: {}", e.getMessage(), e);
             return null;
         }
     }
