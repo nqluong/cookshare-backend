@@ -138,6 +138,7 @@ public class ReportController {
         long endTime = System.currentTimeMillis();
         log.info("getReportById executed in {} ms", (endTime - startTime));
 
+        System.out.printf("Debug: Retrieved report with ID %s%n", reportId);
         return ResponseEntity.ok(ApiResponse.<ReportResponse>builder()
                 .success(true)
                 .message("Lấy chi tiết báo cáo thành công")
