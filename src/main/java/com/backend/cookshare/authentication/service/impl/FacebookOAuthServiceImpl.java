@@ -155,19 +155,19 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
                 boolean shouldUpdateAvatar = false;
 
                 if (oldAvatarUrl == null || oldAvatarUrl.isEmpty()) {
-                    log.info("✅ User chưa có avatar, sẽ upload từ Facebook");
+                    log.info("User chưa có avatar, sẽ upload từ Facebook");
                     shouldUpdateAvatar = true;
                 } else if (oldAvatarUrl.contains("oauth_google_") || oldAvatarUrl.contains("oauth_facebook_")) {
-                    log.info("✅ Avatar hiện tại là từ OAuth, sẽ cập nhật từ Facebook");
+                    log.info("Avatar hiện tại là từ OAuth, sẽ cập nhật từ Facebook");
                     shouldUpdateAvatar = true;
                 } else {
-                    log.info("⚠️ User đã tùy chỉnh avatar, giữ nguyên avatar hiện tại");
+                    log.info("User đã tùy chỉnh avatar, giữ nguyên avatar hiện tại");
                 }
 
                 if (shouldUpdateAvatar) {
                     // Xóa avatar OAuth cũ
                     if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
-                        log.info("🗑️ Xóa avatar OAuth cũ: {}", oldAvatarUrl);
+                        log.info("Xóa avatar OAuth cũ: {}", oldAvatarUrl);
                         firebaseStorageService.deleteAvatar(oldAvatarUrl);
                     }
 
@@ -196,19 +196,19 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
                     boolean shouldUpdateAvatar = false;
 
                     if (oldAvatarUrl == null || oldAvatarUrl.isEmpty()) {
-                        log.info("✅ User chưa có avatar khi link Facebook, sẽ upload từ Facebook");
+                        log.info("User chưa có avatar khi link Facebook, sẽ upload từ Facebook");
                         shouldUpdateAvatar = true;
                     } else if (oldAvatarUrl.contains("oauth_google_") || oldAvatarUrl.contains("oauth_facebook_")) {
-                        log.info("✅ Avatar hiện tại là từ OAuth khi link Facebook, sẽ cập nhật");
+                        log.info("Avatar hiện tại là từ OAuth khi link Facebook, sẽ cập nhật");
                         shouldUpdateAvatar = true;
                     } else {
-                        log.info("⚠️ User đã tùy chỉnh avatar khi link Facebook, giữ nguyên");
+                        log.info("User đã tùy chỉnh avatar khi link Facebook, giữ nguyên");
                     }
 
                     if (shouldUpdateAvatar) {
                         // Xóa avatar OAuth cũ
                         if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
-                            log.info("🗑️ Xóa avatar OAuth cũ khi link Facebook: {}", oldAvatarUrl);
+                            log.info("Xóa avatar OAuth cũ khi link Facebook: {}", oldAvatarUrl);
                             firebaseStorageService.deleteAvatar(oldAvatarUrl);
                         }
 
@@ -282,7 +282,7 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
      */
     private String uploadAvatarToFirebase(String imageUrl, UUID userId) {
         try {
-            log.info("📥 Bắt đầu tải avatar từ Facebook: {}", imageUrl);
+            log.info("Bắt đầu tải avatar từ Facebook: {}", imageUrl);
 
             // Tải ảnh từ URL của Facebook
             URL url = new URL(imageUrl);
@@ -290,23 +290,23 @@ public class FacebookOAuthServiceImpl implements FacebookOAuthService {
             byte[] imageBytes = inputStream.readAllBytes();
             inputStream.close();
 
-            log.info("✅ Đã tải {} bytes từ Facebook", imageBytes.length);
+            log.info("Đã tải {} bytes từ Facebook", imageBytes.length);
 
             // Tạo tên file unique
             String fileName = "oauth_facebook_" + userId + "_" + System.currentTimeMillis() + ".jpg";
 
             // Upload lên Firebase Storage
             firebaseStorageService.uploadAvatar(fileName, imageBytes, "image/jpeg");
-            log.info("✅ Đã upload avatar lên Firebase Storage: {}", fileName);
+            log.info("Đã upload avatar lên Firebase Storage: {}", fileName);
 
             // Lấy public URL
             String publicUrl = firebaseStorageService.getAvatarPublicUrl(fileName);
-            log.info("✅ Firebase avatar URL: {}", publicUrl);
+            log.info("Firebase avatar URL: {}", publicUrl);
 
             return publicUrl;
 
         } catch (IOException e) {
-            log.error("❌ Lỗi khi tải/upload avatar từ Facebook lên Firebase: {}", e.getMessage(), e);
+            log.error("Lỗi khi tải/upload avatar từ Facebook lên Firebase: {}", e.getMessage(), e);
             return null;
         }
     }

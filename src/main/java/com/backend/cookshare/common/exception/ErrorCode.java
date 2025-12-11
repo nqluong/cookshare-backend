@@ -57,6 +57,7 @@ public enum ErrorCode {
     GOOGLE_AUTH_ERROR(4018, "Lỗi xác thực với Google", HttpStatus.UNAUTHORIZED),
     // Facebook OAuth errors (5xxx)
     FACEBOOK_AUTH_ERROR(4019, "Lỗi xác thực với Facebook", HttpStatus.UNAUTHORIZED),
+    INVALID_OAUTH_PROVIDER(4021, "OAuth provider không hợp lệ", HttpStatus.BAD_REQUEST),
 
     // Collection errors (4xxx)
     COLLECTION_NOT_FOUND(4001, "Không tìm thấy bộ sưu tập", HttpStatus.NOT_FOUND),
