@@ -18,7 +18,6 @@ import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class ReportNotificationOrchestrator {
 
@@ -26,9 +25,19 @@ public class ReportNotificationOrchestrator {
     private final ReportQueryRepository reportQueryRepository;
     private final ReportRepository reportRepository;
     private final ReportSynchronizer reportSynchronizer;
-
-    @Qualifier("reportAsyncExecutor")
     private final Executor asyncExecutor;
+
+    public ReportNotificationOrchestrator(ReportNotificationService notificationService,
+                                          ReportQueryRepository reportQueryRepository,
+                                          ReportRepository reportRepository,
+                                          ReportSynchronizer reportSynchronizer,
+                                          @Qualifier("reportAsyncExecutor") Executor asyncExecutor) {
+        this.notificationService = notificationService;
+        this.reportQueryRepository = reportQueryRepository;
+        this.reportRepository = reportRepository;
+        this.reportSynchronizer = reportSynchronizer;
+        this.asyncExecutor = asyncExecutor;
+    }
 
     public void notifyAllReportersAsync(Report reviewedReport) {
         CompletableFuture.runAsync(() -> {

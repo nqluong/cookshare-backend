@@ -19,13 +19,19 @@ import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 @Component
-@RequiredArgsConstructor
 public class ReportMapper {
     private final ReportQueryRepository reportQueryRepository;
     private final PageMapper pageMapper;
-
-    @Qualifier("reportAsyncExecutor")
     private final Executor asyncExecutor;
+
+    public ReportMapper(ReportQueryRepository reportQueryRepository,
+                        PageMapper pageMapper,
+                        @Qualifier("reportAsyncExecutor") Executor asyncExecutor) {
+        this.reportQueryRepository = reportQueryRepository;
+        this.pageMapper = pageMapper;
+        this.asyncExecutor = asyncExecutor;
+
+    }
 
     public ReportResponse toResponse(Report report) {
         ReportResponse response = ReportResponse.builder()
