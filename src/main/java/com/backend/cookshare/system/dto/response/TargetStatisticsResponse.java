@@ -2,7 +2,6 @@ package com.backend.cookshare.system.dto.response;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.checkerframework.checker.units.qual.N;
 
 @Data
 @Builder
@@ -10,25 +9,18 @@ import org.checkerframework.checker.units.qual.N;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class TargetStatisticsResponse {
-    // Số lượng targets bị report
+    // Số lượng công thức bị báo cáo
     Long totalReportedRecipes;
-    Long totalReportedUsers;
 
-    // Targets vượt ngưỡng auto-moderation
+    // Công thức vượt ngưỡng
     Long recipesExceedingThreshold;
-    Long usersExceedingThreshold;
 
-    // Targets đã bị auto-action
-    Long autoUnpublishedRecipes;
-    Long autoDisabledUsers;
-
-    // Avg reports per target
+    // Trung bình báo cáo mỗi công thức
     Double avgReportsPerRecipe;
-    Double avgReportsPerUser;
 
-    // Priority distribution
-    Long criticalPriorityTargets;
-    Long highPriorityTargets;
-    Long mediumPriorityTargets;
-    Long lowPriorityTargets;
+    // Phân phối ưu tiên theo công thức
+    Long criticalPriorityRecipes;
+    Long highPriorityRecipes;
+    Long mediumPriorityRecipes;
+    Long lowPriorityRecipes;
 }

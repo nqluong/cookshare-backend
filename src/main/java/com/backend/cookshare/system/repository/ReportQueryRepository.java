@@ -1,15 +1,13 @@
 package com.backend.cookshare.system.repository;
 
 import com.backend.cookshare.system.dto.response.RecipeInfo;
-import com.backend.cookshare.system.dto.response.ReportedRecipeInfo;
 import com.backend.cookshare.system.dto.response.ReporterInfo;
 import com.backend.cookshare.system.dto.response.ReviewerInfo;
 import com.backend.cookshare.system.entity.Report;
-import com.backend.cookshare.system.repository.projection.RecipeTitleProjection;
+import com.backend.cookshare.system.repository.projection.RecipeAuthorProjection;
 import com.backend.cookshare.system.repository.projection.ReportedRecipeInfoProjection;
 import com.backend.cookshare.system.repository.projection.ReportedUserInfoProjection;
 import com.backend.cookshare.system.repository.projection.UsernameProjection;
-import com.backend.cookshare.system.service.impl.ReportNotificationServiceImpl;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -30,10 +28,83 @@ public interface ReportQueryRepository extends JpaRepository<Report, UUID> {
     List<String> findAdminUsernames();
 
     /**
-     * Tìm username theo userId
+     * BATCH: Lấy thông tin cơ bản của nhiều users (userId, username)
+     * Dùng cho: reporter usernames, reviewer names, etc.
      */
-    @Query("SELECT u.username FROM User u WHERE u.userId = :userId")
-    Optional<String> findUsernameById(@Param("userId") UUID userId);
+    @Query(value = """
+        SELECT u.user_id as userId, u.username, u.full_name as fullName
+        FROM users u
+        WHERE u.user_id IN :ids
+        """, nativeQuery = true)
+    List<UsernameProjection> findUsernamesByIds(@Param("ids") List<UUID> ids);
+
+    /**
+     * BATCH: Lấy thông tin reporter (userId, username, avatar)
+     */
+    @Query(value = """
+        SELECT u.user_id as userId, u.username, u.avatar_url as avatarUrl, u.full_name as fullName
+        FROM users u
+        WHERE u.user_id IN :ids
+        """, nativeQuery = true)
+    List<ReporterInfo> findReporterInfoByIds(@Param("ids") List<UUID> ids);
+
+    /**
+     * BATCH: Lấy thông tin chi tiết của reported users
+     */
+    @Query(value = """
+        SELECT u.user_id as userId, u.username, u.full_name as fullName, u.email, u.avatar_url as avatarUrl,
+               u.role, u.is_active as isActive
+        FROM users u
+        WHERE u.user_id IN :ids
+        """, nativeQuery = true)
+    List<ReportedUserInfoProjection> findReportedUserInfoByIds(@Param("ids") List<UUID> ids);
+
+    /**
+     * BATCH: Lấy thông tin chi tiết của nhiều recipes + author info
+     */
+    @Query(value = """
+        SELECT r.recipe_id as recipeId, r.title, r.slug, r.featured_image as featuredImage,
+               r.status, r.is_published as isPublished, r.view_count as viewCount, 
+               r.user_id as userId, u.username as authorUsername
+        FROM recipes r
+        LEFT JOIN users u ON r.user_id = u.user_id
+        WHERE r.recipe_id IN :ids
+        """, nativeQuery = true)
+    List<ReportedRecipeInfoProjection> findReportedRecipeInfoByIds(@Param("ids") List<UUID> ids);
+
+    /**
+     * Lấy thông tin recipe + author trong 1 query (dùng DTO constructor)
+     */
+    @Query("""
+        SELECT new com.backend.cookshare.system.dto.response.RecipeInfo(
+            r.recipeId,
+            r.title,
+            r.user.userId, 
+            r.user.username,
+            r.user.fullName
+        )
+        FROM Recipe r
+        WHERE r.recipeId = :recipeId
+    """)
+    Optional<RecipeInfo> findRecipeInfoById(@Param("recipeId") UUID recipeId);
+
+    /**
+     * Lấy thông tin tác giả của Recipe
+     */
+    @Query(value = """
+        SELECT u.user_id as authorId, u.username as authorUsername, u.full_name as authorFullName
+        FROM recipes r
+        JOIN users u ON r.user_id = u.user_id
+        WHERE r.recipe_id = :recipeId
+        """, nativeQuery = true)
+    Optional<RecipeAuthorProjection> findRecipeAuthorInfo(@Param("recipeId") UUID recipeId);
+
+    /**
+     * Lấy ID tác giả của Recipe
+     */
+    @Query(value = "SELECT user_id FROM recipes WHERE recipe_id = :recipeId", nativeQuery = true)
+    Optional<UUID> findAuthorIdByRecipeId(@Param("recipeId") UUID recipeId);
+
 
     /**
      * Kiểm tra recipe đã bị unpublish chưa
@@ -46,21 +117,6 @@ public interface ReportQueryRepository extends JpaRepository<Report, UUID> {
      */
     @Query("SELECT CASE WHEN u.isActive = false THEN true ELSE false END FROM User u WHERE u.userId = :userId")
     boolean isUserAlreadyDisabled(@Param("userId") UUID userId);
-
-    /**
-     * Tìm thông tin recipe và author
-     */
-    @Query("""
-        SELECT new com.backend.cookshare.system.dto.response.RecipeInfo(
-            r.recipeId, 
-            r.title, 
-            r.user.userId, 
-            r.user.username
-        )
-        FROM Recipe r
-        WHERE r.recipeId = :recipeId
-    """)
-    RecipeInfo findRecipeInfoById(@Param("recipeId") UUID recipeId);
 
     /**
      * Tạm khóa user trong số ngày nhất định
@@ -101,89 +157,10 @@ public interface ReportQueryRepository extends JpaRepository<Report, UUID> {
     """)
     void unpublishRecipe(@Param("recipeId") UUID recipeId);
 
-    @Query(value = """
-        SELECT u.user_id as userId, u.username, u.avatar_url as avatarUrl
-        FROM users u
-        WHERE u.user_id IN :ids
-        """, nativeQuery = true)
-    List<ReporterInfo> findReporterInfoByIds(@Param("ids") List<UUID> ids);
 
-    @Query(value = """
-        SELECT u.user_id as userId, u.username, u.email, u.avatar_url as avatarUrl, 
-               u.role, u.is_active as isActive
-        FROM users u
-        WHERE u.user_id IN :ids
-        """, nativeQuery = true)
-    List<ReportedUserInfoProjection> findReportedUserInfoByIds(@Param("ids") List<UUID> ids);
-
-    @Query(value = """
-        SELECT r.recipe_id as recipeId, r.title, r.slug, r.featured_image as featuredImage,
-               r.status, r.is_published as isPublished, r.view_count as viewCount, 
-               r.user_id as userId, u.username as authorUsername
-        FROM recipes r
-        LEFT JOIN users u ON r.user_id = u.user_id
-        WHERE r.recipe_id IN :ids
-        """, nativeQuery = true)
-    List<ReportedRecipeInfoProjection> findReportedRecipeInfoByIds(@Param("ids") List<UUID> ids);
-
-    @Query(value = """
-        SELECT u.user_id as userId, u.username, u.avatar_url as avatarUrl
-        FROM users u
-        WHERE u.user_id IN :ids
-        """, nativeQuery = true)
-    List<ReviewerInfo> findReviewerInfoByIds(@Param("ids") List<UUID> ids);
-
-    @Query(value = """
-        SELECT u.user_id as userId, u.username, u.avatar_url as avatarUrl
-        FROM users u
-        WHERE u.user_id = :id
-        """, nativeQuery = true)
-    Optional<ReporterInfo> findReporterInfoById(@Param("id") UUID id);
-
-    @Query(value = """
-        SELECT u.user_id as userId, u.username, u.email, u.avatar_url as avatarUrl,
-               u.role, u.is_active as isActive
-        FROM users u
-        WHERE u.user_id = :id
-        """, nativeQuery = true)
-    Optional<ReportedUserInfoProjection> findReportedUserInfoById(@Param("id") UUID id);
-
-    @Query(value = """
-        SELECT r.recipe_id as recipeId, r.title, r.slug, r.featured_image as featuredImage,
-               r.status, r.is_published as isPublished, r.view_count as viewCount,
-               r.user_id as userId, u.username as authorUsername
-        FROM recipes r
-        LEFT JOIN users u ON r.user_id = u.user_id
-        WHERE r.recipe_id = :id
-        """, nativeQuery = true)
-    Optional<ReportedRecipeInfoProjection> findReportedRecipeInfoById(@Param("id") UUID id);
-
-    @Query(value = """
-        SELECT u.user_id as userId, u.username, u.avatar_url as avatarUrl
-        FROM users u
-        WHERE u.user_id = :id
-        """, nativeQuery = true)
-    Optional<ReviewerInfo> findReviewerInfoById(@Param("id") UUID id);
-
+    /**
+     * Tìm userId theo username
+     */
     @Query(value = "SELECT user_id FROM users WHERE username = :username", nativeQuery = true)
     Optional<UUID> findUserIdByUsername(@Param("username") String username);
-
-    @Query(value = "SELECT title FROM recipes WHERE recipe_id = :recipeId", nativeQuery = true)
-    Optional<String> findRecipeTitleById(@Param("recipeId") UUID recipeId);
-
-    @Query(value = """
-        SELECT u.user_id as userId, u.username
-        FROM users u
-        WHERE u.user_id IN :ids
-        """, nativeQuery = true)
-    List<UsernameProjection> findUsernamesByIds(@Param("ids") List<UUID> ids);
-
-    @Query(value = """
-        SELECT r.recipe_id as recipeId, r.title
-        FROM recipes r
-        WHERE r.recipe_id IN :ids
-        """, nativeQuery = true)
-    List<RecipeTitleProjection> findRecipeTitlesByIds(@Param("ids") List<UUID> ids);
-
-
 }

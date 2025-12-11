@@ -8,20 +8,33 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * DTO phản hồi chi tiết cho nhóm báo cáo theo Recipe.
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ReportGroupDetailResponse {
-     String targetType;
-     UUID targetId;
-     String targetTitle;
-     Long reportCount;
-     Double weightedScore;
-     ReportType mostSevereType;
-     Map<ReportType, Long> reportTypeBreakdown;
-     Boolean exceedsThreshold;
-     Double threshold;
-     List<ReportDetailInGroupResponse> reports;
+    // Thông tin Recipe
+    UUID recipeId;
+    String recipeTitle;
+    String recipeThumbnail;
+    
+    // Thông tin tác giả
+    UUID authorId;
+    String authorUsername;
+    String authorFullName;
+    
+    // Thống kê
+    Long reportCount;
+    Double weightedScore;
+    ReportType mostSevereType;
+    Map<ReportType, Long> reportTypeBreakdown;
+    Boolean exceedsThreshold;
+    Double threshold;
+    
+    // Danh sách báo cáo chi tiết
+    List<ReportDetailInGroupResponse> reports;
 }

@@ -13,5 +13,6 @@ import java.util.UUID;
 public class ReviewerInfo {
     UUID userId;
     String username;
+    String fullName;
     String avatarUrl;
 }

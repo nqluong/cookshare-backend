@@ -13,6 +13,7 @@ import java.util.UUID;
 public class ReportSummaryResponse {
     private UUID reportId;
     private String reporterUsername;
+    private String reporterFullName;
     private ReportType reportType;
     private String reason;
     private ReportStatus status;

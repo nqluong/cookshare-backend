@@ -15,6 +15,7 @@ import java.util.UUID;
 public class ReportDetailInGroupResponse {
      UUID reportId;
      String reporterUsername;
+     String reporterFullName;
      String reporterAvatar;
      ReportType reportType;
      String reason;

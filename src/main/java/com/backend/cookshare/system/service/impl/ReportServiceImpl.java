@@ -237,22 +237,12 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
-    public PageResponse<ReportGroupResponse> getGroupedReports(int page, int size) {
-        return reportGroupService.getGroupedReports(page, size);
-    }
-
-    @Override
-    public ReportGroupDetailResponse getGroupDetail(String targetType, UUID targetId) {
-        return reportGroupService.getGroupDetail(targetType, targetId);
-    }
-
-    @Override
-    public BatchReviewResponse batchReviewByTarget(String targetType, UUID targetId, ReviewReportRequest request) {
+    public BatchReviewResponse batchReviewByRecipe(UUID recipeId, ReviewReportRequest request) {
         String reviewerUsername = getCurrentUsername();
         UUID adminId = getCurrentUserId();
 
-        // Get all pending reports for this target
-        List<Report> reports = groupRepository.findReportsByTarget(targetType, targetId)
+        // Lấy tất cả báo cáo đang chờ xử lý cho công thức này
+        List<Report> reports = groupRepository.findReportsByRecipe(recipeId)
                 .stream()
                 .filter(r -> r.getStatus() == ReportStatus.PENDING)
                 .collect(Collectors.toList());
@@ -261,14 +251,7 @@ public class ReportServiceImpl implements ReportService {
             throw new CustomException(ErrorCode.NO_PENDING_REPORTS);
         }
 
-        // If selectedReportIds is provided, filter only those
-//        if (request.getSelectedReportIds() != null && !request.getSelectedReportIds().isEmpty()) {
-//            reports = reports.stream()
-//                    .filter(r -> request.getSelectedReportIds().contains(r.getReportId()))
-//                    .collect(Collectors.toList());
-//        }
-
-        // Update all reports
+        // Cập nhật tất cả báo cáo
         LocalDateTime reviewTime = LocalDateTime.now();
         ReportStatus determinedStatus = statusManager.determineStatusFromAction(request.getActionType());
 
@@ -284,83 +267,65 @@ public class ReportServiceImpl implements ReportService {
             reviewedIds.add(report.getReportId());
         }
 
-        // Save all
+        // Lưu tất cả báo cáo
         reportRepository.saveAll(reports);
 
-        // Execute action ONCE (not for each report)
-        // Use the first report as representative
+        // Thực thi hành động MỘT LẦN (không phải cho mỗi báo cáo)
+        // Sử dụng báo cáo đầu tiên làm đại diện
         Report representativeReport = reports.get(0);
         actionExecutor.execute(representativeReport);
 
-        // Sync all related reports (if target has more reports from other actions)
+        // Đồng bộ tất cả báo cáo liên quan
         synchronizer.syncRelatedReports(representativeReport);
 
-        // Notify all reporters asynchronously
+        // Thông báo cho tất cả người báo cáo bất đồng bộ
         notificationOrchestrator.notifyAllReportersAsync(representativeReport);
 
-        // Update pending count
+        // Cập nhật số lượng đang chờ
         broadcastPendingCountUpdate();
 
-        log.info("Batch reviewed {} reports for {} {} by admin {}",
-                reports.size(), targetType, targetId, reviewerUsername);
+        log.info("Đã xem xét hàng loạt {} báo cáo cho công thức {} bởi admin {}",
+                reports.size(), recipeId, reviewerUsername);
 
         return BatchReviewResponse.builder()
-                .targetType(targetType)
-                .targetId(targetId)
+                .recipeId(recipeId)
                 .totalReportsAffected(reports.size())
                 .actionTaken(request.getActionType().toString())
                 .status(determinedStatus.toString())
                 .reviewedReportIds(reviewedIds)
-                .message(String.format("Successfully reviewed %d reports and applied action: %s",
+                .message(String.format("Đã xem xét thành công %d báo cáo và áp dụng hành động: %s",
                         reports.size(), request.getActionType()))
                 .build();
     }
 
     @Override
     public TargetStatisticsResponse getTargetStatistics() {
-        // Count unique reported recipes
+        // Đếm số công thức bị báo cáo riêng biệt
         long totalReportedRecipes = reportRepository.countDistinctRecipeIds();
 
-        // Count unique reported users
-        long totalReportedUsers = reportRepository.countDistinctReportedUserIds();
+        // Đếm số công thức vượt ngưỡng (cần tính điểm trọng số)
+        // Đây là phiên bản đơn giản, sử dụng số lượng báo cáo
+        long recipesExceedingThreshold = reportRepository.countRecipesExceedingThreshold(5L); // Đếm >= 5 báo cáo
 
-        // Count targets exceeding threshold (need to calculate weighted scores)
-        // This is expensive, so we'll use a simplified version
-        long recipesExceedingThreshold = reportRepository.countRecipesExceedingThreshold(5L); // Count >= 5 reports
-        long usersExceedingThreshold = reportRepository.countUsersExceedingThreshold(10L); // Count >= 10 reports
-
-//        // Count auto-actioned targets
-//        long autoUnpublishedRecipes = reportQueryRepository.countAutoUnpublishedRecipes();
-//        long autoDisabledUsers = reportQueryRepository.countAutoDisabledUsers();
-
-        // Calculate averages
+        // Tính trung bình
         double avgReportsPerRecipe = totalReportedRecipes > 0
                 ? (double) reportRepository.countByRecipeIdIsNotNull() / totalReportedRecipes
                 : 0.0;
 
-        double avgReportsPerUser = totalReportedUsers > 0
-                ? (double) reportRepository.countByReportedIdIsNotNull() / totalReportedUsers
-                : 0.0;
-
-        // Priority distribution (simplified - based on report count)
-        long criticalPriorityTargets = reportRepository.countTargetsWithReportCountGreaterThan(10L);
-        long highPriorityTargets = reportRepository.countTargetsWithReportCountBetween(5L, 9L);
-        long mediumPriorityTargets = reportRepository.countTargetsWithReportCountBetween(3L, 4L);
-        long lowPriorityTargets = reportRepository.countTargetsWithReportCountLessThan(3L);
+        // Phân phối ưu tiên (đơn giản - dựa trên số lượng báo cáo)
+        long criticalPriorityTargets = reportRepository.countRecipesWithReportCountGreaterThan(10L);
+        long highPriorityTargets = reportRepository.countRecipesWithReportCountBetween(5L, 9L);
+        long mediumPriorityTargets = reportRepository.countRecipesWithReportCountBetween(3L, 4L);
+        long lowPriorityTargets = reportRepository.countRecipesWithReportCountLessThan(3L);
 
         return TargetStatisticsResponse.builder()
                 .totalReportedRecipes(totalReportedRecipes)
-                .totalReportedUsers(totalReportedUsers)
                 .recipesExceedingThreshold(recipesExceedingThreshold)
-                .usersExceedingThreshold(usersExceedingThreshold)
-//                .autoUnpublishedRecipes(autoUnpublishedRecipes)
-//                .autoDisabledUsers(autoDisabledUsers)
                 .avgReportsPerRecipe(avgReportsPerRecipe)
-                .avgReportsPerUser(avgReportsPerUser)
-                .criticalPriorityTargets(criticalPriorityTargets)
-                .highPriorityTargets(highPriorityTargets)
-                .mediumPriorityTargets(mediumPriorityTargets)
-                .lowPriorityTargets(lowPriorityTargets)
+                .criticalPriorityRecipes(criticalPriorityTargets)
+                .highPriorityRecipes(highPriorityTargets)
+                .mediumPriorityRecipes(mediumPriorityTargets)
+                .lowPriorityRecipes(lowPriorityTargets)
                 .build();
     }
 

@@ -75,16 +75,15 @@ public class ReportController {
                         .build());
     }
 
-    @GetMapping("/admin/reports/grouped/{targetType}/{targetId}")
+    @GetMapping("/admin/reports/grouped/recipe/{recipeId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ReportGroupDetailResponse>> getGroupDetail(
-            @PathVariable String targetType,  // "USER" or "RECIPE"
-            @PathVariable UUID targetId) {
+            @PathVariable UUID recipeId) {
 
         long startTime = System.currentTimeMillis();
-        ReportGroupDetailResponse response = reportGroupService.getGroupDetail(targetType, targetId);
+        ReportGroupDetailResponse response = reportGroupService.getGroupDetail(recipeId);
         long endTime = System.currentTimeMillis();
-        log.info("getGroupDetail executed in {} ms", (endTime - startTime));
+        log.info("getGroupDetail được thực thi trong {} ms", (endTime - startTime));
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.<ReportGroupDetailResponse>builder()
                         .success(true)
@@ -93,17 +92,16 @@ public class ReportController {
                         .build());
     }
 
-    @PostMapping("/admin/reports/grouped/{targetType}/{targetId}/review")
+    @PostMapping("/admin/reports/grouped/recipe/{recipeId}/review")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<BatchReviewResponse>> batchReviewByTarget(
-            @PathVariable String targetType,
-            @PathVariable UUID targetId,
+    public ResponseEntity<ApiResponse<BatchReviewResponse>> batchReviewByRecipe(
+            @PathVariable UUID recipeId,
             @Valid @RequestBody ReviewReportRequest request) {
 
         long startTime = System.currentTimeMillis();
-        BatchReviewResponse response = reportService.batchReviewByTarget(targetType, targetId, request);
+        BatchReviewResponse response = reportService.batchReviewByRecipe(recipeId, request);
         long endTime = System.currentTimeMillis();
-        log.info("batchReviewByTarget executed in {} ms", (endTime - startTime));
+        log.info("batchReviewByRecipe được thực thi trong {} ms", (endTime - startTime));
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.<BatchReviewResponse>builder()
                         .success(true)
