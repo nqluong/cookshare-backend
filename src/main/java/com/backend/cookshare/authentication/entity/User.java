@@ -92,9 +92,6 @@ public class User {
     @Column(name = "suspended_until")
     LocalDateTime suspendedUntil;
 
-    @Column(name = "banned_at")
-    LocalDateTime bannedAt;
-
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
