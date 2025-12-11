@@ -14,4 +14,5 @@ public class ReporterInfo {
     UUID userId;
     String username;
     String avatarUrl;
+    String fullName;
 }

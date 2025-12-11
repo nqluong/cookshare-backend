@@ -7,7 +7,7 @@ import com.backend.cookshare.system.dto.response.ReportGroupResponse;
 import com.backend.cookshare.system.entity.Report;
 import com.backend.cookshare.system.enums.ReportType;
 import com.backend.cookshare.system.service.loader.ReportGroupDataLoader.GroupEnrichmentData;
-import com.backend.cookshare.system.service.loader.ReportGroupDataLoader.TargetKey;
+import com.backend.cookshare.system.service.loader.ReportGroupDataLoader.RecipeAuthorInfo;
 import com.backend.cookshare.system.service.score.ReportGroupScoreCalculator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -52,15 +52,18 @@ public class ReportGroupMapper {
                 .build();
     }
 
+    /**
+     * Làm giàu dữ liệu cho một nhóm báo cáo công thức.
+     */
     public ReportGroupResponse enrichGroupData(
             ReportGroupResponse group,
             GroupEnrichmentData enrichmentData) {
 
-        TargetKey key = new TargetKey(group.getTargetType(), group.getTargetId());
+        UUID recipeId = group.getRecipeId();
 
-        // Lấy phân loại
+        // Lấy phân loại theo loại báo cáo
         Map<ReportType, Long> breakdown = enrichmentData.breakdowns()
-                .getOrDefault(key, Collections.emptyMap());
+                .getOrDefault(recipeId, Collections.emptyMap());
 
         // Tính điểm trọng số
         double weightedScore = scoreCalculator.calculateWeightedScore(breakdown);
@@ -69,20 +72,19 @@ public class ReportGroupMapper {
         ReportType mostSevere = scoreCalculator.findMostSevereType(breakdown);
 
         // Xác định xem có vượt ngưỡng không
-        boolean exceedsThreshold = scoreCalculator.exceedsThreshold(weightedScore, group.getTargetType());
+        boolean exceedsThreshold = scoreCalculator.exceedsThreshold(weightedScore);
 
         // Xác định độ ưu tiên
-        String priority = scoreCalculator.determinePriority(
-                weightedScore, group.getTargetType(), group.getReportCount());
+        String priority = scoreCalculator.determinePriority(weightedScore, group.getReportCount());
 
         // Lấy người báo cáo hàng đầu
         List<String> topReporters = enrichmentData.reporters()
-                .getOrDefault(key, Collections.emptyList());
+                .getOrDefault(recipeId, Collections.emptyList());
 
-        // Chuyển đổi URL avatar nếu cần
-        String avatarUrl = group.getAvatarUrl();
-        if (avatarUrl != null && !avatarUrl.startsWith("http")) {
-            avatarUrl = enrichmentData.avatarUrls().getOrDefault(avatarUrl, avatarUrl);
+        // Chuyển đổi URL thumbnail nếu cần
+        String thumbnailUrl = group.getRecipeFeaturedImage();
+        if (thumbnailUrl != null && !thumbnailUrl.startsWith("http")) {
+            thumbnailUrl = enrichmentData.thumbnailUrls().getOrDefault(thumbnailUrl, thumbnailUrl);
         }
 
         // Cập nhật dữ liệu nhóm
@@ -92,7 +94,7 @@ public class ReportGroupMapper {
         group.setExceedsThreshold(exceedsThreshold);
         group.setPriority(priority);
         group.setTopReporters(topReporters);
-        group.setAvatarUrl(avatarUrl);
+        group.setRecipeFeaturedImage(thumbnailUrl);
 
         return group;
     }
@@ -105,55 +107,6 @@ public class ReportGroupMapper {
                 .map(group -> enrichGroupData(group, enrichmentData))
                 .sorted(this::compareByPriority)
                 .collect(Collectors.toList());
-    }
-
-
-    public ReportDetailInGroupResponse toDetailDto(
-            Report report,
-            Map<UUID, String> reporterUsernames) {
-
-        return ReportDetailInGroupResponse.builder()
-                .reportId(report.getReportId())
-                .reporterUsername(reporterUsernames.getOrDefault(report.getReporterId(), "unknown"))
-                .reportType(report.getReportType())
-                .reason(report.getReason())
-                .description(report.getDescription())
-                .createdAt(report.getCreatedAt())
-                .build();
-    }
-
-    /**
-     * Xây dựng phản hồi chi tiết nhóm.
-     */
-    public ReportGroupDetailResponse buildGroupDetailResponse(
-            String targetType,
-            UUID targetId,
-            String targetTitle,
-            List<Report> reports,
-            Map<ReportType, Long> typeBreakdown,
-            Map<UUID, String> reporterUsernames) {
-
-        double weightedScore = scoreCalculator.calculateWeightedScore(typeBreakdown);
-        ReportType mostSevere = scoreCalculator.findMostSevereType(typeBreakdown);
-        double threshold = scoreCalculator.getThreshold(targetType);
-        boolean exceedsThreshold = weightedScore >= threshold;
-
-        List<ReportDetailInGroupResponse> reportDetails = reports.stream()
-                .map(r -> toDetailDto(r, reporterUsernames))
-                .collect(Collectors.toList());
-
-        return ReportGroupDetailResponse.builder()
-                .targetType(targetType)
-                .targetId(targetId)
-                .targetTitle(targetTitle)
-                .reportCount((long) reports.size())
-                .weightedScore(weightedScore)
-                .mostSevereType(mostSevere)
-                .reportTypeBreakdown(typeBreakdown)
-                .exceedsThreshold(exceedsThreshold)
-                .threshold(threshold)
-                .reports(reportDetails)
-                .build();
     }
 
 

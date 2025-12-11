@@ -8,6 +8,7 @@ import com.backend.cookshare.system.enums.ReportType;
 import com.backend.cookshare.system.repository.ReportQueryRepository;
 import com.backend.cookshare.system.repository.ReportRepository;
 import com.backend.cookshare.system.repository.projection.ReportedRecipeInfoProjection;
+import com.backend.cookshare.system.repository.projection.UsernameProjection;
 import com.backend.cookshare.system.service.ReportNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -163,8 +164,7 @@ public class ReportAutoModerator {
 
         reportQueryRepository.disableUser(userId);
 
-        String username = reportQueryRepository.findUsernameById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        String username = findUsernameById(userId);
 
         notificationService.notifyAutoDisableUser(userId, username, score.getTotalCount());
 
@@ -189,9 +189,15 @@ public class ReportAutoModerator {
 
         reportQueryRepository.unpublishRecipe(recipeId);
 
-        ReportedRecipeInfoProjection recipeInfo = reportQueryRepository
-                .findReportedRecipeInfoById(recipeId)
-                .orElseThrow(() -> new CustomException(ErrorCode.REPORTED_RECIPE_NOT_FOUND));
+        // Sử dụng batch query với 1 phần tử
+        List<ReportedRecipeInfoProjection> recipeInfoList = reportQueryRepository
+                .findReportedRecipeInfoByIds(List.of(recipeId));
+        
+        if (recipeInfoList.isEmpty()) {
+            throw new CustomException(ErrorCode.REPORTED_RECIPE_NOT_FOUND);
+        }
+        
+        ReportedRecipeInfoProjection recipeInfo = recipeInfoList.get(0);
 
         notificationService.notifyAutoUnpublishRecipe(
                 recipeId,
@@ -214,5 +220,13 @@ public class ReportAutoModerator {
                 breakdown.append(String.format("%s(%d), ", type, count))
         );
         log.info(breakdown.toString());
+    }
+
+    private String findUsernameById(UUID userId) {
+        List<UsernameProjection> results = reportQueryRepository.findUsernamesByIds(List.of(userId));
+        if (results.isEmpty()) {
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        }
+        return results.get(0).getUsername();
     }
 }

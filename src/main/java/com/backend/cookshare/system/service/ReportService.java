@@ -35,23 +35,11 @@ public interface ReportService {
     void deleteReport(UUID reportId);
 
     /**
-     * Admin xem danh sách grouped by target (recipes/users bị báo cáo)
-     * Đây là view chính, recommended cho admin
+     * Admin review tất cả reports của 1 công thức cùng lúc
+     * Batch action - apply cùng 1 action cho all reports của công thức
      */
-    PageResponse<ReportGroupResponse> getGroupedReports(int page, int size);
-
-    /**
-     * Admin xem chi tiết 1 target bị báo cáo (tất cả reports của target đó)
-     */
-    ReportGroupDetailResponse getGroupDetail(String targetType, UUID targetId);
-
-    /**
-     * Admin review tất cả reports của 1 target cùng lúc
-     * Batch action - apply cùng 1 action cho all reports của target
-     */
-    BatchReviewResponse batchReviewByTarget(
-            String targetType,
-            UUID targetId,
+    BatchReviewResponse batchReviewByRecipe(
+            UUID recipeId,
             ReviewReportRequest request
     );
 
@@ -62,7 +50,7 @@ public interface ReportService {
     ReportStatisticsResponse getStatistics();
 
     /**
-     * Lấy thống kê theo target (bao nhiêu recipes bị report, bao nhiêu users)
+     * Lấy thống kê về các công thức bị báo cáo
      */
     TargetStatisticsResponse getTargetStatistics();
 }

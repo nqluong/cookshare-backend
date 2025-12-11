@@ -22,8 +22,7 @@ public class ReportGroupScoreCalculator {
         SEVERITY_WEIGHTS.put(ReportType.OTHER, 0.5);
     }
 
-    // Ngưỡng cho các loại mục tiêu khác nhau
-    public static final double USER_THRESHOLD = 12.0;
+    // Ngưỡng điểm cho báo cáo công thức
     public static final double RECIPE_THRESHOLD = 6.0;
 
     /**
@@ -58,26 +57,24 @@ public class ReportGroupScoreCalculator {
     }
 
     /**
-     * Lấy ngưỡng cho một loại mục tiêu.
+     * Lấy ngưỡng điểm cho báo cáo công thức.
      */
-    public double getThreshold(String targetType) {
-        return "USER".equals(targetType) ? USER_THRESHOLD : RECIPE_THRESHOLD;
+    public double getThreshold() {
+        return RECIPE_THRESHOLD;
     }
 
     /**
-     * Kiểm tra xem điểm có vượt ngưỡng cho loại mục tiêu không.
+     * Kiểm tra xem điểm có vượt ngưỡng không.
      */
-    public boolean exceedsThreshold(double score, String targetType) {
-        return score >= getThreshold(targetType);
+    public boolean exceedsThreshold(double score) {
+        return score >= RECIPE_THRESHOLD;
     }
 
     /**
      * Xác định mức độ ưu tiên dựa trên điểm và số lượng báo cáo.
-
      */
-    public String determinePriority(double score, String targetType, long count) {
-        double threshold = getThreshold(targetType);
-        double ratio = score / threshold;
+    public String determinePriority(double score, long count) {
+        double ratio = score / RECIPE_THRESHOLD;
 
         if (ratio >= 1.5 || count >= 10) return "CRITICAL";
         if (ratio >= 1.0 || count >= 5) return "HIGH";

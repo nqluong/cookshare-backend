@@ -5,9 +5,9 @@ import com.backend.cookshare.system.dto.response.ReportGroupResponse;
 import com.backend.cookshare.system.entity.Report;
 import com.backend.cookshare.system.enums.ReportType;
 import com.backend.cookshare.system.repository.ReportGroupRepository;
+import com.backend.cookshare.system.repository.ReportGroupRepository.BatchReportTypeCount;
 import com.backend.cookshare.system.repository.ReportQueryRepository;
-import com.backend.cookshare.system.repository.projection.ReportTypeCount;
-import lombok.RequiredArgsConstructor;
+import com.backend.cookshare.system.repository.projection.TopReporterProjection;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -17,7 +17,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
-
+/**
+ * Component tải dữ liệu theo lô cho các nhóm báo cáo Recipe.
+ * Tối ưu hóa với batch queries để giảm số lần truy vấn database.
+ */
 @Component
 @Slf4j
 public class ReportGroupDataLoader {
@@ -38,108 +41,98 @@ public class ReportGroupDataLoader {
         this.asyncExecutor = asyncExecutor;
     }
 
-
     /**
-     * Tải tất cả dữ liệu bổ sung cho các nhóm song song.
-     *
-     * @param groups Danh sách các nhóm cần tải dữ liệu
-     * @return Dữ liệu tổng hợp chứa các phân loại, người báo cáo và URL avatar
+     * Tải tất cả dữ liệu bổ sung cho các nhóm báo cáo Recipe song song.
+     * Sử dụng batch queries để giảm số lần truy vấn database.
      */
     public GroupEnrichmentData loadEnrichmentData(List<ReportGroupResponse> groups) {
         if (groups.isEmpty()) {
             return GroupEnrichmentData.empty();
         }
 
-        CompletableFuture<Map<TargetKey, Map<ReportType, Long>>> breakdownsFuture =
-                CompletableFuture.supplyAsync(() -> batchLoadReportTypeBreakdowns(groups), asyncExecutor);
+        // Thu thập tất cả recipeIds một lần
+        List<UUID> recipeIds = groups.stream()
+                .map(ReportGroupResponse::getRecipeId)
+                .collect(Collectors.toList());
 
-        CompletableFuture<Map<TargetKey, List<String>>> reportersFuture =
-                CompletableFuture.supplyAsync(() -> batchLoadTopReporters(groups), asyncExecutor);
+        // Chạy 3 batch queries song song
+        CompletableFuture<Map<UUID, Map<ReportType, Long>>> breakdownsFuture =
+                CompletableFuture.supplyAsync(() -> batchLoadReportTypeBreakdowns(recipeIds), asyncExecutor);
 
-        CompletableFuture<Map<String, String>> avatarUrlsFuture =
-                CompletableFuture.supplyAsync(() -> batchLoadAvatarUrls(groups), asyncExecutor);
+        CompletableFuture<Map<UUID, List<String>>> reportersFuture =
+                CompletableFuture.supplyAsync(() -> batchLoadTopReporters(recipeIds), asyncExecutor);
 
-        CompletableFuture.allOf(breakdownsFuture, reportersFuture, avatarUrlsFuture).join();
+        CompletableFuture<Map<String, String>> thumbnailUrlsFuture =
+                CompletableFuture.supplyAsync(() -> batchLoadThumbnailUrls(groups), asyncExecutor);
+
+        CompletableFuture.allOf(breakdownsFuture, reportersFuture, thumbnailUrlsFuture).join();
 
         return new GroupEnrichmentData(
                 breakdownsFuture.join(),
                 reportersFuture.join(),
-                avatarUrlsFuture.join()
+                thumbnailUrlsFuture.join()
         );
     }
 
-
-    public Map<TargetKey, Map<ReportType, Long>> batchLoadReportTypeBreakdowns(
-            List<ReportGroupResponse> groups) {
-
-        Map<TargetKey, Map<ReportType, Long>> result = new HashMap<>();
-
-        for (ReportGroupResponse group : groups) {
-            TargetKey key = new TargetKey(group.getTargetType(), group.getTargetId());
-
-            List<ReportTypeCount> counts =
-                    groupRepository.countReportTypesByTarget(group.getTargetType(), group.getTargetId());
-
-            Map<ReportType, Long> breakdown = counts.stream()
-                    .collect(Collectors.toMap(
-                            ReportTypeCount::getType,
-                            ReportTypeCount::getCount
-                    ));
-
-            result.put(key, breakdown);
+    /**
+     * BATCH: Tải phân loại loại báo cáo cho TẤT CẢ Recipes trong MỘT query.
+     */
+    public Map<UUID, Map<ReportType, Long>> batchLoadReportTypeBreakdowns(List<UUID> recipeIds) {
+        if (recipeIds.isEmpty()) {
+            return Collections.emptyMap();
         }
 
-        return result;
+        // Một query duy nhất lấy tất cả report type counts cho tất cả recipes
+        List<BatchReportTypeCount> batchCounts = groupRepository.batchCountReportTypesByRecipes(recipeIds);
+
+        // Chuyển đổi kết quả thành Map<RecipeId, Map<ReportType, Count>>
+        return batchCounts.stream()
+                .collect(Collectors.groupingBy(
+                        BatchReportTypeCount::getRecipeId,
+                        Collectors.toMap(
+                                BatchReportTypeCount::getType,
+                                BatchReportTypeCount::getCount
+                        )
+                ));
     }
 
     /**
-     * Tải theo lô các người báo cáo hàng đầu cho tất cả các nhóm.
+     * BATCH: Tải top reporters cho TẤT CẢ Recipes trong MỘT query.
+     * Query đã join sẵn với users table để lấy username.
      */
-    public Map<TargetKey, List<String>> batchLoadTopReporters(List<ReportGroupResponse> groups) {
-        Map<TargetKey, List<String>> result = new HashMap<>();
-
-        for (ReportGroupResponse group : groups) {
-            TargetKey key = new TargetKey(group.getTargetType(), group.getTargetId());
-
-            List<Report> reports = groupRepository.findReportsByTarget(
-                    group.getTargetType(),
-                    group.getTargetId()
-            );
-
-            // Lấy ID người báo cáo (giới hạn 3 người)
-            Set<UUID> reporterIds = reports.stream()
-                    .limit(3)
-                    .map(Report::getReporterId)
-                    .collect(Collectors.toSet());
-
-            // Tải tên người dùng
-            Map<UUID, String> usernames = loadReporterUsernames(reporterIds);
-
-            List<String> topReporters = reports.stream()
-                    .limit(3)
-                    .map(r -> "@" + usernames.getOrDefault(r.getReporterId(), "unknown"))
-                    .collect(Collectors.toList());
-
-            result.put(key, topReporters);
+    public Map<UUID, List<String>> batchLoadTopReporters(List<UUID> recipeIds) {
+        if (recipeIds.isEmpty()) {
+            return Collections.emptyMap();
         }
 
-        return result;
+        // Một query duy nhất lấy top 3 reporters cho tất cả recipes (đã có username)
+        List<TopReporterProjection> topReporters = groupRepository.batchFindTopReportersByRecipes(recipeIds);
+
+        // Chuyển đổi kết quả thành Map<RecipeId, List<@username>>
+        return topReporters.stream()
+                .collect(Collectors.groupingBy(
+                        TopReporterProjection::getRecipeId,
+                        Collectors.mapping(
+                                p -> "@" + p.getReporterFullName(),
+                                Collectors.toList()
+                        )
+                ));
     }
 
     /**
-     * Tải theo lô các URL avatar/thumbnail từ Firebase.
+     * Tải theo lô các URL thumbnail Recipe từ Firebase.
      */
-    public Map<String, String> batchLoadAvatarUrls(List<ReportGroupResponse> groups) {
+    public Map<String, String> batchLoadThumbnailUrls(List<ReportGroupResponse> groups) {
         Map<String, String> result = new HashMap<>();
 
         if (!firebaseStorageService.isInitialized()) {
-            log.warn("Firebase chưa khởi tạo, bỏ qua việc tải avatar");
+            log.warn("Firebase chưa khởi tạo, bỏ qua việc tải thumbnail");
             return result;
         }
 
-        // Thu thập tất cả các đường dẫn cục bộ cần chuyển đổi
+        // Thu thập tất cả các đường dẫn thumbnail cần chuyển đổi
         List<String> pathsToConvert = groups.stream()
-                .map(ReportGroupResponse::getAvatarUrl)
+                .map(ReportGroupResponse::getRecipeFeaturedImage)
                 .filter(Objects::nonNull)
                 .filter(path -> !path.startsWith("http"))
                 .distinct()
@@ -157,88 +150,24 @@ public class ReportGroupDataLoader {
                 result.put(pathsToConvert.get(i), firebaseUrls.get(i));
             }
         } catch (Exception e) {
-            log.error("Lỗi khi tải theo lô Firebase URLs", e);
+            log.error("Lỗi khi tải theo lô Firebase URLs cho thumbnail", e);
         }
 
         return result;
     }
 
     /**
-     * Tải tên người dùng báo cáo theo IDs.
+     * Record chứa thông tin tác giả Recipe.
      */
-    public Map<UUID, String> loadReporterUsernames(Set<UUID> reporterIds) {
-        if (reporterIds == null || reporterIds.isEmpty()) {
-            return Collections.emptyMap();
-        }
-
-        return reportQueryRepository.findUsernamesByIds(new ArrayList<>(reporterIds))
-                .stream()
-                .collect(Collectors.toMap(
-                        projection -> projection.getUserId(),
-                        projection -> projection.getUsername()
-                ));
-    }
+    public record RecipeAuthorInfo(UUID authorId, String authorUsername, String authorFullName) {}
 
     /**
-     * Tải tiêu đề mục tiêu (tiêu đề công thức hoặc tên người dùng).
+     * Record chứa tất cả dữ liệu bổ sung cho các nhóm.
      */
-    public String loadTargetInfo(String targetType, UUID targetId) {
-        if ("RECIPE".equals(targetType)) {
-            return reportQueryRepository.findRecipeTitleById(targetId)
-                    .orElse("Unknown Recipe");
-        } else {
-            return reportQueryRepository.findUsernameById(targetId)
-                    .orElse("Unknown User");
-        }
-    }
-
-    /**
-     * Tải tất cả báo cáo cho một mục tiêu cụ thể.
-     */
-    public List<Report> loadReportsByTarget(String targetType, UUID targetId) {
-        return groupRepository.findReportsByTarget(targetType, targetId);
-    }
-
-    /**
-     * Lớp key để xác định mục tiêu.
-     */
-    public static class TargetKey {
-        private final String targetType;
-        private final UUID targetId;
-
-        public TargetKey(String targetType, UUID targetId) {
-            this.targetType = targetType;
-            this.targetId = targetId;
-        }
-
-        public String getTargetType() {
-            return targetType;
-        }
-
-        public UUID getTargetId() {
-            return targetId;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            TargetKey targetKey = (TargetKey) o;
-            return Objects.equals(targetType, targetKey.targetType) &&
-                    Objects.equals(targetId, targetKey.targetId);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(targetType, targetId);
-        }
-    }
-
-
     public record GroupEnrichmentData(
-            Map<TargetKey, Map<ReportType, Long>> breakdowns,
-            Map<TargetKey, List<String>> reporters,
-            Map<String, String> avatarUrls
+            Map<UUID, Map<ReportType, Long>> breakdowns,
+            Map<UUID, List<String>> reporters,
+            Map<String, String> thumbnailUrls
     ) {
         public static GroupEnrichmentData empty() {
             return new GroupEnrichmentData(

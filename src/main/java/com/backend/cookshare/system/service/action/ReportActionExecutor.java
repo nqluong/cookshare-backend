@@ -36,52 +36,63 @@ public class ReportActionExecutor {
         notificationService.notifyAdminsActionCompleted(report);
     }
 
+    /**
+     * Lấy ID tác giả từ công thức.
+     * Báo cáo chỉ áp dụng cho công thức, nên cần lấy tác giả từ công thức để thực hiện hành động lên user.
+     */
+    private UUID getRecipeAuthorId(Report report) {
+        if (report.getRecipeId() == null) {
+            return null;
+        }
+        return reportQueryRepository.findAuthorIdByRecipeId(report.getRecipeId()).orElse(null);
+    }
+
     private void handleNoAction(Report report) {
         log.info("Báo cáo {} - Không có hành động nào được thực hiện (đã từ chối)", report.getReportId());
     }
 
     private void handleUserWarned(Report report) {
-        UUID reportedUserId = report.getReportedId();
-        if (reportedUserId == null) {
-            log.warn("Không thể cảnh báo người dùng: reportedId là null cho báo cáo {}", report.getReportId());
+        UUID authorId = getRecipeAuthorId(report);
+        if (authorId == null) {
+            log.warn("Không thể cảnh báo người dùng: không tìm thấy tác giả công thức cho báo cáo {}", report.getReportId());
             return;
         }
 
         // Gửi thông báo cảnh báo
-        notificationService.notifyUserWarned(report, reportedUserId);
+        notificationService.notifyUserWarned(report, authorId);
 
-        log.info("Người dùng {} đã được cảnh báo vì {}", reportedUserId, report.getReportType());
+        log.info("Tác giả {} đã được cảnh báo vì công thức {} bị báo cáo {}", authorId, report.getRecipeId(), report.getReportType());
     }
 
     private void handleUserSuspended(Report report) {
-        UUID reportedUserId = report.getReportedId();
-        if (reportedUserId == null) {
-            log.warn("Không thể tạm khóa người dùng: reportedId là null cho báo cáo {}", report.getReportId());
+        UUID authorId = getRecipeAuthorId(report);
+        if (authorId == null) {
+            log.warn("Không thể tạm khóa người dùng: không tìm thấy tác giả công thức cho báo cáo {}", report.getReportId());
             return;
         }
 
         int suspensionDays = 30;
-        reportQueryRepository.suspendUser(reportedUserId, suspensionDays);
+        reportQueryRepository.suspendUser(authorId, suspensionDays);
 
         // Gửi thông báo tạm khóa
-        notificationService.notifyUserSuspended(report, reportedUserId, suspensionDays);
+        notificationService.notifyUserSuspended(report, authorId, suspensionDays);
 
-        log.warn("Người dùng {} đã bị tạm khóa trong {} ngày", reportedUserId, suspensionDays);
+        log.warn("Tác giả {} đã bị tạm khóa trong {} ngày vì công thức {} bị báo cáo", authorId, suspensionDays, report.getRecipeId());
     }
 
     private void handleUserBanned(Report report) {
-        UUID reportedUserId = report.getReportedId();
-        if (reportedUserId == null) {
-            log.warn("Không thể cấm người dùng: reportedId là null cho báo cáo {}", report.getReportId());
+        UUID authorId = getRecipeAuthorId(report);
+        if (authorId == null) {
+            log.warn("Không thể cấm người dùng: không tìm thấy tác giả công thức cho báo cáo {}", report.getReportId());
             return;
         }
 
-        reportQueryRepository.disableUser(reportedUserId);
+        reportQueryRepository.disableUser(authorId);
 
         // Gửi thông báo cấm vĩnh viễn
-        notificationService.notifyUserBanned(report, reportedUserId);
+        notificationService.notifyUserBanned(report, authorId);
 
-        log.warn("Người dùng {} đã bị cấm vĩnh viễn", reportedUserId);
+        log.warn("Tác giả {} đã bị cấm vĩnh viễn vì công thức {} bị báo cáo", authorId, report.getRecipeId());
     }
 
     private void handleRecipeUnpublished(Report report) {

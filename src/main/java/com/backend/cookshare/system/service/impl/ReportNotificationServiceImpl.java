@@ -6,6 +6,7 @@ import com.backend.cookshare.system.dto.request.NotificationMessage;
 import com.backend.cookshare.system.dto.response.RecipeInfo;
 import com.backend.cookshare.system.entity.Report;
 import com.backend.cookshare.system.repository.ReportQueryRepository;
+import com.backend.cookshare.system.repository.projection.UsernameProjection;
 import com.backend.cookshare.system.service.ReportNotificationService;
 import com.backend.cookshare.system.service.notification.builder.NotificationMessageBuilder;
 import com.backend.cookshare.system.service.notification.persistence.NotificationPersistenceService;
@@ -147,9 +148,7 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
     @Override
     public void notifyUserWarned(Report report, UUID userId) {
         try {
-            String username = queryRepository.findUsernameById(userId).orElseThrow(
-                    () -> new CustomException(ErrorCode.USER_NOT_FOUND)
-            );
+            String username = findUsernameById(userId);
 
             NotificationMessage message = messageBuilder.buildUserWarningMessage(
                     report.getReportType(),
@@ -178,9 +177,7 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
     @Override
     public void notifyUserSuspended(Report report, UUID userId, int suspensionDays) {
         try {
-            String username = queryRepository.findUsernameById(userId).orElseThrow(
-                    () -> new CustomException(ErrorCode.USER_NOT_FOUND)
-            );
+            String username = findUsernameById(userId);
 
             NotificationMessage message = messageBuilder.buildUserSuspendedMessage(suspensionDays);
 
@@ -206,9 +203,7 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
     @Override
     public void notifyUserBanned(Report report, UUID userId) {
         try {
-            String username = queryRepository.findUsernameById(userId).orElseThrow(
-                    () -> new CustomException(ErrorCode.USER_NOT_FOUND)
-            );
+            String username = findUsernameById(userId);
 
             NotificationMessage message = messageBuilder.buildUserBannedMessage();
 
@@ -235,7 +230,7 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
     public void notifyRecipeEditRequired(Report report, UUID recipeId) {
         try {
             // Lấy thông tin recipe và author
-            RecipeInfo recipeInfo = queryRepository.findRecipeInfoById(recipeId);
+            RecipeInfo recipeInfo = queryRepository.findRecipeInfoById(recipeId).orElse(null);
             if (recipeInfo == null) {
                 log.warn("Không tìm thấy công thức: {}", recipeId);
                 return;
@@ -273,7 +268,7 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
     @Override
     public void notifyContentRemoved(Report report, UUID recipeId) {
         try {
-            RecipeInfo recipeInfo = queryRepository.findRecipeInfoById(recipeId);
+            RecipeInfo recipeInfo = queryRepository.findRecipeInfoById(recipeId).orElse(null);
             if (recipeInfo == null) {
                 log.warn("Không tìm thấy công thức: {}", recipeId);
                 return;
@@ -396,21 +391,28 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
         String targetInfo = "";
 
         if (report.getRecipeId() != null) {
-            RecipeInfo recipe = queryRepository.findRecipeInfoById(report.getRecipeId());
+            RecipeInfo recipe = queryRepository.findRecipeInfoById(report.getRecipeId()).orElse(null);
             if (recipe != null) {
                 targetInfo = String.format("công thức '%s'", recipe.getTitle());
             }
         } else if (report.getReportedId() != null) {
-
-            String username = queryRepository.findUsernameById(report.getReporterId()).orElseThrow(
-                    () -> new CustomException(ErrorCode.USER_NOT_FOUND)
-            );
+            String username = findUsernameById(report.getReportedId());
+            targetInfo = String.format("người dùng '%s'", username);
         }
 
         return String.format("Báo cáo #%s: Đã thực hiện '%s' đối với %s",
                 report.getReportId().toString().substring(0, 8),
                 actionName,
                 targetInfo);
+    }
+
+
+    private String findUsernameById(UUID userId) {
+        List<UsernameProjection> results = queryRepository.findUsernamesByIds(List.of(userId));
+        if (results.isEmpty()) {
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        }
+        return results.get(0).getUsername();
     }
 
 }

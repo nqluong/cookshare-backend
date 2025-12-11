@@ -10,8 +10,8 @@ import java.util.UUID;
 public interface ReportGroupService {
 
     /**
-     * Lấy danh sách phân trang các báo cáo được nhóm với thống kê đã tính toán.
-     * Các báo cáo được nhóm theo mục tiêu và làm giàu với:
+     * Lấy danh sách phân trang các báo cáo công thức được nhóm với thống kê đã tính toán.
+     * Các báo cáo được nhóm theo công thức và làm giàu với:
      * - Điểm trọng số dựa trên mức độ nghiêm trọng
      * - Mức độ ưu tiên (CRITICAL, HIGH, MEDIUM, LOW)
      * - Phân loại theo loại báo cáo
@@ -24,13 +24,12 @@ public interface ReportGroupService {
     PageResponse<ReportGroupResponse> getGroupedReports(int page, int size);
 
     /**
-     * Lấy thông tin chi tiết về các báo cáo của một mục tiêu cụ thể.
+     * Lấy thông tin chi tiết về các báo cáo của một công thức cụ thể.
      * Bao gồm tất cả các báo cáo riêng lẻ và thống kê tổng hợp.
      *
-     * @param targetType Loại mục tiêu ("USER" hoặc "RECIPE")
-     * @param targetId   ID của mục tiêu
-     * @return Phản hồi chi tiết với tất cả báo cáo cho mục tiêu
-     * @throws IllegalArgumentException nếu không tìm thấy báo cáo cho mục tiêu
+     * @param recipeId ID của công thức
+     * @return Phản hồi chi tiết với tất cả báo cáo cho công thức
+     * @throws IllegalArgumentException nếu không tìm thấy báo cáo cho công thức
      */
-    ReportGroupDetailResponse getGroupDetail(String targetType, UUID targetId);
+    ReportGroupDetailResponse getGroupDetail(UUID recipeId);
 }

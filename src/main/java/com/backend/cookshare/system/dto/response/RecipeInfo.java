@@ -15,5 +15,5 @@ public class RecipeInfo {
     String title;
     UUID authorId;
     String authorUsername;
-
+    String authorFullName;
 }
