@@ -8,7 +8,7 @@ import com.backend.cookshare.authentication.dto.response.AvatarUploadUrlResponse
 import com.backend.cookshare.authentication.dto.response.LoginResponseDTO;
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.authentication.service.UserService;
-import com.backend.cookshare.recipe_management.repository.RecipeRepository;
+import com.backend.cookshare.authentication.service.UserProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,7 +25,7 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
-    private final RecipeRepository recipeRepository;
+    private final UserProfileService userProfileService;
 
     @PostMapping
     public ResponseEntity<String> createUser(@Valid @RequestBody UserRequest user) {
@@ -35,59 +35,15 @@ public class UserController {
 
     @GetMapping("/{userId}")
     public ResponseEntity<UserProfileDto> getUserById(@PathVariable UUID userId) {
-        return userService.getUserById(userId)
-                .map(user -> {
-                    int totalLikes = recipeRepository.getTotalLikeCountByUserId(user.getUserId());
-
-                    UserProfileDto userProfileDto = UserProfileDto.builder()
-                            .userId(user.getUserId())
-                            .username(user.getUsername())
-                            .email(user.getEmail())
-                            .fullName(user.getFullName())
-                            .avatarUrl(user.getAvatarUrl())
-                            .bio(user.getBio())
-                            .role(user.getRole())
-                            .isActive(user.getIsActive())
-                            .emailVerified(user.getEmailVerified())
-                            .lastActive(user.getLastActive())
-                            .followerCount(user.getFollowerCount())
-                            .followingCount(user.getFollowingCount())
-                            .recipeCount(user.getRecipeCount())
-                            .totalLikes(totalLikes)
-                            .createdAt(user.getCreatedAt())
-                            .build();
-
-                    return ResponseEntity.ok(userProfileDto);
-                })
+        return userProfileService.getUserProfileById(userId)
+                .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/username/{username}")
     public ResponseEntity<UserProfileDto> getUserByUsername(@PathVariable String username) {
-        return userService.getUserByUsername(username)
-                .map(user -> {
-                    int totalLikes = recipeRepository.getTotalLikeCountByUserId(user.getUserId());
-
-                    UserProfileDto userProfileDto = UserProfileDto.builder()
-                            .userId(user.getUserId())
-                            .username(user.getUsername())
-                            .email(user.getEmail())
-                            .fullName(user.getFullName())
-                            .avatarUrl(user.getAvatarUrl())
-                            .bio(user.getBio())
-                            .role(user.getRole())
-                            .isActive(user.getIsActive())
-                            .emailVerified(user.getEmailVerified())
-                            .lastActive(user.getLastActive())
-                            .followerCount(user.getFollowerCount())
-                            .followingCount(user.getFollowingCount())
-                            .recipeCount(user.getRecipeCount())
-                            .totalLikes(totalLikes)
-                            .createdAt(user.getCreatedAt())
-                            .build();
-
-                    return ResponseEntity.ok(userProfileDto);
-                })
+        return userProfileService.getUserProfileByUsername(username)
+                .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -142,27 +98,7 @@ public class UserController {
             @PathVariable UUID userId,
             @Valid @RequestBody UpdateUserProfileRequest request) {
 
-        User updatedUser = userService.updateUserProfile(userId, request);
-        int totalLikes = recipeRepository.getTotalLikeCountByUserId(updatedUser.getUserId());
-
-        UserProfileDto userProfileDto = UserProfileDto.builder()
-                .userId(updatedUser.getUserId())
-                .username(updatedUser.getUsername())
-                .email(updatedUser.getEmail())
-                .fullName(updatedUser.getFullName())
-                .avatarUrl(updatedUser.getAvatarUrl())
-                .bio(updatedUser.getBio())
-                .role(updatedUser.getRole())
-                .isActive(updatedUser.getIsActive())
-                .emailVerified(updatedUser.getEmailVerified())
-                .lastActive(updatedUser.getLastActive())
-                .followerCount(updatedUser.getFollowerCount())
-                .followingCount(updatedUser.getFollowingCount())
-                .recipeCount(updatedUser.getRecipeCount())
-                .totalLikes(totalLikes)
-                .createdAt(updatedUser.getCreatedAt())
-                .build();
-
+        UserProfileDto userProfileDto = userProfileService.updateUserProfile(userId, request);
         return ResponseEntity.ok(userProfileDto);
     }
 
@@ -172,7 +108,7 @@ public class UserController {
             @PathVariable UUID userId,
             @Valid @RequestBody AvatarUploadUrlRequest request) {
 
-        AvatarUploadUrlResponse response = userService.generateAvatarUploadUrl(userId, request);
+        AvatarUploadUrlResponse response = userProfileService.generateAvatarUploadUrl(userId, request);
         return ResponseEntity.ok(response);
     }
 }
