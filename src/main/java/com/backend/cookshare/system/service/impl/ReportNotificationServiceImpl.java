@@ -3,6 +3,7 @@ package com.backend.cookshare.system.service.impl;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
 import com.backend.cookshare.system.dto.request.NotificationMessage;
+import com.backend.cookshare.system.dto.response.RecipeInfo;
 import com.backend.cookshare.system.entity.Report;
 import com.backend.cookshare.system.repository.ReportQueryRepository;
 import com.backend.cookshare.system.service.ReportNotificationService;
@@ -246,13 +247,13 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
 
             NotificationMessage message = messageBuilder.buildRecipeEditRequiredMessage(
                     recipeId,
-                    recipeInfo.title(),
+                    recipeInfo.getTitle(),
                     editRequirement
             );
 
             // Save to database
             persistenceService.saveNotification(
-                    recipeInfo.authorId(),
+                    recipeInfo.getAuthorId(),
                     message.getTitle(),
                     message.getMessage(),
                     NotificationType.RECIPE_STATUS,
@@ -260,9 +261,9 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
             );
 
             // Send WebSocket
-            webSocketSender.sendToUser(recipeInfo.authorUsername(), message);
+            webSocketSender.sendToUser(recipeInfo.getAuthorUsername(), message);
 
-            log.info("Đã thông báo tác giả công thức {} về yêu cầu chỉnh sửa", recipeInfo.authorUsername());
+            log.info("Đã thông báo tác giả công thức {} về yêu cầu chỉnh sửa", recipeInfo.getAuthorUsername());
 
         } catch (Exception e) {
             log.error("Không thể thông báo về yêu cầu chỉnh sửa", e);
@@ -284,13 +285,13 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
 
             NotificationMessage message = messageBuilder.buildRecipeUnpublishedMessage(
                     recipeId,
-                    recipeInfo.title(),
+                    recipeInfo.getTitle(),
                     reason
             );
 
             // Save to database
             persistenceService.saveNotification(
-                    recipeInfo.authorId(),
+                    recipeInfo.getAuthorId(),
                     "Nội dung đã bị xóa",
                     message.getMessage(),
                     NotificationType.RECIPE_STATUS,
@@ -298,9 +299,9 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
             );
 
             // Send WebSocket
-            webSocketSender.sendToUser(recipeInfo.authorUsername(), message);
+            webSocketSender.sendToUser(recipeInfo.getAuthorUsername(), message);
 
-            log.info("Đã thông báo tác giả công thức {} về việc xóa nội dung", recipeInfo.authorUsername());
+            log.info("Đã thông báo tác giả công thức {} về việc xóa nội dung", recipeInfo.getAuthorUsername());
 
         } catch (Exception e) {
             log.error("Không thể thông báo về việc xóa nội dung", e);
@@ -397,7 +398,7 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
         if (report.getRecipeId() != null) {
             RecipeInfo recipe = queryRepository.findRecipeInfoById(report.getRecipeId());
             if (recipe != null) {
-                targetInfo = String.format("công thức '%s'", recipe.title());
+                targetInfo = String.format("công thức '%s'", recipe.getTitle());
             }
         } else if (report.getReportedId() != null) {
 
@@ -412,6 +413,4 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
                 targetInfo);
     }
 
-    // DTO for recipe info
-    public record RecipeInfo(UUID recipeId, String title, UUID authorId, String authorUsername) {}
 }

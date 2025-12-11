@@ -1,5 +1,6 @@
 package com.backend.cookshare.system.repository;
 
+import com.backend.cookshare.system.dto.response.RecipeInfo;
 import com.backend.cookshare.system.dto.response.ReportedRecipeInfo;
 import com.backend.cookshare.system.dto.response.ReporterInfo;
 import com.backend.cookshare.system.dto.response.ReviewerInfo;
@@ -50,7 +51,7 @@ public interface ReportQueryRepository extends JpaRepository<Report, UUID> {
      * Tìm thông tin recipe và author
      */
     @Query("""
-        SELECT new com.backend.cookshare.system.service.impl.ReportNotificationServiceImpl.RecipeInfo(
+        SELECT new com.backend.cookshare.system.dto.response.RecipeInfo(
             r.recipeId, 
             r.title, 
             r.user.userId, 
@@ -59,7 +60,7 @@ public interface ReportQueryRepository extends JpaRepository<Report, UUID> {
         FROM Recipe r
         WHERE r.recipeId = :recipeId
     """)
-    ReportNotificationServiceImpl.RecipeInfo findRecipeInfoById(@Param("recipeId") UUID recipeId);
+    RecipeInfo findRecipeInfoById(@Param("recipeId") UUID recipeId);
 
     /**
      * Tạm khóa user trong số ngày nhất định

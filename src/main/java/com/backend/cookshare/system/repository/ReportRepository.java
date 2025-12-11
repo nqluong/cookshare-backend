@@ -146,4 +146,106 @@ public interface ReportRepository extends JpaRepository<Report, UUID> {
         ORDER BY COUNT(r) DESC
     """)
     List<TopReportedProjection> findTopReportedRecipes(Pageable pageable);
+
+    /**
+     * Tìm reports theo status
+     */
+    List<Report> findByStatus(ReportStatus status);
+
+
+    /**
+     * Đếm số recipes bị report (distinct)
+     */
+    @Query("SELECT COUNT(DISTINCT r.recipeId) FROM Report r WHERE r.recipeId IS NOT NULL")
+    long countDistinctRecipeIds();
+
+    /**
+     * Đếm số users bị report (distinct)
+     */
+    @Query("SELECT COUNT(DISTINCT r.reportedId) FROM Report r WHERE r.reportedId IS NOT NULL")
+    long countDistinctReportedUserIds();
+
+    /**
+     * Đếm recipes có >= N reports
+     */
+    @Query("""
+        SELECT COUNT(DISTINCT r.recipeId) 
+        FROM Report r 
+        WHERE r.recipeId IS NOT NULL 
+        AND r.status = 'PENDING'
+        GROUP BY r.recipeId 
+        HAVING COUNT(r) >= :threshold
+    """)
+    long countRecipesExceedingThreshold(@Param("threshold") Long threshold);
+
+    /**
+     * Đếm users có >= N reports
+     */
+    @Query("""
+        SELECT COUNT(DISTINCT r.reportedId) 
+        FROM Report r 
+        WHERE r.reportedId IS NOT NULL 
+        AND r.status = 'PENDING'
+        GROUP BY r.reportedId 
+        HAVING COUNT(r) >= :threshold
+    """)
+    long countUsersExceedingThreshold(@Param("threshold") Long threshold);
+
+    /**
+     * Đếm reports có recipe
+     */
+    long countByRecipeIdIsNotNull();
+
+    /**
+     * Đếm reports có reported user
+     */
+    long countByReportedIdIsNotNull();
+
+    /**
+     * Đếm targets có > N reports (Critical priority)
+     */
+    @Query("""
+        SELECT COUNT(*) FROM (
+            SELECT r.recipeId as targetId FROM Report r 
+            WHERE r.recipeId IS NOT NULL AND r.status = 'PENDING'
+            GROUP BY r.recipeId HAVING COUNT(r) > :count
+            UNION
+            SELECT r.reportedId as targetId FROM Report r 
+            WHERE r.reportedId IS NOT NULL AND r.status = 'PENDING'
+            GROUP BY r.reportedId HAVING COUNT(r) > :count
+        ) as targets
+    """)
+    long countTargetsWithReportCountGreaterThan(@Param("count") Long count);
+
+    /**
+     * Đếm targets có reports trong khoảng [min, max]
+     */
+    @Query("""
+        SELECT COUNT(*) FROM (
+            SELECT r.recipeId as targetId FROM Report r 
+            WHERE r.recipeId IS NOT NULL AND r.status = 'PENDING'
+            GROUP BY r.recipeId HAVING COUNT(r) BETWEEN :min AND :max
+            UNION
+            SELECT r.reportedId as targetId FROM Report r 
+            WHERE r.reportedId IS NOT NULL AND r.status = 'PENDING'
+            GROUP BY r.reportedId HAVING COUNT(r) BETWEEN :min AND :max
+        ) as targets
+    """)
+    long countTargetsWithReportCountBetween(@Param("min") Long min, @Param("max") Long max);
+
+    /**
+     * Đếm targets có < N reports
+     */
+    @Query("""
+        SELECT COUNT(*) FROM (
+            SELECT r.recipeId as targetId FROM Report r 
+            WHERE r.recipeId IS NOT NULL AND r.status = 'PENDING'
+            GROUP BY r.recipeId HAVING COUNT(r) < :count
+            UNION
+            SELECT r.reportedId as targetId FROM Report r 
+            WHERE r.reportedId IS NOT NULL AND r.status = 'PENDING'
+            GROUP BY r.reportedId HAVING COUNT(r) < :count
+        ) as targets
+    """)
+    long countTargetsWithReportCountLessThan(@Param("count") Long count);
 }
