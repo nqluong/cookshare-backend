@@ -9,6 +9,7 @@ import com.backend.cookshare.system.dto.request.CreateReportRequest;
 import com.backend.cookshare.system.dto.request.ReportFilterRequest;
 import com.backend.cookshare.system.dto.request.ReviewReportRequest;
 import com.backend.cookshare.system.dto.response.*;
+import com.backend.cookshare.system.enums.ReportActionType;
 import com.backend.cookshare.system.enums.ReportStatus;
 import com.backend.cookshare.system.enums.ReportType;
 import com.backend.cookshare.system.repository.ReportQueryRepository;
@@ -62,11 +63,14 @@ public class ReportController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<ReportGroupResponse>>> getGroupedReports(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) ReportStatus status,
+            @RequestParam(required = false) ReportActionType actionType,
+            @RequestParam(required = false) ReportType reportType) {
         long startTime = System.currentTimeMillis();
-        PageResponse<ReportGroupResponse> response = reportGroupService.getGroupedReports(page, size);
+        PageResponse<ReportGroupResponse> response = reportGroupService.getGroupedReports(page, size, status, actionType, reportType);
         long endTime = System.currentTimeMillis();
-        log.info("getGroupedReports executed in {} ms", (endTime - startTime));
+        log.info("getGroupedReports executed in {} ms with status={}, actionType={}, reportType={}", (endTime - startTime), status, actionType, reportType);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.<PageResponse<ReportGroupResponse>>builder()
                         .success(true)

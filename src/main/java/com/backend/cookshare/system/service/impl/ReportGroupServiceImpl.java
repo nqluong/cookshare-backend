@@ -7,6 +7,8 @@ import com.backend.cookshare.common.exception.ErrorCode;
 import com.backend.cookshare.system.dto.response.ReportDetailInGroupResponse;
 import com.backend.cookshare.system.dto.response.ReportGroupDetailResponse;
 import com.backend.cookshare.system.dto.response.ReportGroupResponse;
+import com.backend.cookshare.system.enums.ReportActionType;
+import com.backend.cookshare.system.enums.ReportStatus;
 import com.backend.cookshare.system.enums.ReportType;
 import com.backend.cookshare.system.repository.ReportGroupRepository;
 import com.backend.cookshare.system.repository.projection.ReportDetailWithContextProjection;
@@ -43,9 +45,16 @@ public class ReportGroupServiceImpl implements ReportGroupService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<ReportGroupResponse> getGroupedReports(int page, int size) {
+    public PageResponse<ReportGroupResponse> getGroupedReports(int page, int size, ReportStatus status, ReportActionType actionType, ReportType reportType) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<ReportGroupResponse> groupPage = groupRepository.findGroupedReports(pageable);
+        Page<ReportGroupResponse> groupPage;
+        
+        // Chọn query phù hợp dựa trên filter
+        if (status != null || actionType != null || reportType != null) {
+            groupPage = groupRepository.findGroupedReportsWithFilters(pageable, status, actionType, reportType);
+        } else {
+            groupPage = groupRepository.findGroupedReports(pageable);
+        }
 
         List<ReportGroupResponse> content = groupPage.getContent();
 

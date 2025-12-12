@@ -2,6 +2,8 @@ package com.backend.cookshare.system.repository;
 
 import com.backend.cookshare.system.dto.response.ReportGroupResponse;
 import com.backend.cookshare.system.entity.Report;
+import com.backend.cookshare.system.enums.ReportActionType;
+import com.backend.cookshare.system.enums.ReportStatus;
 import com.backend.cookshare.system.enums.ReportType;
 import com.backend.cookshare.system.repository.projection.ReportDetailWithContextProjection;
 import com.backend.cookshare.system.repository.projection.ReportTypeCount;
@@ -58,6 +60,53 @@ public interface ReportGroupRepository extends JpaRepository<Report, UUID> {
         ORDER BY COUNT(r.reportId) DESC, MAX(r.createdAt) DESC
     """)
     Page<ReportGroupResponse> findGroupedReports(Pageable pageable);
+
+    /**
+     * Query nhóm reports theo Recipe với filters (status, actionType và reportType)
+     */
+    @Query("""
+        SELECT new com.backend.cookshare.system.dto.response.ReportGroupResponse(
+            r.recipeId,
+            rec.title,
+            rec.featuredImage,
+            recAuthor.userId,
+            recAuthor.username,
+            recAuthor.fullName,
+            recAuthor.avatarUrl,
+            COUNT(r.reportId),
+            0.0,
+            NULL,
+            MAX(r.createdAt),
+            MIN(r.createdAt),
+            NULL,
+            false,
+            false,
+            'MEDIUM',
+            NULL,
+            NULL
+        )
+        FROM Report r
+        JOIN Recipe rec ON r.recipeId = rec.recipeId
+        JOIN User recAuthor ON rec.user.userId = recAuthor.userId
+        WHERE r.recipeId IS NOT NULL
+        AND (:status IS NULL OR r.status = :status)
+        AND (:actionType IS NULL OR r.actionTaken = :actionType)
+        AND (:reportType IS NULL OR r.reportType = :reportType)
+        GROUP BY 
+            r.recipeId,
+            rec.title,
+            rec.featuredImage,
+            recAuthor.userId,
+            recAuthor.username,
+            recAuthor.avatarUrl
+        ORDER BY COUNT(r.reportId) DESC, MAX(r.createdAt) DESC
+    """)
+    Page<ReportGroupResponse> findGroupedReportsWithFilters(
+        Pageable pageable, 
+        @Param("status") ReportStatus status,
+        @Param("actionType") ReportActionType actionType,
+        @Param("reportType") ReportType reportType
+    );
 
     /**
      * Lấy tất cả báo cáo của một Recipe cụ thể
