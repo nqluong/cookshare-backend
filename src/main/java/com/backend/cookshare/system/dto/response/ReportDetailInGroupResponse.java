@@ -14,6 +14,7 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ReportDetailInGroupResponse {
      UUID reportId;
+     UUID reporterId;
      String reporterUsername;
      String reporterFullName;
      String reporterAvatar;

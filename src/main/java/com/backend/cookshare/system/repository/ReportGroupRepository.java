@@ -157,6 +157,7 @@ public interface ReportGroupRepository extends JpaRepository<Report, UUID> {
             r.reporter_id as reporterId,
             u_reporter.username as reporterUsername,
             u_reporter.full_name as reporterFullName,
+            u_reporter.avatar_url as reporterAvatarUrl,
             r.report_type as reportType,
             r.reason as reason,
             r.description as description,
@@ -165,7 +166,8 @@ public interface ReportGroupRepository extends JpaRepository<Report, UUID> {
             rec.featured_image as recipeFeaturedImage,
             rec.user_id as authorId,
             u_author.username as authorUsername,
-            u_author.full_name as authorFullName
+            u_author.full_name as authorFullName,
+            u_author.avatar_url as authorAvatarUrl
         FROM reports r
         JOIN recipes rec ON r.recipe_id = rec.recipe_id
         JOIN users u_author ON rec.user_id = u_author.user_id

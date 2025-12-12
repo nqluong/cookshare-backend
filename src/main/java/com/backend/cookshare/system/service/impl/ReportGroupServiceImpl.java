@@ -1,5 +1,6 @@
 package com.backend.cookshare.system.service.impl;
 
+import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
@@ -37,6 +38,7 @@ public class ReportGroupServiceImpl implements ReportGroupService {
     private final ReportGroupDataLoader dataLoader;
     private final ReportGroupMapper groupMapper;
     private final ReportGroupScoreCalculator scoreCalculator;
+    private final FirebaseStorageService firebaseStorageService;
 
 
     @Override
@@ -75,10 +77,11 @@ public class ReportGroupServiceImpl implements ReportGroupService {
         // Lấy thông tin chung từ row đầu tiên (giống nhau cho tất cả rows)
         ReportDetailWithContextProjection first = reportDetails.get(0);
         String recipeTitle = first.getRecipeTitle();
-        String recipeThumbnail = first.getRecipeFeaturedImage();
+        String recipeThumbnail = convertToFirebaseUrl(first.getRecipeFeaturedImage());
         UUID authorId = first.getAuthorId();
         String authorUsername = first.getAuthorUsername();
         String authorFullName = first.getAuthorFullName();
+        String authorAvatar = convertToFirebaseUrl(first.getAuthorAvatar());
 
         // Tính phân loại theo loại báo cáo từ dữ liệu đã có
         Map<ReportType, Long> typeBreakdown = reportDetails.stream()
@@ -97,8 +100,10 @@ public class ReportGroupServiceImpl implements ReportGroupService {
         List<ReportDetailInGroupResponse> reports = reportDetails.stream()
                 .map(p -> ReportDetailInGroupResponse.builder()
                         .reportId(p.getReportId())
+                        .reporterId(p.getReporterId())
                         .reporterUsername(p.getReporterUsername())
                         .reporterFullName(p.getReporterFullName())
+                        .reporterAvatar(convertToFirebaseUrl(p.getReporterAvatar()))
                         .reportType(ReportType.valueOf(p.getReportType()))
                         .reason(p.getReason())
                         .description(p.getDescription())
@@ -113,6 +118,7 @@ public class ReportGroupServiceImpl implements ReportGroupService {
                 .authorId(authorId)
                 .authorUsername(authorUsername)
                 .authorFullName(authorFullName)
+                .authorAvatar(authorAvatar)
                 .reportCount((long) reports.size())
                 .weightedScore(weightedScore)
                 .mostSevereType(mostSevere)
@@ -121,5 +127,21 @@ public class ReportGroupServiceImpl implements ReportGroupService {
                 .threshold(threshold)
                 .reports(reports)
                 .build();
+    }
+
+    /**
+     * Helper method để convert local path thành Firebase URL
+     * @param localPath đường dẫn local hoặc null
+     * @return Firebase URL hoặc null nếu input null/empty
+     */
+    private String convertToFirebaseUrl(String localPath) {
+        if (localPath == null || localPath.trim().isEmpty()) {
+            return null;
+        }
+        // Nếu đã là URL (bắt đầu với http), trả về nguyên bản
+        if (localPath.startsWith("http")) {
+            return localPath;
+        }
+        return firebaseStorageService.convertPathToFirebaseUrl(localPath);
     }
 }
