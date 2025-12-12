@@ -38,7 +38,7 @@
                     document.getElementById('status').innerText='Đăng nhập thành công!';
                     // ✅ Redirect về app scheme để browser tự đóng (hoạt động trên cả iOS và Android)
                     setTimeout(function() {
-                        window.location.href = 'exp://';
+                        window.close();
                     }, 500);
                 }).catch(function(){ setTimeout(poll, 1000); });
         }
