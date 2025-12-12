@@ -36,10 +36,7 @@
                 .then(function(res){ if(res.status===200) return res.json(); throw new Error('pending'); })
                 .then(function(data){
                     document.getElementById('status').innerText='Đăng nhập thành công!';
-                    // ✅ Redirect về app scheme để browser tự đóng (hoạt động trên cả iOS và Android)
-                    setTimeout(function() {
-                        window.close();
-                    }, 500);
+                    window.close();
                 }).catch(function(){ setTimeout(poll, 1000); });
         }
         poll();
