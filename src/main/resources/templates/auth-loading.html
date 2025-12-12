@@ -35,16 +35,8 @@
             fetch('/auth/' + provider + '/result/' + encodeURIComponent(state), { credentials: 'same-origin' })
                 .then(function(res){ if(res.status===200) return res.json(); throw new Error('pending'); })
                 .then(function(data){
-                    try{
-                        if(window.opener){
-                            window.opener.postMessage({type:'oauth',provider:provider,data:data}, '*');
-                            window.close();
-                        } else {
-                            document.getElementById('status').innerText='Đăng nhập thành công. Bạn có thể đóng tab này.';
-                        }
-                    }catch(e){
-                        document.getElementById('status').innerText='Đăng nhập thành công. Vui lòng quay lại ứng dụng.';
-                    }
+                    document.getElementById('status').innerText='Đăng nhập thành công!';
+                    window.close();
                 }).catch(function(){ setTimeout(poll, 1000); });
         }
         poll();
