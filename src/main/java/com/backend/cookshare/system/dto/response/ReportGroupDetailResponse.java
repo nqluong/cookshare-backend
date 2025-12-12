@@ -26,6 +26,7 @@ public class ReportGroupDetailResponse {
     UUID authorId;
     String authorUsername;
     String authorFullName;
+    String authorAvatar;
     
     // Thống kê
     Long reportCount;
