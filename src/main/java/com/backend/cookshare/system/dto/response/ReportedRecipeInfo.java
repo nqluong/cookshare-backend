@@ -21,4 +21,5 @@ public class ReportedRecipeInfo {
      Integer viewCount;
      UUID userId;
      String authorUsername;
+     String authorFullName;
 }

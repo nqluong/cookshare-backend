@@ -23,5 +23,7 @@ public interface RecipeService {
 
     Page<RecipeResponse> getAllRecipes(Pageable pageable);
 
-    List<RecipeResponse> getAllRecipesByUserId(UUID userId);
+    List<RecipeResponse> getAllRecipesByUserId(UUID userId, UUID currentUserId);
+
+    RecipeResponse togglePrivacy(UUID id);
 }

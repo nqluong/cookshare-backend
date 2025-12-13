@@ -16,7 +16,7 @@ public class ReviewReportRequest {
     @NotNull(message = "Status không được để trống")
     ReportStatus status;
 
-    ReportActionType actionTaken;
+    ReportActionType actionType;
 
     String actionDescription;
 

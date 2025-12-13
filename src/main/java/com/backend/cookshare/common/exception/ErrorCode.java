@@ -10,11 +10,12 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
     INTERNAL_SERVER_ERROR(9999, "Lỗi hệ thống", HttpStatus.INTERNAL_SERVER_ERROR),
     RECIPE_NOT_FOUND(1001, "Không tìm thấy công thức", HttpStatus.NOT_FOUND),
-    VALIDATION_ERROR(1002, "Dữ liệu không hợp lệ", HttpStatus.BAD_REQUEST),
-    BAD_REQUEST(1003, "Yêu cầu không hợp lệ", HttpStatus.BAD_REQUEST),
-    METHOD_NOT_ALLOWED(1004, "Phương thức HTTP không được hỗ trợ", HttpStatus.METHOD_NOT_ALLOWED),
-    NOT_FOUND(1005, "Không tìm thấy dữ liệu yêu cầu", HttpStatus.NOT_FOUND),
-    REQUEST_TIMEOUT(1006, "Yêu cầu timeout", HttpStatus.REQUEST_TIMEOUT),
+    RECIPE_NOT_APPROVED(1002, "Công thức chưa được duyệt", HttpStatus.BAD_REQUEST),
+    VALIDATION_ERROR(1003, "Dữ liệu không hợp lệ", HttpStatus.BAD_REQUEST),
+    BAD_REQUEST(1004, "Yêu cầu không hợp lệ", HttpStatus.BAD_REQUEST),
+    METHOD_NOT_ALLOWED(1005, "Phương thức HTTP không được hỗ trợ", HttpStatus.METHOD_NOT_ALLOWED),
+    NOT_FOUND(1006, "Không tìm thấy dữ liệu yêu cầu", HttpStatus.NOT_FOUND),
+    REQUEST_TIMEOUT(1007, "Yêu cầu timeout", HttpStatus.REQUEST_TIMEOUT),
 
     TAG_NOT_FOUND(1101, "Không tìm thấy thẻ (Tag)", HttpStatus.NOT_FOUND),
     TAG_ALREADY_EXISTS(1102, "Thẻ (Tag) đã tồn tại", HttpStatus.CONFLICT),
@@ -33,7 +34,6 @@ public enum ErrorCode {
     SEARCH_QUERY_EMPTY(3004, "Từ khóa tìm kiếm không được để trống", HttpStatus.BAD_REQUEST),
     INVALID_CHARACTERS(3105, "Từ khóa tìm kiếm chứa ký tự không hợp lệ", HttpStatus.BAD_REQUEST),
 
-
     USER_NOT_FOUND(4001, "Người dùng không tồn tại", HttpStatus.NOT_FOUND),
     USER_NOT_ACTIVE(4002, "Tài khoản người dùng không hoạt động", HttpStatus.BAD_REQUEST),
     INVALID_REFRESH_TOKEN(4003, "refresh token không hợp lệ", HttpStatus.UNAUTHORIZED),
@@ -45,7 +45,8 @@ public enum ErrorCode {
     INVALID_EMAIL(4009, "Địa chỉ email không hợp lệ", HttpStatus.BAD_REQUEST),
     OTP_NOT_FOUND(4010, "Mã OTP không hợp lệ", HttpStatus.NOT_FOUND),
     OTP_EXPIRED(4011, "Mã OTP đã hết hạn", HttpStatus.BAD_REQUEST),
-    OTP_NOT_VERIFIED(4012, "Bạn chưa xác thực OTP. Vui lòng xác thực OTP trước khi đặt lại mật khẩu", HttpStatus.BAD_REQUEST),
+    OTP_NOT_VERIFIED(4012, "Bạn chưa xác thực OTP. Vui lòng xác thực OTP trước khi đặt lại mật khẩu",
+            HttpStatus.BAD_REQUEST),
     EMAIL_SEND_FAILED(4013, "Gửi email thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
     USERNAME_EXISTED(4014, "Username đã tồn tại", HttpStatus.BAD_REQUEST),
     EMAIL_EXISTED(4015, "Email đã tồn tại", HttpStatus.BAD_REQUEST),
@@ -70,8 +71,8 @@ public enum ErrorCode {
     // 🔹 Notification errors (✨ thêm mới)
     NOTIFICATION_NOT_FOUND(5001, "Không tìm thấy thông báo", HttpStatus.NOT_FOUND),
     NOTIFICATION_FORBIDDEN(5002, "Không có quyền truy cập thông báo này", HttpStatus.FORBIDDEN),
-    RECIPE_ALREADY_LIKED(6003,"Công thức đã được thích", HttpStatus.CONFLICT),
-    RECIPE_NOT_LIKED(6004,"Công thức chưa được thích", HttpStatus.BAD_REQUEST),
+    RECIPE_ALREADY_LIKED(6003, "Công thức đã được thích", HttpStatus.CONFLICT),
+    RECIPE_NOT_LIKED(6004, "Công thức chưa được thích", HttpStatus.BAD_REQUEST),
 
     REPORT_NOT_FOUND(7001, "Không tìm thấy báo cáo", HttpStatus.NOT_FOUND),
     REPORT_ALREADY_EXISTS(7002, "Bạn đã báo cáo công thức này rồi", HttpStatus.CONFLICT),
@@ -82,7 +83,8 @@ public enum ErrorCode {
     REPORTED_RECIPE_NOT_FOUND(7007, "Công thức bị báo cáo không tồn tại", HttpStatus.NOT_FOUND),
     REPORT_FORBIDDEN(7008, "Bạn không có quyền truy cập báo cáo này", HttpStatus.FORBIDDEN),
     INVALID_REPORT_STATUS(7009, "Trạng thái báo cáo không hợp lệ", HttpStatus.BAD_REQUEST),
-    USER_NOT_AUTHENTICATED(7010, "Người dùng chưa đăng nhập", HttpStatus.UNAUTHORIZED);
+    USER_NOT_AUTHENTICATED(7010, "Người dùng chưa đăng nhập", HttpStatus.UNAUTHORIZED),
+    NO_PENDING_REPORTS(7011, "Không có báo cáo chờ xử lý", HttpStatus.NOT_FOUND);
 
     private final int code;
     private final String message;

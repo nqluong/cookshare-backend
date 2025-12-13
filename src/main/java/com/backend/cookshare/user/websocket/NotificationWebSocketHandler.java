@@ -34,7 +34,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
             String username = jwt.getSubject();
             session.getAttributes().put("username", username);
             userSessions.put(username, session);
-            log.info("✅ Connected user {}", username);
+            log.info("Connected user {}", username);
         } catch (Exception e) {
             session.close(CloseStatus.NOT_ACCEPTABLE);
         }
