@@ -82,7 +82,8 @@ public enum ErrorCode {
     REPORTED_RECIPE_NOT_FOUND(7007, "Công thức bị báo cáo không tồn tại", HttpStatus.NOT_FOUND),
     REPORT_FORBIDDEN(7008, "Bạn không có quyền truy cập báo cáo này", HttpStatus.FORBIDDEN),
     INVALID_REPORT_STATUS(7009, "Trạng thái báo cáo không hợp lệ", HttpStatus.BAD_REQUEST),
-    USER_NOT_AUTHENTICATED(7010, "Người dùng chưa đăng nhập", HttpStatus.UNAUTHORIZED);
+    USER_NOT_AUTHENTICATED(7010, "Người dùng chưa đăng nhập", HttpStatus.UNAUTHORIZED),
+    NO_PENDING_REPORTS(7011, "Không có báo cáo chờ xử lý", HttpStatus.NOT_FOUND);
 
     private final int code;
     private final String message;
