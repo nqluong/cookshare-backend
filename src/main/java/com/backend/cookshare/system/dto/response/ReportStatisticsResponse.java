@@ -17,7 +17,6 @@ public class ReportStatisticsResponse {
     Long pendingReports;
     Long resolvedReports;
     Long rejectedReports;
-    Long resolvedReports;
     Map<ReportType, Long> reportsByType;
     List<TopReportedItem> topReportedUsers;
     List<TopReportedItem> topReportedRecipes;
