@@ -379,15 +379,16 @@ public interface InteractionStatisticsRepository extends JpaRepository<Recipe, U
               c.category_id as categoryId,
               c.name as categoryName,
               COUNT(DISTINCT r.recipe_id) as recipeCount,
-              COALESCE(COUNT(DISTINCT rv.view_id), 0) as totalViews,
+              COALESCE(COUNT(DISTINCT CASE WHEN al.activity_type = 'VIEW' THEN al.log_id END), 0) as totalViews,
               COALESCE(COUNT(DISTINCT rl.like_id), 0) as totalLikes,
               COALESCE(COUNT(DISTINCT cm.comment_id), 0) as totalComments,
               COALESCE(COUNT(DISTINCT cr.collection_recipe_id), 0) as totalSaves
             FROM categories c
             JOIN recipe_categories rc ON c.category_id = rc.category_id
             JOIN recipes r ON rc.recipe_id = r.recipe_id
-            LEFT JOIN recipe_views rv ON r.recipe_id = rv.recipe_id
-              AND rv.viewed_at BETWEEN :startDate AND :endDate
+            LEFT JOIN activity_logs al ON r.recipe_id = al.target_id
+              AND al.activity_type = 'VIEW'
+              AND al.created_at BETWEEN :startDate AND :endDate
             LEFT JOIN recipe_likes rl ON r.recipe_id = rl.recipe_id
               AND rl.created_at BETWEEN :startDate AND :endDate
             LEFT JOIN comments cm ON r.recipe_id = cm.recipe_id

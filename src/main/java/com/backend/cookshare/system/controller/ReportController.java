@@ -8,11 +8,12 @@ import com.backend.cookshare.common.exception.ErrorCode;
 import com.backend.cookshare.system.dto.request.CreateReportRequest;
 import com.backend.cookshare.system.dto.request.ReportFilterRequest;
 import com.backend.cookshare.system.dto.request.ReviewReportRequest;
-import com.backend.cookshare.system.dto.response.ReportResponse;
-import com.backend.cookshare.system.dto.response.ReportStatisticsResponse;
+import com.backend.cookshare.system.dto.response.*;
+import com.backend.cookshare.system.enums.ReportActionType;
 import com.backend.cookshare.system.enums.ReportStatus;
 import com.backend.cookshare.system.enums.ReportType;
 import com.backend.cookshare.system.repository.ReportQueryRepository;
+import com.backend.cookshare.system.service.ReportGroupService;
 import com.backend.cookshare.system.service.ReportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/reports")
+@RequestMapping("/api")
 @RequiredArgsConstructor
 @Slf4j
 public class ReportController {
@@ -36,12 +37,14 @@ public class ReportController {
     private final ReportService reportService;
     private final SecurityUtil securityUtil;
     private final ReportQueryRepository reportQueryRepository;
+    private final ReportGroupService reportGroupService;
+
 
     /**
      * User tạo báo cáo mới
      * User ID được lấy tự động từ SecurityContextHolder
      */
-    @PostMapping
+    @PostMapping("/reports")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<ApiResponse<ReportResponse>> createReport(
             @Valid @RequestBody CreateReportRequest request) {
@@ -52,6 +55,154 @@ public class ReportController {
                 .body(ApiResponse.<ReportResponse>builder()
                         .success(true)
                         .message("Tạo báo cáo thành công")
+                        .data(response)
+                        .build());
+    }
+
+    @GetMapping("/admin/reports/grouped")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PageResponse<ReportGroupResponse>>> getGroupedReports(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) ReportStatus status,
+            @RequestParam(required = false) ReportActionType actionType,
+            @RequestParam(required = false) ReportType reportType) {
+        long startTime = System.currentTimeMillis();
+        PageResponse<ReportGroupResponse> response = reportGroupService.getGroupedReports(page, size, status, actionType, reportType);
+        long endTime = System.currentTimeMillis();
+        log.info("getGroupedReports executed in {} ms with status={}, actionType={}, reportType={}", (endTime - startTime), status, actionType, reportType);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.<PageResponse<ReportGroupResponse>>builder()
+                        .success(true)
+                        .message("Lấy danh sách báo cáo nhóm thành công")
+                        .data(response)
+                        .build());
+    }
+
+    @GetMapping("/admin/reports/grouped/recipe/{recipeId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ReportGroupDetailResponse>> getGroupDetail(
+            @PathVariable UUID recipeId) {
+
+        long startTime = System.currentTimeMillis();
+        ReportGroupDetailResponse response = reportGroupService.getGroupDetail(recipeId);
+        long endTime = System.currentTimeMillis();
+        log.info("getGroupDetail được thực thi trong {} ms", (endTime - startTime));
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.<ReportGroupDetailResponse>builder()
+                        .success(true)
+                        .message("Lấy chi tiết nhóm báo cáo thành công")
+                        .data(response)
+                        .build());
+    }
+
+    @PostMapping("/admin/reports/grouped/recipe/{recipeId}/review")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<BatchReviewResponse>> batchReviewByRecipe(
+            @PathVariable UUID recipeId,
+            @Valid @RequestBody ReviewReportRequest request) {
+
+        long startTime = System.currentTimeMillis();
+        BatchReviewResponse response = reportService.batchReviewByRecipe(recipeId, request);
+        long endTime = System.currentTimeMillis();
+        log.info("batchReviewByRecipe được thực thi trong {} ms", (endTime - startTime));
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.<BatchReviewResponse>builder()
+                        .success(true)
+                        .data(response)
+                        .build());
+    }
+
+
+    @GetMapping("/admin/reports")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PageResponse<ReportResponse>>> getReports(
+            @ModelAttribute ReportFilterRequest filter) {
+
+        long startTime = System.currentTimeMillis();
+        PageResponse<ReportResponse> response = reportService.getReports(filter);
+        long endTime = System.currentTimeMillis();
+        log.info("getReports executed in {} ms", (endTime - startTime));
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.<PageResponse<ReportResponse>>builder()
+                        .success(true)
+                        .message("Lấy danh sách báo cáo thành công")
+                        .data(response)
+                        .build());
+    }
+
+    @GetMapping("/admin/reports/{reportId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ReportResponse>> getReportById(
+            @PathVariable UUID reportId) {
+
+        long startTime = System.currentTimeMillis();
+        ReportResponse response = reportService.getReportById(reportId);
+        long endTime = System.currentTimeMillis();
+        log.info("getReportById executed in {} ms", (endTime - startTime));
+
+        System.out.printf("Debug: Retrieved report with ID %s%n", reportId);
+        return ResponseEntity.ok(ApiResponse.<ReportResponse>builder()
+                .success(true)
+                .message("Lấy chi tiết báo cáo thành công")
+                .data(response)
+                .build());
+    }
+
+    @PostMapping("/admin/reports/{reportId}/review")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ReportResponse>> reviewReport(
+            @PathVariable UUID reportId,
+            @Valid @RequestBody ReviewReportRequest request) {
+
+        long startTime = System.currentTimeMillis();
+        ReportResponse response = reportService.reviewReport(reportId, request);
+        long endTime = System.currentTimeMillis();
+        log.info("reviewReport executed in {} ms", (endTime - startTime));
+
+        return ResponseEntity.ok(ApiResponse.<ReportResponse>builder()
+                .success(true)
+                .message("Xem xét báo cáo thành công")
+                .data(response)
+                .build());
+    }
+
+    @DeleteMapping("/admin/reports/{reportId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteReport(@PathVariable UUID reportId) {
+        reportService.deleteReport(reportId);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Xóa báo cáo thành công")
+                .build());
+    }
+
+    @GetMapping("/admin/reports/statistics")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ReportStatisticsResponse>> getStatistics() {
+        long startTime = System.currentTimeMillis();
+        ReportStatisticsResponse response = reportService.getStatistics();
+        long endTime = System.currentTimeMillis();
+        log.info("getStatistics executed in {} ms", (endTime - startTime));
+        return ResponseEntity.ok(ApiResponse.<ReportStatisticsResponse>builder()
+                .success(true)
+                .message("Lấy thống kê thành công")
+                .data(response)
+                .build());
+    }
+
+    @GetMapping("/admin/reports/statistics/targets")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<TargetStatisticsResponse>> getTargetStatistics() {
+        long startTime = System.currentTimeMillis();
+        TargetStatisticsResponse response = reportService.getTargetStatistics();
+        long endTime = System.currentTimeMillis();
+        log.info("getTargetStatistics executed in {} ms", (endTime - startTime));
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.<TargetStatisticsResponse>builder()
+                        .success(true)
                         .data(response)
                         .build());
     }
@@ -94,71 +245,6 @@ public class ReportController {
                 .success(true)
                 .message("Lấy danh sách báo cáo thành công")
                 .data(reports)
-                .build());
-    }
-
-    /**
-     * Admin xem chi tiết báo cáo
-     */
-    @GetMapping("/{reportId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<ReportResponse>> getReportById(
-            @PathVariable UUID reportId) {
-
-        ReportResponse report = reportService.getReportById(reportId);
-
-        return ResponseEntity.ok(ApiResponse.<ReportResponse>builder()
-                .success(true)
-                .message("Lấy chi tiết báo cáo thành công")
-                .data(report)
-                .build());
-    }
-
-    /**
-     * Admin phê duyệt/từ chối báo cáo
-     * Admin ID được lấy tự động từ SecurityContextHolder
-     */
-    @PatchMapping("/{reportId}/review")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<ReportResponse>> reviewReport(
-            @PathVariable UUID reportId,
-            @Valid @RequestBody ReviewReportRequest request) {
-
-        ReportResponse response = reportService.reviewReport(reportId, request);
-
-        return ResponseEntity.ok(ApiResponse.<ReportResponse>builder()
-                .success(true)
-                .message("Xem xét báo cáo thành công")
-                .data(response)
-                .build());
-    }
-
-    /**
-     * Admin xóa báo cáo
-     */
-    @DeleteMapping("/{reportId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> deleteReport(@PathVariable UUID reportId) {
-        reportService.deleteReport(reportId);
-
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
-                .success(true)
-                .message("Xóa báo cáo thành công")
-                .build());
-    }
-
-    /**
-     * Admin xem thống kê báo cáo
-     */
-    @GetMapping("/statistics")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<ReportStatisticsResponse>> getStatistics() {
-        ReportStatisticsResponse stats = reportService.getStatistics();
-
-        return ResponseEntity.ok(ApiResponse.<ReportStatisticsResponse>builder()
-                .success(true)
-                .message("Lấy thống kê thành công")
-                .data(stats)
                 .build());
     }
 

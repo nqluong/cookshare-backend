@@ -127,5 +127,8 @@ public class Recipe {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+    @Column(name = "unpublished_at")
+    LocalDateTime unpublishedAt;
 }
 

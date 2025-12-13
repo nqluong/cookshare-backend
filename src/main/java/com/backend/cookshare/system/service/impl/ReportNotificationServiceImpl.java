@@ -2,19 +2,20 @@ package com.backend.cookshare.system.service.impl;
 
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
-import com.backend.cookshare.system.dto.request.NewReportNotification;
 import com.backend.cookshare.system.dto.request.NotificationMessage;
-import com.backend.cookshare.system.dto.response.ReportReviewNotification;
+import com.backend.cookshare.system.dto.response.RecipeInfo;
 import com.backend.cookshare.system.entity.Report;
-import com.backend.cookshare.system.enums.ReportStatus;
-import com.backend.cookshare.system.enums.ReportType;
 import com.backend.cookshare.system.repository.ReportQueryRepository;
+import com.backend.cookshare.system.repository.projection.UsernameProjection;
 import com.backend.cookshare.system.service.ReportNotificationService;
-import com.backend.cookshare.user.entity.Notification;
+import com.backend.cookshare.system.service.notification.builder.NotificationMessageBuilder;
+import com.backend.cookshare.system.service.notification.persistence.NotificationPersistenceService;
+import com.backend.cookshare.system.service.notification.resolver.ReportTargetResolver;
+import com.backend.cookshare.system.service.notification.sender.WebSocketNotificationSender;
 import com.backend.cookshare.user.enums.NotificationType;
-import com.backend.cookshare.user.repository.NotificationRepository;
-import com.backend.cookshare.user.websocket.NotificationWebSocketHandler;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -27,345 +28,332 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ReportNotificationServiceImpl implements ReportNotificationService {
 
-    private final SimpMessagingTemplate messagingTemplate;
-    private final NotificationWebSocketHandler webSocketHandler;
-    private final ReportQueryRepository queryRepository;
-    private final NotificationRepository notificationRepository;
+    ReportQueryRepository queryRepository;
+    NotificationMessageBuilder messageBuilder;
+    NotificationPersistenceService persistenceService;
+    ReportTargetResolver targetResolver;
+    SimpMessagingTemplate messagingTemplate; // ⬅️ STOMP sender mới
 
-    @Override
-    public void notifyReporterReviewComplete(Report report, String reporterUsername, UUID reporterId) {
-        String title = "Kết quả xử lý báo cáo";
-        String message = buildReviewCompleteMessage(report);
-
-        // Save notification to database
-        Notification notification = Notification.builder()
-                .userId(reporterId)
-                .title(title)
-                .message(message)
-                .type(NotificationType.REPORT_REVIEW)
-                .relatedId(report.getReportId())
-                .build();
-
-        notificationRepository.save(notification);
-
-        // Send WebSocket notification
-        ReportReviewNotification wsNotification = ReportReviewNotification.builder()
-                .reportId(report.getReportId())
-                .status(report.getStatus())
-                .actionTaken(report.getActionTaken())
-                .actionDescription(report.getActionDescription())
-                .reviewedAt(report.getReviewedAt())
-                .message(message)
-                .build();
-
+    /** Gửi STOMP WebSocket đến 1 user */
+    private void sendToUser(String username, NotificationMessage message) {
         messagingTemplate.convertAndSendToUser(
-                reporterUsername,
-                "/queue/report-review",
-                wsNotification
+                username,
+                "/queue/notifications",
+                message
         );
+    }
 
-        log.info("Đã gửi thông báo kết quả review report {} cho {}",
-                report.getReportId(), reporterUsername);
+    /** Broadcast cho nhiều user */
+    private void broadcastToUsers(List<String> usernames, NotificationMessage message) {
+        for (String username : usernames) {
+            sendToUser(username, message);
+        }
     }
 
     @Override
-    public void notifyReportedUser(UUID userId, String username, String actionDescription) {
-
+    public void notifyRecipeUnpublished(Report report, UUID recipeId) {
     }
 
-    @Override
-    public void notifyRecipeAuthorUnpublished(UUID recipeId, String authorUsername, String title, String reason) {
-
-    }
-
-    /**
-     * Gửi thông báo cho admin khi có báo cáo mới
-     */
     @Override
     public void notifyAdminsNewReport(Report report, String reporterUsername) {
         try {
-            // Lấy danh sách admin usernames
-            List<String> adminUsernames = queryRepository.findAdminUsernames();
-
-            if (adminUsernames.isEmpty()) {
-                log.warn("No active admins to notify about report {}", report.getReportId());
+            List<String> admins = queryRepository.findAdminUsernames();
+            if (admins.isEmpty()) {
                 return;
             }
 
-            // Xác định target của báo cáo
-            String targetType;
-            String targetName;
+            var target = targetResolver.resolve(report);
 
-            if (report.getReportedId() != null) {
-                targetType = "USER";
-                targetName = queryRepository.findUsernameById(report.getReportedId())
-                        .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-            } else if (report.getRecipeId() != null) {
-                targetType = "RECIPE";
-                targetName = queryRepository.findRecipeTitleById(report.getRecipeId())
-                        .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
-            } else {
-                targetType = "UNKNOWN";
-                targetName = "Unknown";
-            }
+            NotificationMessage msg = messageBuilder.buildNewReportMessage(
+                    report,
+                    reporterUsername,
+                    target.type(),
+                    target.name()
+            );
 
-            // Tạo notification message
-            NewReportNotification notification = NewReportNotification.builder()
-                    .reportId(report.getReportId())
-                    .reporterUsername(reporterUsername)
-                    .reportType(report.getReportType())
-                    .targetType(targetType)
-                    .targetName(targetName)
-                    .createdAt(report.getCreatedAt())
-                    .build();
-
-            NotificationMessage message = NotificationMessage.builder()
-                    .type("NEW_REPORT")
-                    .title("Báo cáo mới")
-                    .message(String.format("Người dùng @%s đã báo cáo %s '%s' vì %s",
-                            reporterUsername,
-                            targetType.equals("USER") ? "người dùng" : "công thức",
-                            targetName,
-                            getReportTypeVietnamese(report.getReportType())))
-                    .data(Map.of(
-                            "reportId", report.getReportId().toString(),
-                            "reportType", report.getReportType().toString(),
-                            "targetType", targetType,
-                            "targetName", targetName,
-                            "reporterUsername", reporterUsername
-                    ))
-                    .timestamp(LocalDateTime.now())
-                    .build();
-
-            // Gửi thông báo cho tất cả admin qua WebSocket
-            adminUsernames.forEach(adminUsername -> {
-                try {
-                    webSocketHandler.sendToUser(adminUsername, message);
-                    log.info("Notified admin {} about new report {}", adminUsername, report.getReportId());
-                } catch (Exception e) {
-                    log.error("Failed to notify admin {} via WebSocket", adminUsername, e);
-                }
-            });
-
-            log.info("Successfully notified {} admins about report {}",
-                    adminUsernames.size(), report.getReportId());
+            broadcastToUsers(admins, msg);
 
         } catch (Exception e) {
-            log.error("Failed to notify admins about report {}", report.getReportId(), e);
+            log.error("Không gửi được thông báo báo cáo mới", e);
         }
     }
 
-    /**
-     * Gửi thông báo cho user khi báo cáo của họ được xử lý
-     */
     @Override
-    public void notifyReporterReviewComplete(Report report, String reporterUsername, String reviewerUsername) {
+    public void notifyReporterReviewComplete(Report report, String reporterUsername, UUID reporterId) {
         try {
-            String statusText = report.getStatus() == ReportStatus.APPROVED ? "được chấp nhận" : "bị từ chối";
+            String msgText = buildReviewCompleteMessage(report);
 
-            NotificationMessage message = NotificationMessage.builder()
-                    .type("REPORT_REVIEWED")
-                    .title("Báo cáo " + (report.getStatus() == ReportStatus.APPROVED ? "được chấp nhận" : "bị từ chối"))
-                    .message(String.format("Báo cáo của bạn đã %s bởi quản trị viên @%s",
-                            statusText, reviewerUsername))
-                    .data(Map.of(
-                            "reportId", report.getReportId().toString(),
-                            "status", report.getStatus().toString(),
-                            "reviewerUsername", reviewerUsername,
-                            "adminNote", report.getAdminNote() != null ? report.getAdminNote() : ""
-                    ))
-                    .timestamp(LocalDateTime.now())
-                    .build();
+            // Lưu DB
+            persistenceService.saveNotification(
+                    reporterId,
+                    "Kết quả xử lý báo cáo",
+                    msgText,
+                    NotificationType.REPORT_REVIEW,
+                    report.getReportId()
+            );
 
-            webSocketHandler.sendToUser(reporterUsername, message);
-
-            log.info("Đã thông báo cho người báo cáo {} về kết quả xem xét báo cáo {}",
-                    reporterUsername, report.getReportId());
+            // Gửi WS
+            NotificationMessage ws = messageBuilder.buildReportReviewedMessage(report, reporterUsername);
+            sendToUser(reporterUsername, ws);
 
         } catch (Exception e) {
-            log.error("Không thể thông báo cho người báo cáo về kết quả xem xét", e);
+            log.error("Không gửi notify reporter review", e);
         }
     }
 
-    /**
-     * Gửi thông báo cho user bị báo cáo khi report được approved
-     */
-    @Override
-    public void notifyReportedUser(UUID userId, String username, ReportType reportType, String action) {
-        try {
-            NotificationMessage message = NotificationMessage.builder()
-                    .type("USER_WARNING")
-                    .title("Cảnh báo tài khoản")
-                    .message(String.format("Bạn đã nhận được cảnh báo vì vi phạm %s. Hành động: %s",
-                            getReportTypeVietnamese(reportType), action))
-                    .data(Map.of(
-                            "reportType", reportType.toString(),
-                            "action", action
-                    ))
-                    .timestamp(LocalDateTime.now())
-                    .build();
-
-            webSocketHandler.sendToUser(username, message);
-
-            log.info("Đã thông báo cảnh báo vi phạm cho người dùng {}", username);
-
-        } catch (Exception e) {
-            log.error("Không thể thông báo cho người dùng bị báo cáo", e);
-        }
-    }
-
-    /**
-     * Gửi thông báo cho recipe author khi recipe bị unpublish do báo cáo
-     */
-    @Override
-    public void notifyRecipeAuthorUnpublished(UUID recipeId, String authorUsername, String recipeTitle) {
-        try {
-            NotificationMessage message = NotificationMessage.builder()
-                    .type("RECIPE_UNPUBLISHED")
-                    .title("Công thức đã bị hủy xuất bản")
-                    .message(String.format("Công thức '%s' của bạn đã bị hủy xuất bản do vi phạm chính sách",
-                            recipeTitle))
-                    .data(Map.of(
-                            "recipeId", recipeId.toString(),
-                            "recipeTitle", recipeTitle,
-                            "action", "unpublished"
-                    ))
-                    .timestamp(LocalDateTime.now())
-                    .build();
-
-            webSocketHandler.sendToUser(authorUsername, message);
-
-            log.info("Đã thông báo cho tác giả công thức {} về việc hủy xuất bản công thức {}",
-                    authorUsername, recipeId);
-
-        } catch (Exception e) {
-            log.error("Không thể thông báo cho tác giả công thức về việc hủy xuất bản", e);
-        }
-    }
-
-    /**
-     * Thông báo auto-moderation cho user
-     */
-    @Override
-    public void notifyAutoDisableUser(UUID userId, String username, long reportCount) {
-        try {
-            NotificationMessage message = NotificationMessage.builder()
-                    .type("ACCOUNT_SUSPENDED")
-                    .title("Tài khoản bị tạm khóa")
-                    .message(String.format("Tài khoản của bạn đã bị tạm thời khóa do có %d báo cáo đang chờ xử lý. Vui lòng liên hệ bộ phận hỗ trợ.",
-                            reportCount))
-                    .data(Map.of(
-                            "reportCount", reportCount,
-                            "action", "auto_suspended"
-                    ))
-                    .timestamp(LocalDateTime.now())
-                    .build();
-
-            webSocketHandler.sendToUser(username, message);
-
-            log.info("Đã thông báo cho người dùng {} về việc tự động tạm khóa", username);
-
-        } catch (Exception e) {
-            log.error("Không thể thông báo cho người dùng về việc tự động tạm khóa", e);
-        }
-    }
-
-    /**
-     * Thông báo auto-moderation cho recipe author
-     */
-    @Override
-    public void notifyAutoUnpublishRecipe(UUID recipeId, String authorUsername, String recipeTitle, long reportCount) {
-        try {
-            NotificationMessage message = NotificationMessage.builder()
-                    .type("RECIPE_AUTO_UNPUBLISHED")
-                    .title("Công thức tự động bị hủy xuất bản")
-                    .message(String.format("Công thức '%s' của bạn đã tự động bị hủy xuất bản do có %d báo cáo đang chờ xử lý",
-                            recipeTitle, reportCount))
-                    .data(Map.of(
-                            "recipeId", recipeId.toString(),
-                            "recipeTitle", recipeTitle,
-                            "reportCount", reportCount,
-                            "action", "auto_unpublished"
-                    ))
-                    .timestamp(LocalDateTime.now())
-                    .build();
-
-            webSocketHandler.sendToUser(authorUsername, message);
-
-            log.info("Đã thông báo cho tác giả công thức {} về việc tự động hủy xuất bản công thức {}",
-                    authorUsername, recipeId);
-
-        } catch (Exception e) {
-            log.error("Không thể thông báo cho tác giả công thức về việc tự động hủy xuất bản", e);
-        }
-    }
-
-    /**
-     * Broadcast pending report count update cho tất cả admin
-     */
     @Override
     public void broadcastPendingCountUpdate(long pendingCount) {
         try {
-            List<String> adminUsernames = queryRepository.findAdminUsernames();
+            List<String> admins = queryRepository.findAdminUsernames();
+            NotificationMessage msg = messageBuilder.buildPendingCountUpdateMessage(pendingCount);
+            broadcastToUsers(admins, msg);
+        } catch (Exception e) {
+            log.error("Không broadcast số lượng pending reports", e);
+        }
+    }
 
-            NotificationMessage message = NotificationMessage.builder()
-                    .type("PENDING_REPORTS_UPDATE")
-                    .title("Báo cáo chờ xử lý")
-                    .message(String.format("%d báo cáo đang chờ xem xét", pendingCount))
-                    .data(Map.of("pendingCount", pendingCount))
+    @Override
+    public void notifyAdminsActionCompleted(Report report) {
+        try {
+            List<String> admins = queryRepository.findAdminUsernames();
+            if (admins.isEmpty()) return;
+
+            String summary = buildActionSummary(report);
+
+            NotificationMessage msg = NotificationMessage.builder()
+                    .type("REPORT_ACTION_COMPLETED")
+                    .title("Xử lý báo cáo hoàn tất")
+                    .message(summary)
+                    .data(Map.of(
+                            "reportId", report.getReportId().toString(),
+                            "actionTaken", report.getActionTaken().toString(),
+                            "status", report.getStatus().toString()
+                    ))
                     .timestamp(LocalDateTime.now())
                     .build();
 
-            adminUsernames.forEach(adminUsername -> {
-                try {
-                    webSocketHandler.sendToUser(adminUsername, message);
-                } catch (Exception e) {
-                    log.error("Không thể gửi cập nhật số lượng báo cáo chờ xử lý cho admin {}", adminUsername, e);
-                }
-            });
+            broadcastToUsers(admins, msg);
 
         } catch (Exception e) {
-            log.error("Không thể gửi cập nhật số lượng báo cáo chờ xử lý", e);
+            log.error("Không broadcast action completed", e);
         }
     }
 
-    private String getReportTypeVietnamese(ReportType reportType) {
-        return switch (reportType) {
-            case SPAM -> "spam";
-            case INAPPROPRIATE -> "nội dung không phù hợp";
-            case COPYRIGHT -> "vi phạm bản quyền";
-            case HARASSMENT -> "quấy rối";
-            case FAKE -> "thông tin giả mạo";
-            case MISLEADING -> "gây hiểu lầm";
-            case OTHER -> "vi phạm khác";
-        };
+    @Override
+    public void notifyUserWarned(Report report, UUID userId) {
+        try {
+            String username = findUsernameById(userId);
+
+            NotificationMessage msg = messageBuilder.buildUserWarningMessage(
+                    report.getReportType(),
+                    "Cảnh báo"
+            );
+
+            persistenceService.saveNotification(
+                    userId,
+                    msg.getTitle(),
+                    msg.getMessage(),
+                    NotificationType.WARNING,
+                    report.getReportId()
+            );
+
+            sendToUser(username, msg);
+
+        } catch (Exception e) {
+            log.error("Không notify warning user", e);
+        }
     }
+
+    @Override
+    public void notifyUserSuspended(Report report, UUID userId, int suspensionDays) {
+        try {
+            String username = findUsernameById(userId);
+
+            NotificationMessage msg = messageBuilder.buildUserSuspendedMessage(suspensionDays);
+
+            persistenceService.saveNotification(
+                    userId,
+                    msg.getTitle(),
+                    msg.getMessage(),
+                    NotificationType.ACCOUNT_STATUS,
+                    report.getReportId()
+            );
+
+            sendToUser(username, msg);
+
+        } catch (Exception e) {
+            log.error("Không notify suspended user", e);
+        }
+    }
+
+    @Override
+    public void notifyUserBanned(Report report, UUID userId) {
+        try {
+            String username = findUsernameById(userId);
+
+            NotificationMessage msg = messageBuilder.buildUserBannedMessage();
+
+            persistenceService.saveNotification(
+                    userId,
+                    msg.getTitle(),
+                    msg.getMessage(),
+                    NotificationType.ACCOUNT_STATUS,
+                    report.getReportId()
+            );
+
+            sendToUser(username, msg);
+
+        } catch (Exception e) {
+            log.error("Không notify banned user", e);
+        }
+    }
+
+    @Override
+    public void notifyRecipeEditRequired(Report report, UUID recipeId) {
+        try {
+            RecipeInfo info = queryRepository.findRecipeInfoById(recipeId).orElse(null);
+            if (info == null) return;
+
+            String note = report.getActionDescription() != null
+                    ? report.getActionDescription()
+                    : "Vui lòng chỉnh sửa nội dung";
+
+            NotificationMessage msg = messageBuilder.buildRecipeEditRequiredMessage(
+                    recipeId, info.getTitle(), note
+            );
+
+            persistenceService.saveNotification(
+                    info.getAuthorId(),
+                    msg.getTitle(),
+                    msg.getMessage(),
+                    NotificationType.RECIPE_STATUS,
+                    report.getReportId()
+            );
+
+            sendToUser(info.getAuthorUsername(), msg);
+
+        } catch (Exception e) {
+            log.error("Không notify recipe edit required", e);
+        }
+    }
+
+    @Override
+    public void notifyContentRemoved(Report report, UUID recipeId) {
+        try {
+            RecipeInfo info = queryRepository.findRecipeInfoById(recipeId).orElse(null);
+            if (info == null) return;
+
+            String reason = report.getActionDescription() != null
+                    ? report.getActionDescription()
+                    : "Nội dung vi phạm chính sách";
+
+            NotificationMessage msg = messageBuilder.buildRecipeUnpublishedMessage(
+                    recipeId, info.getTitle(), reason
+            );
+
+            persistenceService.saveNotification(
+                    info.getAuthorId(),
+                    "Nội dung đã bị xóa",
+                    msg.getMessage(),
+                    NotificationType.RECIPE_STATUS,
+                    report.getReportId()
+            );
+
+            sendToUser(info.getAuthorUsername(), msg);
+
+        } catch (Exception e) {
+            log.error("Không notify content removed", e);
+        }
+    }
+
+    @Override
+    public void notifyAutoDisableUser(UUID userId, String username, long reportCount) {
+        try {
+            NotificationMessage msg = messageBuilder.buildAutoDisableUserMessage(reportCount);
+
+            persistenceService.saveNotification(
+                    userId,
+                    msg.getTitle(),
+                    msg.getMessage(),
+                    NotificationType.ACCOUNT_STATUS,
+                    null
+            );
+
+            sendToUser(username, msg);
+
+        } catch (Exception e) {
+            log.error("Không notify auto disable user", e);
+        }
+    }
+
+    @Override
+    public void notifyAutoUnpublishRecipe(UUID recipeId, UUID authorId, String authorUsername, String recipeTitle, long reportCount) {
+        try {
+            NotificationMessage msg = messageBuilder.buildAutoUnpublishRecipeMessage(
+                    recipeId, recipeTitle, reportCount
+            );
+
+            persistenceService.saveNotification(
+                    authorId,
+                    msg.getTitle(),
+                    msg.getMessage(),
+                    NotificationType.RECIPE_STATUS,
+                    null
+            );
+
+            sendToUser(authorUsername, msg);
+
+        } catch (Exception e) {
+            log.error("Không notify auto unpublish recipe", e);
+        }
+    }
+
+    /* ================== Helper ================== */
 
     private String buildReviewCompleteMessage(Report report) {
-        StringBuilder message = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
 
-        if (report.getStatus() == ReportStatus.APPROVED) {
-            message.append("Báo cáo của bạn đã được phê duyệt. ");
-
-            if (report.getActionTaken() != null) {
-                message.append("Hành động đã thực hiện: ")
-                        .append(report.getActionTaken().getDisplayName())
-                        .append(". ");
-            }
-
-            if (report.getActionDescription() != null) {
-                message.append(report.getActionDescription());
-            }
-        } else if (report.getStatus() == ReportStatus.REJECTED) {
-            message.append("Báo cáo của bạn đã được xem xét nhưng không đủ cơ sở để xử lý. ");
-
-            if (report.getActionDescription() != null) {
-                message.append(report.getActionDescription());
-            }
+        switch (report.getStatus()) {
+            case APPROVED -> sb.append("Báo cáo đã được phê duyệt. ");
+            case REJECTED -> sb.append("Báo cáo không đủ cơ sở xử lý. ");
+            case RESOLVED -> sb.append("Báo cáo đã được giải quyết. ");
+            default -> sb.append("Báo cáo đã được xử lý. ");
         }
 
-        return message.toString();
+        if (report.getActionDescription() != null) {
+            sb.append(report.getActionDescription());
+        }
+        return sb.toString();
+    }
+
+    private String buildActionSummary(Report report) {
+        String action = report.getActionTaken().getDisplayName();
+        String target = "";
+
+        if (report.getRecipeId() != null) {
+            RecipeInfo info = queryRepository.findRecipeInfoById(report.getRecipeId()).orElse(null);
+            if (info != null) {
+                target = "công thức '" + info.getTitle() + "'";
+            }
+        } else if (report.getReportedId() != null) {
+            String username = findUsernameById(report.getReportedId());
+            target = "người dùng '" + username + "'";
+        }
+
+        return String.format(
+                "Báo cáo #%s: Đã thực hiện '%s' đối với %s",
+                report.getReportId().toString().substring(0, 8),
+                action,
+                target
+        );
+    }
+
+    private String findUsernameById(UUID userId) {
+        var list = queryRepository.findUsernamesByIds(List.of(userId));
+        if (list.isEmpty()) throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        return list.get(0).getUsername();
     }
 }

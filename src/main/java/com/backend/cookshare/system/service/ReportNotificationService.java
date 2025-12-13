@@ -1,37 +1,68 @@
 package com.backend.cookshare.system.service;
 
 import com.backend.cookshare.system.entity.Report;
-import com.backend.cookshare.system.enums.ReportType;
 
 import java.util.UUID;
 
 public interface ReportNotificationService {
-    void notifyAdminsNewReport(Report report, String reporterUsername);
-
-    void notifyReporterReviewComplete(Report report, String reporterUsername, String reviewerUsername);
-
-    void notifyReportedUser(UUID userId, String username, ReportType reportType, String action);
-
-    void notifyRecipeAuthorUnpublished(UUID recipeId, String authorUsername, String recipeTitle);
-
-    void notifyAutoDisableUser(UUID userId, String username, long reportCount);
-
-    void notifyAutoUnpublishRecipe(UUID recipeId, String authorUsername, String recipeTitle, long reportCount);
-
-    void broadcastPendingCountUpdate(long pendingCount);
 
     /**
-     * Thông báo cho reporter về kết quả xử lý
+     * Thông báo cho admins khi có báo cáo mới
+     */
+    void notifyAdminsNewReport(Report report, String reporterUsername);
+
+    /**
+     * Thông báo cho người báo cáo khi review hoàn tất
      */
     void notifyReporterReviewComplete(Report report, String reporterUsername, UUID reporterId);
 
     /**
-     * Thông báo cho người bị report
+     * Broadcast số lượng báo cáo pending tới admins
      */
-    void notifyReportedUser(UUID userId, String username, String actionDescription);
+    void broadcastPendingCountUpdate(long pendingCount);
 
     /**
-     * Thông báo cho tác giả công thức khi bị unpublish
+     * Thông báo cho admins khi hoàn thành xử lý action
      */
-    void notifyRecipeAuthorUnpublished(UUID recipeId, String authorUsername, String title, String reason);
+    void notifyAdminsActionCompleted(Report report);
+
+    /**
+     * Thông báo cảnh báo cho người dùng
+     */
+    void notifyUserWarned(Report report, UUID userId);
+
+    /**
+     * Thông báo tạm khóa tài khoản
+     */
+    void notifyUserSuspended(Report report, UUID userId, int suspensionDays);
+
+    /**
+     * Thông báo cấm vĩnh viễn tài khoản
+     */
+    void notifyUserBanned(Report report, UUID userId);
+
+    /**
+     * Thông báo gỡ công thức
+     */
+    void notifyRecipeUnpublished(Report report, UUID recipeId);
+
+    /**
+     * Thông báo yêu cầu chỉnh sửa công thức
+     */
+    void notifyRecipeEditRequired(Report report, UUID recipeId);
+
+    /**
+     * Thông báo nội dung bị xóa
+     */
+    void notifyContentRemoved(Report report, UUID recipeId);
+
+    /**
+     * Thông báo tự động khóa user
+     */
+    void notifyAutoDisableUser(UUID userId, String username, long reportCount);
+
+    /**
+     * Thông báo tự động gỡ recipe
+     */
+    void notifyAutoUnpublishRecipe(UUID recipeId, UUID authorId, String authorUsername, String recipeTitle, long reportCount);
 }
