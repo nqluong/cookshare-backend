@@ -44,7 +44,6 @@ public class FacebookAuthController {
     @Value("${cookshare.jwt.refresh-token-validity-in-seconds}")
     private long refreshTokenExpiration;
 
-
     @GetMapping("/login")
     public ResponseEntity<Void> loginWithFacebook(@RequestParam(required = false) String state) {
         // Nếu không có state, tạo mới
