@@ -317,7 +317,6 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
         StringBuilder sb = new StringBuilder();
 
         switch (report.getStatus()) {
-            case APPROVED -> sb.append("Báo cáo đã được phê duyệt. ");
             case REJECTED -> sb.append("Báo cáo không đủ cơ sở xử lý. ");
             case RESOLVED -> sb.append("Báo cáo đã được giải quyết. ");
             default -> sb.append("Báo cáo đã được xử lý. ");

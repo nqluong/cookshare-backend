@@ -41,7 +41,7 @@ public class NotificationMessageBuilder {
             Report report,
             String reviewerUsername) {
 
-        String statusText = report.getStatus() == ReportStatus.APPROVED ?
+        String statusText = report.getStatus() == ReportStatus.RESOLVED ?
                 "được chấp nhận" : "bị từ chối";
 
         return NotificationMessage.builder()

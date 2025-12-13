@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -57,6 +58,8 @@ public class RecipeServiceImpl implements RecipeService {
     private final FirebaseStorageService fileStorageService;
     private final ActivityLogService activityLogService;
     private final NotificationService notificationService;
+    private final com.backend.cookshare.authentication.util.SecurityUtil securityUtil;
+    private final com.backend.cookshare.system.repository.ReportQueryRepository reportQueryRepository;
 
     // ================= CREATE WITH BATCH SUPPORT =================
 
@@ -463,8 +466,33 @@ public class RecipeServiceImpl implements RecipeService {
     public RecipeResponse getRecipeById(UUID id) {
         Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
-        recipe.setViewCount(recipe.getViewCount()+1);
-        return loadRecipeResponse(recipe);
+        
+        incrementViewCountAsync(id);
+        
+        try {
+            UUID userId = getCurrentUserIdOrNull();
+            if (userId != null) {
+                activityLogService.logViewActivityAsync(userId, id);
+            }
+        } catch (Exception e) {
+            log.debug("Không thể log view activity: {}", e.getMessage());
+        }
+        
+        // Load response và tăng viewCount trong response để frontend hiển thị ngay
+        RecipeResponse response = loadRecipeResponse(recipe);
+        response.setViewCount(recipe.getViewCount() + 1);
+        
+        return response;
+    }
+
+    @Async
+    public void incrementViewCountAsync(UUID recipeId) {
+        try {
+            recipeRepository.incrementViewCount(recipeId);
+            log.debug("Incremented view count for recipe {}", recipeId);
+        } catch (Exception e) {
+            log.warn("Không thể tăng view count cho recipe {}: {}", recipeId, e.getMessage());
+        }
     }
 
     @Override
@@ -630,6 +658,20 @@ public class RecipeServiceImpl implements RecipeService {
             request.getCategoryIds().forEach(categoryId ->
                     recipeCategoryRepository.insertRecipeCategory(recipeId, categoryId)
             );
+        }
+    }
+
+
+    private UUID getCurrentUserIdOrNull() {
+        try {
+            String username = securityUtil.getCurrentUserLogin().orElse(null);
+            if (username == null) {
+                return null;
+            }
+            return reportQueryRepository.findUserIdByUsername(username).orElse(null);
+        } catch (Exception e) {
+            log.debug("Không thể lấy userId: {}", e.getMessage());
+            return null;
         }
     }
 }

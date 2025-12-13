@@ -44,6 +44,7 @@ public class ReportGroupResponse {
     Boolean autoActioned;
     Boolean exceedsThreshold;
     String priority;            // "CRITICAL", "HIGH", "MEDIUM", "LOW"
+    Boolean allResolved;        // true nếu tất cả báo cáo đã được xử lý (không còn PENDING)
 
     // Xem trước người báo cáo (top 3)
     List<String> topReporters;
