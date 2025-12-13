@@ -205,9 +205,8 @@ public class ReportServiceImpl implements ReportService {
     public ReportStatisticsResponse getStatistics() {
         long total = reportRepository.count();
         long pending = reportRepository.countByStatus(ReportStatus.PENDING);
-        long approved = reportRepository.countByStatus(ReportStatus.APPROVED);
-        long rejected = reportRepository.countByStatus(ReportStatus.REJECTED);
         long resolved = reportRepository.countByStatus(ReportStatus.RESOLVED);
+        long rejected = reportRepository.countByStatus(ReportStatus.REJECTED);
 
         List<ReportCountProjection> typeProjections = reportRepository.countReportsByType();
         Map<ReportType, Long> reportsByType = typeProjections.stream()
@@ -216,23 +215,22 @@ public class ReportServiceImpl implements ReportService {
                         ReportCountProjection::getCount
                 ));
 
-        List<TopReportedProjection> topUsersProjections =
-                reportRepository.findTopReportedUsers(PageRequest.of(0, 10));
-        List<TopReportedItem> topUsers = mapper.toTopReportedUsers(topUsersProjections);
-
-        List<TopReportedProjection> topRecipesProjections =
-                reportRepository.findTopReportedRecipes(PageRequest.of(0, 10));
-        List<TopReportedItem> topRecipes = mapper.toTopReportedRecipes(topRecipesProjections);
+//        List<TopReportedProjection> topUsersProjections =
+//                reportRepository.findTopReportedUsers(PageRequest.of(0, 10));
+//        List<TopReportedItem> topUsers = mapper.toTopReportedUsers(topUsersProjections);
+//
+//        List<TopReportedProjection> topRecipesProjections =
+//                reportRepository.findTopReportedRecipes(PageRequest.of(0, 10));
+//        List<TopReportedItem> topRecipes = mapper.toTopReportedRecipes(topRecipesProjections);
 
         return ReportStatisticsResponse.builder()
                 .totalReports(total)
                 .pendingReports(pending)
-                .approvedReports(approved)
-                .rejectedReports(rejected)
                 .resolvedReports(resolved)
+                .rejectedReports(rejected)
                 .reportsByType(reportsByType)
-                .topReportedUsers(topUsers)
-                .topReportedRecipes(topRecipes)
+                .topReportedUsers(null)
+                .topReportedRecipes(null)
                 .build();
     }
 

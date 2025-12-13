@@ -22,7 +22,7 @@ import java.util.UUID;
 public interface ReportGroupRepository extends JpaRepository<Report, UUID> {
 
     /**
-     * Query nhóm reports theo Recipe với thông tin tác giả
+     * Query nhóm reports theo Recipe với thông tin tác giả (lấy tất cả status)
      */
     @Query("""
         SELECT new com.backend.cookshare.system.dto.response.ReportGroupResponse(
@@ -42,14 +42,14 @@ public interface ReportGroupRepository extends JpaRepository<Report, UUID> {
             false,
             false,
             'MEDIUM',
+            CASE WHEN SUM(CASE WHEN r.status = 'PENDING' THEN 1 ELSE 0 END) = 0 THEN true ELSE false END,
             NULL,
             NULL
         )
         FROM Report r
         JOIN Recipe rec ON r.recipeId = rec.recipeId
         JOIN User recAuthor ON rec.user.userId = recAuthor.userId
-        WHERE r.status = 'PENDING'
-        AND r.recipeId IS NOT NULL
+        WHERE r.recipeId IS NOT NULL
         GROUP BY 
             r.recipeId,
             rec.title,
@@ -82,6 +82,7 @@ public interface ReportGroupRepository extends JpaRepository<Report, UUID> {
             false,
             false,
             'MEDIUM',
+            CASE WHEN SUM(CASE WHEN r.status = 'PENDING' THEN 1 ELSE 0 END) = 0 THEN true ELSE false END,
             NULL,
             NULL
         )

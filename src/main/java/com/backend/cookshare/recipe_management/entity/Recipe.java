@@ -115,7 +115,6 @@ public class Recipe {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
-
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
     private User user;
@@ -132,3 +131,4 @@ public class Recipe {
     @Column(name = "unpublished_at")
     LocalDateTime unpublishedAt;
 }
+

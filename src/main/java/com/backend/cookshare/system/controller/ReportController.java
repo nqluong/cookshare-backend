@@ -69,6 +69,8 @@ public class ReportController {
             @RequestParam(required = false) ReportType reportType) {
         long startTime = System.currentTimeMillis();
         PageResponse<ReportGroupResponse> response = reportGroupService.getGroupedReports(page, size, status, actionType, reportType);
+
+
         long endTime = System.currentTimeMillis();
         log.info("getGroupedReports executed in {} ms with status={}, actionType={}, reportType={}", (endTime - startTime), status, actionType, reportType);
         return ResponseEntity.status(HttpStatus.OK)
@@ -116,13 +118,28 @@ public class ReportController {
 
     @GetMapping("/admin/reports")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<PageResponse<ReportResponse>>> getReports(
-            @ModelAttribute ReportFilterRequest filter) {
+    public ResponseEntity<ApiResponse<PageResponse<ReportResponse>>> getAllReports(
+            @RequestParam(required = false) ReportType reportType,
+            @RequestParam(required = false) ReportStatus status,
+            @RequestParam(required = false) ReportActionType actionType,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
+
+        ReportFilterRequest filter = ReportFilterRequest.builder()
+                .reportType(reportType)
+                .status(status)
+                .page(page)
+                .size(size)
+                .sortBy(sortBy)
+                .sortDirection(sortDirection)
+                .build();
 
         long startTime = System.currentTimeMillis();
         PageResponse<ReportResponse> response = reportService.getReports(filter);
         long endTime = System.currentTimeMillis();
-        log.info("getReports executed in {} ms", (endTime - startTime));
+        log.info("getAllReports executed in {} ms with reportType={}, status={}, actionType={}", (endTime - startTime), reportType, status, actionType);
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.<PageResponse<ReportResponse>>builder()
@@ -168,83 +185,32 @@ public class ReportController {
                 .build());
     }
 
-    @DeleteMapping("/admin/reports/{reportId}")
+    /**
+     * Admin xóa báo cáo
+     */
+    @DeleteMapping("/{reportId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteReport(@PathVariable UUID reportId) {
         reportService.deleteReport(reportId);
+
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("Xóa báo cáo thành công")
                 .build());
     }
 
-    @GetMapping("/admin/reports/statistics")
+    /**
+     * Admin xem thống kê báo cáo
+     */
+    @GetMapping("/statistics")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ReportStatisticsResponse>> getStatistics() {
-        long startTime = System.currentTimeMillis();
-        ReportStatisticsResponse response = reportService.getStatistics();
-        long endTime = System.currentTimeMillis();
-        log.info("getStatistics executed in {} ms", (endTime - startTime));
+        ReportStatisticsResponse stats = reportService.getStatistics();
+
         return ResponseEntity.ok(ApiResponse.<ReportStatisticsResponse>builder()
                 .success(true)
                 .message("Lấy thống kê thành công")
-                .data(response)
-                .build());
-    }
-
-    @GetMapping("/admin/reports/statistics/targets")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<TargetStatisticsResponse>> getTargetStatistics() {
-        long startTime = System.currentTimeMillis();
-        TargetStatisticsResponse response = reportService.getTargetStatistics();
-        long endTime = System.currentTimeMillis();
-        log.info("getTargetStatistics executed in {} ms", (endTime - startTime));
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.<TargetStatisticsResponse>builder()
-                        .success(true)
-                        .data(response)
-                        .build());
-    }
-
-    /**
-     * Admin xem danh sách báo cáo với filter
-     */
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<PageResponse<ReportResponse>>> getReports(
-            @RequestParam(required = false) ReportType reportType,
-            @RequestParam(required = false) ReportStatus status,
-            @RequestParam(required = false) UUID reporterId,
-            @RequestParam(required = false) UUID reportedId,
-            @RequestParam(required = false) UUID recipeId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDirection) {
-
-        ReportFilterRequest filter = ReportFilterRequest.builder()
-                .reportType(reportType)
-                .status(status)
-                .reporterId(reporterId)
-                .reportedId(reportedId)
-                .recipeId(recipeId)
-                .fromDate(fromDate)
-                .toDate(toDate)
-                .page(page)
-                .size(size)
-                .sortBy(sortBy)
-                .sortDirection(sortDirection)
-                .build();
-
-        PageResponse<ReportResponse> reports = reportService.getReports(filter);
-
-        return ResponseEntity.ok(ApiResponse.<PageResponse<ReportResponse>>builder()
-                .success(true)
-                .message("Lấy danh sách báo cáo thành công")
-                .data(reports)
+                .data(stats)
                 .build());
     }
 
