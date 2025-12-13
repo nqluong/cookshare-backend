@@ -5,6 +5,7 @@ import java.util.UUID;
 public interface ReportedUserInfoProjection {
     UUID getUserId();
     String getUsername();
+    String getFullName();
     String getEmail();
     String getAvatarUrl();
     String getRole();

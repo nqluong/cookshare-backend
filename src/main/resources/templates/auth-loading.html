@@ -35,7 +35,7 @@
             fetch('/auth/' + provider + '/result/' + encodeURIComponent(state), { credentials: 'same-origin' })
                 .then(function(res){ if(res.status===200) return res.json(); throw new Error('pending'); })
                 .then(function(data){
-                    document.getElementById('status').innerText='Đăng nhập thành công!';
+                    document.getElementById('status').innerText='Đăng nhập thành công! Bạn có thể đóng tab này';
                     window.close();
                 }).catch(function(){ setTimeout(poll, 1000); });
         }

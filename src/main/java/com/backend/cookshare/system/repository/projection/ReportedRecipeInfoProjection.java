@@ -12,4 +12,5 @@ public interface ReportedRecipeInfoProjection {
     Integer getViewCount();
     UUID getUserId();
     String getAuthorUsername();
+    String getAuthorFullName();
 }

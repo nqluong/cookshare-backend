@@ -89,6 +89,9 @@ public class User {
         updatedAt = LocalDateTime.now();
     }
 
+    @Column(name = "suspended_until")
+    LocalDateTime suspendedUntil;
+
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();

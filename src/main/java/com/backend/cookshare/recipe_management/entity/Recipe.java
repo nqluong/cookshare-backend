@@ -92,7 +92,7 @@ public class Recipe {
 
     @Column(name = "is_published")
     @Builder.Default
-    private Boolean isPublished = false;
+    private Boolean isPublished = true;
 
     @Column(name = "is_featured")
     @Builder.Default
@@ -115,6 +115,7 @@ public class Recipe {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
     private User user;
@@ -127,5 +128,7 @@ public class Recipe {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-}
 
+    @Column(name = "unpublished_at")
+    LocalDateTime unpublishedAt;
+}
