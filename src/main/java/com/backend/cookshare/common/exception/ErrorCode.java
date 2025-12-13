@@ -65,7 +65,6 @@ public enum ErrorCode {
     RECIPE_ALREADY_IN_COLLECTION(4002, "Công thức đã có trong bộ sưu tập", HttpStatus.BAD_REQUEST),
     RECIPE_NOT_IN_COLLECTION(4003, "Công thức không có trong bộ sưu tập", HttpStatus.NOT_FOUND),
     COLLECTION_NAME_DUPLICATE(4004, "Tên bộ sưu tập đã tồn tại", HttpStatus.BAD_REQUEST),
-    RECIPE_NOT_APPROVED(4005, "Công thức chưa được phê duyệt", HttpStatus.BAD_REQUEST),
     RECIPE_NOT_PUBLISHED(4006, "Công thức chưa được publish", HttpStatus.BAD_REQUEST),
 
     // 🔹 Notification errors (✨ thêm mới)
