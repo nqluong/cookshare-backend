@@ -52,10 +52,19 @@ public class ActivityLogService {
     }
 
     /**
-     * Log hoạt động xem recipe
+     * Log hoạt động xem recipe (đồng bộ)
      */
     @Transactional
     public void logViewActivity(UUID userId, UUID recipeId) {
+        logActivity(userId, ActivityType.VIEW, recipeId);
+    }
+
+    /**
+     * Log hoạt động xem recipe (bất đồng bộ - không block API response)
+     */
+    @org.springframework.scheduling.annotation.Async
+    @Transactional
+    public void logViewActivityAsync(UUID userId, UUID recipeId) {
         logActivity(userId, ActivityType.VIEW, recipeId);
     }
 

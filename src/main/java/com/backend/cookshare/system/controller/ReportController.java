@@ -69,6 +69,8 @@ public class ReportController {
             @RequestParam(required = false) ReportType reportType) {
         long startTime = System.currentTimeMillis();
         PageResponse<ReportGroupResponse> response = reportGroupService.getGroupedReports(page, size, status, actionType, reportType);
+
+
         long endTime = System.currentTimeMillis();
         log.info("getGroupedReports executed in {} ms with status={}, actionType={}, reportType={}", (endTime - startTime), status, actionType, reportType);
         return ResponseEntity.status(HttpStatus.OK)
@@ -116,13 +118,28 @@ public class ReportController {
 
     @GetMapping("/admin/reports")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<PageResponse<ReportResponse>>> getReports(
-            @ModelAttribute ReportFilterRequest filter) {
+    public ResponseEntity<ApiResponse<PageResponse<ReportResponse>>> getAllReports(
+            @RequestParam(required = false) ReportType reportType,
+            @RequestParam(required = false) ReportStatus status,
+            @RequestParam(required = false) ReportActionType actionType,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
+
+        ReportFilterRequest filter = ReportFilterRequest.builder()
+                .reportType(reportType)
+                .status(status)
+                .page(page)
+                .size(size)
+                .sortBy(sortBy)
+                .sortDirection(sortDirection)
+                .build();
 
         long startTime = System.currentTimeMillis();
         PageResponse<ReportResponse> response = reportService.getReports(filter);
         long endTime = System.currentTimeMillis();
-        log.info("getReports executed in {} ms", (endTime - startTime));
+        log.info("getAllReports executed in {} ms with reportType={}, status={}, actionType={}", (endTime - startTime), reportType, status, actionType);
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.<PageResponse<ReportResponse>>builder()
