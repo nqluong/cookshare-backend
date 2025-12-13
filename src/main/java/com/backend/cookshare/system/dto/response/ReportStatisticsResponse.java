@@ -15,7 +15,7 @@ import java.util.Map;
 public class ReportStatisticsResponse {
     Long totalReports;
     Long pendingReports;
-    Long approvedReports;
+    Long resolvedReports;
     Long rejectedReports;
     Long resolvedReports;
     Map<ReportType, Long> reportsByType;

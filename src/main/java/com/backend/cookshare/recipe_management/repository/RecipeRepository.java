@@ -139,4 +139,12 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
 
         List<Recipe> findByTitleContainingIgnoreCaseAndStatus(String title, RecipeStatus status);
 
+    /**
+     * Tăng view count bằng native query (hiệu quả hơn)
+     */
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE recipes SET view_count = view_count + 1 WHERE recipe_id = :recipeId", nativeQuery = true)
+    void incrementViewCount(@Param("recipeId") UUID recipeId);
+
 }
