@@ -1,6 +1,7 @@
 package com.backend.cookshare.system.service.mapper;
 
 import com.backend.cookshare.authentication.enums.UserRole;
+import com.backend.cookshare.authentication.service.FirebaseStorageService;
 import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.common.mapper.PageMapper;
 import com.backend.cookshare.recipe_management.enums.RecipeStatus;
@@ -22,10 +23,13 @@ public class ReportMapper {
     private final ReportQueryRepository reportQueryRepository;
     private final PageMapper pageMapper;
     private final Executor asyncExecutor;
+    private final FirebaseStorageService firebaseStorageService;
 
     public ReportMapper(ReportQueryRepository reportQueryRepository,
                         PageMapper pageMapper,
+                        FirebaseStorageService firebaseStorageService,
                         @Qualifier("reportAsyncExecutor") Executor asyncExecutor) {
+        this.firebaseStorageService = firebaseStorageService;
         this.reportQueryRepository = reportQueryRepository;
         this.pageMapper = pageMapper;
         this.asyncExecutor = asyncExecutor;
@@ -49,12 +53,13 @@ public class ReportMapper {
 
     /**
      * Chuyển đổi ReportProjection sang ReportResponse.
+     * Sử dụng dữ liệu đã JOIN sẵn trong projection (không cần query thêm)
      */
     public ReportResponse toResponse(ReportProjection projection) {
         ReportResponse response = buildBaseResponse(projection);
         
-        populateDetailsWithBatch(response, projection.getReporterId(), projection.getReportedId(),
-                projection.getRecipeId(), projection.getReviewedBy());
+        // Populate từ dữ liệu đã có sẵn trong projection
+        populateDetailsFromProjection(response, projection);
 
         return response;
     }
@@ -67,15 +72,9 @@ public class ReportMapper {
             return pageMapper.toPageResponse(Collections.emptyList(), projections);
         }
 
-        // Thu thập tất cả IDs cần thiết
-        IdCollector ids = collectIds(content);
-
-        // Batch load song song tất cả thông tin liên quan
-        BatchData batchData = loadBatchDataParallel(ids);
-
-        // Map từng projection sang response với dữ liệu đã cache
+        // Map trực tiếp từ projection (đã có đủ dữ liệu từ JOIN)
         List<ReportResponse> responses = content.stream()
-                .map(proj -> toResponseWithCache(proj, batchData))
+                .map(this::toResponse)
                 .collect(Collectors.toList());
 
         return pageMapper.toPageResponse(responses, projections);
@@ -166,10 +165,65 @@ public class ReportMapper {
                 .reason(projection.getReason())
                 .description(projection.getDescription())
                 .status(projection.getStatus())
+                .actionTaken(projection.getActionTaken())
+                .actionDescription(projection.getActionDescription())
                 .adminNote(projection.getAdminNote())
                 .reviewedAt(projection.getReviewedAt())
                 .createdAt(projection.getCreatedAt())
+                .reportersNotified(projection.getReportersNotified())
                 .build();
+    }
+
+    /**
+     * Populate details từ projection (đã JOIN sẵn - không cần query thêm)
+     */
+    private void populateDetailsFromProjection(ReportResponse response, ReportProjection projection) {
+        // Reporter info
+        if (projection.getReporterUserId() != null) {
+            response.setReporter(ReporterInfo.builder()
+                    .userId(projection.getReporterUserId())
+                    .username(projection.getReporterUsername())
+                    .fullName(projection.getReporterFullName())
+                    .avatarUrl(firebaseStorageService.convertPathToFirebaseUrl(projection.getReporterAvatarUrl()))
+                    .build());
+        }
+        
+        // Reported user info
+        if (projection.getReportedUserId() != null) {
+            response.setReportedUser(ReportedUserInfo.builder()
+                    .userId(projection.getReportedUserId())
+                    .username(projection.getReportedUsername())
+                    .email(projection.getReportedEmail())
+                    .avatarUrl(firebaseStorageService.convertPathToFirebaseUrl(projection.getReportedAvatarUrl()))
+                    .role(projection.getReportedRole() != null ? UserRole.valueOf(projection.getReportedRole()) : null)
+                    .isActive(projection.getReportedIsActive())
+                    .build());
+        }
+        
+        // Reported recipe info
+        if (projection.getReportedRecipeId() != null) {
+            response.setReportedRecipe(ReportedRecipeInfo.builder()
+                    .recipeId(projection.getReportedRecipeId())
+                    .title(projection.getReportedRecipeTitle())
+                    .slug(projection.getReportedRecipeSlug())
+                    .featuredImage(firebaseStorageService.convertPathToFirebaseUrl(projection.getReportedRecipeFeaturedImage()))
+                    .status(projection.getReportedRecipeStatus() != null ? RecipeStatus.valueOf(projection.getReportedRecipeStatus()) : null)
+                    .isPublished(projection.getReportedRecipeIsPublished())
+                    .viewCount(projection.getReportedRecipeViewCount())
+                    .userId(projection.getReportedRecipeUserId())
+                    .authorUsername(projection.getReportedRecipeAuthorUsername())
+                    .build());
+        }
+        
+        // Reviewer info
+        if (projection.getReviewerUserId() != null) {
+            response.setReviewer(ReviewerInfo.builder()
+                    .userId(projection.getReviewerUserId())
+                    .username(projection.getReviewerUsername())
+                    .fullName(projection.getReviewerFullName())
+                    .avatarUrl(firebaseStorageService.convertPathToFirebaseUrl(projection.getReviewerAvatarUrl()))
+                    .build());
+        }
     }
 
     /**

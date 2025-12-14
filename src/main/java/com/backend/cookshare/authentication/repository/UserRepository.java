@@ -4,9 +4,11 @@ import com.backend.cookshare.authentication.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -47,4 +49,20 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT u FROM User u WHERE LOWER(u.fullName) LIKE LOWER(CONCAT('%', :query, '%'))")
     List<User> findByFullNameContainingIgnoreCase(@Param("query") String query);
     Page<User>findByFullNameContainingIgnoreCase(@Param("query") String query,Pageable pageable);
+
+    /**
+     * Tăng recipe_count của user
+     */
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE users SET recipe_count = COALESCE(recipe_count, 0) + 1 WHERE user_id = :userId", nativeQuery = true)
+    void incrementRecipeCount(@Param("userId") UUID userId);
+
+    /**
+     * Giảm recipe_count của user (không cho phép âm)
+     */
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE users SET recipe_count = GREATEST(COALESCE(recipe_count, 0) - 1, 0) WHERE user_id = :userId", nativeQuery = true)
+    void decrementRecipeCount(@Param("userId") UUID userId);
 }

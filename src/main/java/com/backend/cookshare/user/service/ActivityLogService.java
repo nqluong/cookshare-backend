@@ -128,7 +128,7 @@ public class ActivityLogService {
     }
 
     /**
-     * Log hoạt động recipe (tạo, sửa, xóa, duyệt)
+     * Log hoạt động recipe (tạo, sửa, xóa, duyệt) - đồng bộ
      */
     @Transactional
     public void logRecipeActivity(UUID userId, UUID recipeId, String action) {
@@ -138,6 +138,24 @@ public class ActivityLogService {
             case "DELETE" -> ActivityType.DELETE;
             case "APPROVE" -> ActivityType.UPDATE; // Admin duyệt
             case "REJECT" -> ActivityType.UPDATE;  // Admin từ chối
+            default -> ActivityType.VIEW;
+        };
+
+        logActivity(userId, activityType, recipeId);
+    }
+
+    /**
+     * Log hoạt động recipe (tạo, sửa, xóa, duyệt) - bất đồng bộ
+     */
+    @org.springframework.scheduling.annotation.Async
+    @Transactional
+    public void logRecipeActivityAsync(UUID userId, UUID recipeId, String action) {
+        ActivityType activityType = switch (action) {
+            case "CREATE" -> ActivityType.CREATE;
+            case "UPDATE" -> ActivityType.UPDATE;
+            case "DELETE" -> ActivityType.DELETE;
+            case "APPROVE" -> ActivityType.UPDATE;
+            case "REJECT" -> ActivityType.UPDATE;
             default -> ActivityType.VIEW;
         };
 

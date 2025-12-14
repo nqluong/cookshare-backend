@@ -90,7 +90,7 @@ public class ReportGroupServiceImpl implements ReportGroupService {
         UUID authorId = first.getAuthorId();
         String authorUsername = first.getAuthorUsername();
         String authorFullName = first.getAuthorFullName();
-        String authorAvatar = convertToFirebaseUrl(first.getAuthorAvatar());
+        String authorAvatar = convertToFirebaseUrl(first.getAuthorAvatarUrl());
 
         // Tính phân loại theo loại báo cáo từ dữ liệu đã có
         Map<ReportType, Long> typeBreakdown = reportDetails.stream()
@@ -105,18 +105,29 @@ public class ReportGroupServiceImpl implements ReportGroupService {
         double threshold = scoreCalculator.getThreshold();
         boolean exceedsThreshold = weightedScore >= threshold;
 
-        // Chuyển đổi sang DTO
+        // Chuyển đổi sang DTO với đầy đủ thông tin review
         List<ReportDetailInGroupResponse> reports = reportDetails.stream()
                 .map(p -> ReportDetailInGroupResponse.builder()
+                        // Reporter info
                         .reportId(p.getReportId())
                         .reporterId(p.getReporterId())
                         .reporterUsername(p.getReporterUsername())
                         .reporterFullName(p.getReporterFullName())
-                        .reporterAvatar(convertToFirebaseUrl(p.getReporterAvatar()))
+                        .reporterAvatar(convertToFirebaseUrl(p.getReporterAvatarUrl()))
+                        // Report info
                         .reportType(ReportType.valueOf(p.getReportType()))
                         .reason(p.getReason())
                         .description(p.getDescription())
+                        .status(p.getStatus())
                         .createdAt(p.getCreatedAt())
+                        // Review info (nếu có)
+                        .actionTaken(p.getActionTaken())
+                        .actionDescription(p.getActionDescription())
+                        .adminNote(p.getAdminNote())
+                        .reviewedBy(p.getReviewedBy())
+                        .reviewerUsername(p.getReviewerUsername())
+                        .reviewerFullName(p.getReviewerFullName())
+                        .reviewedAt(p.getReviewedAt())
                         .build())
                 .collect(Collectors.toList());
 

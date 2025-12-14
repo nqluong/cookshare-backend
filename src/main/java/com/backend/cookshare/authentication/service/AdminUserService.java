@@ -5,6 +5,8 @@ import com.backend.cookshare.authentication.dto.response.AdminUserListResponseDT
 import com.backend.cookshare.common.dto.PageResponse;
 import org.springframework.data.domain.Pageable;
 
+import java.util.UUID;
+
 public interface AdminUserService {
     
     /**
@@ -20,7 +22,7 @@ public interface AdminUserService {
      * @param userId ID của người dùng
      * @return AdminUserDetailResponseDTO chứa thông tin chi tiết
      */
-    AdminUserDetailResponseDTO getUserDetailById(java.util.UUID userId);
+    AdminUserDetailResponseDTO getUserDetailById(UUID userId);
     
     /**
      * Cấm người dùng

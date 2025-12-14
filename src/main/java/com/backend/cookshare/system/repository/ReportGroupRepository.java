@@ -198,8 +198,8 @@ public interface ReportGroupRepository extends JpaRepository<Report, UUID> {
     long countTotalReportsByAuthor(@Param("userId") UUID userId);
 
     /**
-     * Lấy chi tiết đầy đủ cho một Recipe: reports + author info + reporter usernames
-     * Một query duy nhất thay vì 3 queries riêng biệt
+     * Lấy chi tiết đầy đủ cho một Recipe: reports + author info + reporter usernames + review info
+     * Một query duy nhất với tất cả thông tin cần thiết
      */
     @Query(value = """
         SELECT 
@@ -211,19 +211,27 @@ public interface ReportGroupRepository extends JpaRepository<Report, UUID> {
             r.report_type as reportType,
             r.reason as reason,
             r.description as description,
+            r.status as status,
+            r.action_taken as actionTaken,
+            r.action_description as actionDescription,
+            r.admin_note as adminNote,
+            r.reviewed_by as reviewedBy,
+            r.reviewed_at as reviewedAt,
             r.created_at as createdAt,
             rec.title as recipeTitle,
             rec.featured_image as recipeFeaturedImage,
             rec.user_id as authorId,
             u_author.username as authorUsername,
             u_author.full_name as authorFullName,
-            u_author.avatar_url as authorAvatarUrl
+            u_author.avatar_url as authorAvatarUrl,
+            u_reviewer.username as reviewerUsername,
+            u_reviewer.full_name as reviewerFullName
         FROM reports r
         JOIN recipes rec ON r.recipe_id = rec.recipe_id
         JOIN users u_author ON rec.user_id = u_author.user_id
         JOIN users u_reporter ON r.reporter_id = u_reporter.user_id
-        WHERE r.status = 'PENDING'
-        AND r.recipe_id = :recipeId
+        LEFT JOIN users u_reviewer ON r.reviewed_by = u_reviewer.user_id
+        WHERE r.recipe_id = :recipeId
         ORDER BY r.created_at DESC
         """, nativeQuery = true)
     List<ReportDetailWithContextProjection> findReportDetailsWithContext(@Param("recipeId") UUID recipeId);
