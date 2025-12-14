@@ -11,7 +11,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class NotificationWebSocketMessage {
     private String action; // NEW, READ, DELETE
-    private NotificationDto notification;
+    private Object  notification;
     private UUID userId;
     private LocalDateTime timestamp;
 }

@@ -62,7 +62,8 @@ public class NotificationService {
             notification.setReadAt(LocalDateTime.now());
             notification = notificationRepository.save(notification);
 
-            sendNotificationWebSocketMessage("READ", convertToDto(notification), userId);
+            // ✅ Gửi đầy đủ thông tin cho READ
+            sendNotificationWebSocketMessage("READ", notification, userId);
         }
 
         return convertToResponse(notification);
@@ -96,12 +97,8 @@ public class NotificationService {
 
         notificationRepository.delete(notification);
 
-        NotificationDto dto = NotificationDto.builder()
-                .notificationId(notificationId)
-                .userId(userId)
-                .build();
-
-        sendNotificationWebSocketMessage("DELETE", dto, userId);
+        // ✅ Dùng method DELETE riêng
+        sendDeleteNotificationWebSocketMessage(notificationId, userId);
     }
 
     @Transactional
@@ -129,7 +126,9 @@ public class NotificationService {
 
         notification = notificationRepository.save(notification);
         activityLogService.logCommentActivity(actorId, commentId, recipeId, "CREATE");
-        sendNotificationWebSocketMessage("NEW", convertToDto(notification), recipientId);
+
+        // ✅ Gửi đầy đủ thông tin cho NEW
+        sendNotificationWebSocketMessage("NEW", notification, recipientId);
     }
 
     @Transactional
@@ -157,7 +156,9 @@ public class NotificationService {
 
         notification = notificationRepository.save(notification);
         activityLogService.logCommentActivity(actorId, commentId, recipeId, "CREATE");
-        sendNotificationWebSocketMessage("NEW", convertToDto(notification), recipientId);
+
+        // ✅ Gửi đầy đủ thông tin cho NEW
+        sendNotificationWebSocketMessage("NEW", notification, recipientId);
     }
 
     @Transactional
@@ -170,12 +171,11 @@ public class NotificationService {
         for (Notification notification : notifications) {
             notificationRepository.delete(notification);
 
-            NotificationDto dto = NotificationDto.builder()
-                    .notificationId(notification.getNotificationId())
-                    .userId(notification.getUserId())
-                    .build();
-
-            sendNotificationWebSocketMessage("DELETE", dto, notification.getUserId());
+            // ✅ Dùng method DELETE riêng
+            sendDeleteNotificationWebSocketMessage(
+                    notification.getNotificationId(),
+                    notification.getUserId()
+            );
         }
 
         activityLogService.logCommentActivity(actorId, commentId, null, "DELETE");
@@ -200,7 +200,6 @@ public class NotificationService {
         String title = "Yêu thích mới";
         String message = actorId + "::" + actor.getFullName() + " đã thích công thức của bạn";
 
-
         Notification notification = Notification.builder()
                 .userId(recipientId)
                 .type(NotificationType.LIKE)
@@ -214,7 +213,9 @@ public class NotificationService {
 
         notification = notificationRepository.save(notification);
         activityLogService.logLikeActivity(actorId, recipeId, "CREATE");
-        sendNotificationWebSocketMessage("NEW", convertToDto(notification), recipientId);
+
+        // ✅ Gửi đầy đủ thông tin cho NEW
+        sendNotificationWebSocketMessage("NEW", notification, recipientId);
     }
 
     @Transactional
@@ -228,12 +229,11 @@ public class NotificationService {
         for (Notification notification : notifications) {
             notificationRepository.delete(notification);
 
-            NotificationDto dto = NotificationDto.builder()
-                    .notificationId(notification.getNotificationId())
-                    .userId(notification.getUserId())
-                    .build();
-
-            sendNotificationWebSocketMessage("DELETE", dto, notification.getUserId());
+            // ✅ Dùng method DELETE riêng
+            sendDeleteNotificationWebSocketMessage(
+                    notification.getNotificationId(),
+                    notification.getUserId()
+            );
         }
 
         activityLogService.logLikeActivity(actorId, recipeId, "DELETE");
@@ -264,7 +264,9 @@ public class NotificationService {
 
         notification = notificationRepository.save(notification);
         activityLogService.logFollowActivity(actorId, recipientId, "CREATE");
-        sendNotificationWebSocketMessage("NEW", convertToDto(notification), recipientId);
+
+        // ✅ Gửi đầy đủ thông tin cho NEW
+        sendNotificationWebSocketMessage("NEW", notification, recipientId);
     }
 
     @Transactional
@@ -278,12 +280,11 @@ public class NotificationService {
         for (Notification notification : notifications) {
             notificationRepository.delete(notification);
 
-            NotificationDto dto = NotificationDto.builder()
-                    .notificationId(notification.getNotificationId())
-                    .userId(notification.getUserId())
-                    .build();
-
-            sendNotificationWebSocketMessage("DELETE", dto, notification.getUserId());
+            // ✅ Dùng method DELETE riêng
+            sendDeleteNotificationWebSocketMessage(
+                    notification.getNotificationId(),
+                    notification.getUserId()
+            );
         }
 
         activityLogService.logFollowActivity(actorId, recipientId, "DELETE");
@@ -306,7 +307,9 @@ public class NotificationService {
                 .build();
 
         notification = notificationRepository.save(notification);
-        sendNotificationWebSocketMessage("NEW", convertToDto(notification), recipeOwnerId);
+
+        // ✅ Gửi đầy đủ thông tin cho NEW
+        sendNotificationWebSocketMessage("NEW", notification, recipeOwnerId);
     }
 
     @Transactional
@@ -337,7 +340,9 @@ public class NotificationService {
                     .build();
 
             notification = notificationRepository.save(notification);
-            sendNotificationWebSocketMessage("NEW", convertToDto(notification), followerId);
+
+            // ✅ Gửi đầy đủ thông tin cho NEW
+            sendNotificationWebSocketMessage("NEW", notification, followerId);
         }
     }
 
@@ -356,30 +361,14 @@ public class NotificationService {
         for (Notification notification : notifications) {
             notificationRepository.delete(notification);
 
-            NotificationDto dto = NotificationDto.builder()
-                    .notificationId(notification.getNotificationId())
-                    .userId(notification.getUserId())
-                    .build();
-
-            sendNotificationWebSocketMessage("DELETE", dto, notification.getUserId());
+            // ✅ Dùng method DELETE riêng
+            sendDeleteNotificationWebSocketMessage(
+                    notification.getNotificationId(),
+                    notification.getUserId()
+            );
         }
 
         log.info("Deleted {} notifications related to recipe {}", notifications.size(), recipeId);
-    }
-
-    private NotificationDto convertToDto(Notification notification) {
-        return NotificationDto.builder()
-                .notificationId(notification.getNotificationId())
-                .userId(notification.getUserId())
-                .type(notification.getType())
-                .title(notification.getTitle())
-                .message(notification.getMessage())
-                .relatedId(notification.getRelatedId())
-                .relatedType(notification.getRelatedType())
-                .isRead(notification.getIsRead())
-                .createdAt(notification.getCreatedAt())
-                .readAt(notification.getReadAt())
-                .build();
     }
 
     /**
@@ -455,11 +444,8 @@ public class NotificationService {
         recipeRepository.findById(notification.getRelatedId()).ifPresent(recipe -> {
             builder.recipeTitle(recipe.getTitle())
                     .recipeImage(fileStorageService.convertPathToFirebaseUrl(recipe.getFeaturedImage()));
-
-            // Lấy thông tin người like từ message (extract từ text)
-            // Hoặc có thể parse từ activity log nếu cần chính xác hơn
-            // Tạm thời để null, cần thêm logic nếu muốn hiển thị avatar người like
         });
+
         try {
             String[] parts = notification.getMessage().split("::", 2);
 
@@ -525,10 +511,35 @@ public class NotificationService {
         });
     }
 
-    private void sendNotificationWebSocketMessage(String action, NotificationDto notification, UUID userId) {
+    // ✅ Method cho NEW/READ - gửi đầy đủ thông tin
+    private void sendNotificationWebSocketMessage(String action, Notification notification, UUID userId) {
+        // Convert sang NotificationResponse để có đầy đủ thông tin
+        NotificationResponse enrichedNotification = convertToResponse(notification);
+
         NotificationWebSocketMessage message = NotificationWebSocketMessage.builder()
                 .action(action)
-                .notification(notification)
+                .notification(enrichedNotification)
+                .userId(userId)
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        messagingTemplate.convertAndSendToUser(
+                userId.toString(),
+                "/queue/notifications",
+                message
+        );
+    }
+
+    // ✅ Method riêng cho DELETE - chỉ cần notificationId
+    private void sendDeleteNotificationWebSocketMessage(UUID notificationId, UUID userId) {
+        NotificationDto dto = NotificationDto.builder()
+                .notificationId(notificationId)
+                .userId(userId)
+                .build();
+
+        NotificationWebSocketMessage message = NotificationWebSocketMessage.builder()
+                .action("DELETE")
+                .notification(dto)
                 .userId(userId)
                 .timestamp(LocalDateTime.now())
                 .build();
