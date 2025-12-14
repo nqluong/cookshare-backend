@@ -1,4 +1,5 @@
 package com.backend.cookshare.recipe_management.specification;
+
 import com.backend.cookshare.authentication.entity.User;
 import com.backend.cookshare.recipe_management.entity.Ingredient;
 import com.backend.cookshare.recipe_management.entity.Recipe;
@@ -34,9 +35,11 @@ public class RecipeSpecification {
 
     public static Specification<Recipe> hasNameLike(String name) {
         return (root, query, cb) -> {
-            Predicate predicate = cb.equal(root.get("status"), "APPROVED");
+            Predicate predicate = cb.and(
+                    cb.equal(root.get("status"), "APPROVED"),
+                    cb.equal(root.get("isPublished"), true));
             if (name == null || name.trim().isEmpty()) {
-                return cb.conjunction();
+                return predicate;
             }
 
             String trimmedName = name.trim().toLowerCase();
@@ -47,8 +50,7 @@ public class RecipeSpecification {
                 // Tìm kiếm cụm từ đầy đủ trước
                 Predicate fullPhrasePredicate = cb.or(
                         cb.like(cb.lower(root.get("title")), "%" + trimmedName + "%"),
-                        cb.like(cb.lower(root.get("description")), "%" + trimmedName + "%")
-                );
+                        cb.like(cb.lower(root.get("description")), "%" + trimmedName + "%"));
 
                 // Tìm kiếm từng từ khóa, yêu cầu ít nhất 60% từ khóa khớp
                 int minMatch = (int) Math.ceil(keywords.length * 0.6); // Yêu cầu ít nhất 60% từ khóa khớp
@@ -58,8 +60,7 @@ public class RecipeSpecification {
                     if (keyword.length() >= 2) {
                         Predicate keywordPredicate = cb.or(
                                 cb.like(cb.lower(root.get("title")), "%" + keyword + "%"),
-                                cb.like(cb.lower(root.get("description")), "%" + keyword + "%")
-                        );
+                                cb.like(cb.lower(root.get("description")), "%" + keyword + "%"));
                         keywordPredicates.add(keywordPredicate);
                     }
                 }
@@ -71,10 +72,7 @@ public class RecipeSpecification {
                                     cb.and( // Hoặc ít nhất minMatch từ khóa khớp
                                             keywordPredicates.stream()
                                                     .limit(minMatch)
-                                                    .toArray(Predicate[]::new)
-                                    )
-                            )
-                    );
+                                                    .toArray(Predicate[]::new))));
                 }
 
                 log.info("Tìm kiếm trong title và description với yêu cầu tối thiểu từ khóa");
@@ -85,8 +83,7 @@ public class RecipeSpecification {
                     if (keyword.length() >= 2) {
                         predicate = cb.and(
                                 predicate,
-                                cb.like(cb.lower(root.get("title")), "%" + keyword + "%")
-                        );
+                                cb.like(cb.lower(root.get("title")), "%" + keyword + "%"));
                     }
                 }
                 log.info("Tìm kiếm trong title");
@@ -101,11 +98,8 @@ public class RecipeSpecification {
                                         cb.function("replace", String.class,
                                                 cb.lower(root.get("slug")),
                                                 cb.literal("-"),
-                                                cb.literal(" ")
-                                        ),
-                                        "%" + keyword + "%"
-                                )
-                        );
+                                                cb.literal(" ")),
+                                        "%" + keyword + "%"));
                     }
                 }
                 log.info("Tìm kiếm trong slug");
@@ -118,7 +112,9 @@ public class RecipeSpecification {
         return (root, query, cb) -> {
             query.distinct(true);
 
-            Predicate predicate = cb.equal(root.get("status"), "APPROVED");
+            Predicate predicate = cb.and(
+                    cb.equal(root.get("status"), "APPROVED"),
+                    cb.equal(root.get("isPublished"), true));
 
             // Lọc theo slug nếu có
             if (title != null && !title.trim().isEmpty()) {
@@ -130,8 +126,7 @@ public class RecipeSpecification {
                     // Tìm kiếm cụm từ đầy đủ trước
                     Predicate fullPhrasePredicate = cb.or(
                             cb.like(cb.lower(root.get("title")), "%" + trimmedName + "%"),
-                            cb.like(cb.lower(root.get("description")), "%" + trimmedName + "%")
-                    );
+                            cb.like(cb.lower(root.get("description")), "%" + trimmedName + "%"));
 
                     // Tìm kiếm từng từ khóa, yêu cầu ít nhất 60% từ khóa khớp
                     int minMatch = (int) Math.ceil(keywords.length * 0.6); // Yêu cầu ít nhất 60% từ khóa khớp
@@ -141,8 +136,7 @@ public class RecipeSpecification {
                         if (keyword.length() >= 2) {
                             Predicate keywordPredicate = cb.or(
                                     cb.like(cb.lower(root.get("title")), "%" + keyword + "%"),
-                                    cb.like(cb.lower(root.get("description")), "%" + keyword + "%")
-                            );
+                                    cb.like(cb.lower(root.get("description")), "%" + keyword + "%"));
                             keywordPredicates.add(keywordPredicate);
                         }
                     }
@@ -155,10 +149,7 @@ public class RecipeSpecification {
                                         cb.and( // Hoặc ít nhất minMatch từ khóa khớp
                                                 keywordPredicates.stream()
                                                         .limit(minMatch)
-                                                        .toArray(Predicate[]::new)
-                                        )
-                                )
-                        );
+                                                        .toArray(Predicate[]::new))));
                     }
 
                     log.info("Tìm kiếm trong title và description với yêu cầu tối thiểu từ khóa");
@@ -169,8 +160,7 @@ public class RecipeSpecification {
                         if (keyword.length() >= 2) {
                             predicate = cb.and(
                                     predicate,
-                                    cb.like(cb.lower(root.get("title")), "%" + keyword + "%")
-                            );
+                                    cb.like(cb.lower(root.get("title")), "%" + keyword + "%"));
                         }
                     }
                     log.info("Tìm kiếm trong title");
@@ -185,11 +175,8 @@ public class RecipeSpecification {
                                             cb.function("replace", String.class,
                                                     cb.lower(root.get("slug")),
                                                     cb.literal("-"),
-                                                    cb.literal(" ")
-                                            ),
-                                            "%" + keyword + "%"
-                                    )
-                            );
+                                                    cb.literal(" ")),
+                                            "%" + keyword + "%"));
                         }
                     }
                     log.info("Tìm kiếm trong slug");
@@ -200,16 +187,16 @@ public class RecipeSpecification {
             if (ingredientNames != null && !ingredientNames.isEmpty()) {
                 for (String ingredientName : ingredientNames) {
                     if (ingredientName != null && !ingredientName.trim().isEmpty()) {
-                        Join<Recipe, RecipeIngredient> recipeIngredientJoin = root.join("recipeIngredients", JoinType.INNER);
-                        Join<RecipeIngredient, Ingredient> ingredientJoin = recipeIngredientJoin.join("ingredient", JoinType.INNER);
+                        Join<Recipe, RecipeIngredient> recipeIngredientJoin = root.join("recipeIngredients",
+                                JoinType.INNER);
+                        Join<RecipeIngredient, Ingredient> ingredientJoin = recipeIngredientJoin.join("ingredient",
+                                JoinType.INNER);
 
                         predicate = cb.and(
                                 predicate,
                                 cb.like(
                                         cb.lower(ingredientJoin.get("name")),
-                                        "%" + ingredientName.trim().toLowerCase() + "%"
-                                )
-                        );
+                                        "%" + ingredientName.trim().toLowerCase() + "%"));
                     }
                 }
             }
@@ -217,9 +204,12 @@ public class RecipeSpecification {
             return predicate;
         };
     }
+
     public static Specification<Recipe> hasRecipeByName(String name) {
         return (root, query, cb) -> {
-            Predicate predicate = cb.equal(root.get("status"), "APPROVED");
+            Predicate predicate = cb.and(
+                    cb.equal(root.get("status"), "APPROVED"),
+                    cb.equal(root.get("isPublished"), true));
 
             if (name == null || name.trim().isEmpty()) {
                 return predicate;

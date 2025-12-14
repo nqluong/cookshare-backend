@@ -40,7 +40,6 @@ public class GoogleAuthController {
 
     private static final String GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 
-
     @GetMapping("/login")
     @ResponseBody
     public ResponseEntity<Void> loginWithGoogle(@RequestParam(required = false) String state) {

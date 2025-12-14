@@ -92,7 +92,7 @@ public class Recipe {
 
     @Column(name = "is_published")
     @Builder.Default
-    private Boolean isPublished = false;
+    private Boolean isPublished = true;
 
     @Column(name = "is_featured")
     @Builder.Default
