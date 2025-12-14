@@ -38,21 +38,17 @@ public class RecipeRequest {
 
     String featuredImage;
 
-    // 🔥 Giữ nguyên cho backward compatibility
     @Valid
     List<UUID> ingredients;
 
-    // 🔥 THÊM MỚI: Nhận chi tiết nguyên liệu với quantity + unit
     @Valid
     @NotEmpty(message = "Phải có ít nhất 1 nguyên liệu với đầy đủ thông tin")
     List<IngredientDetailRequest> ingredientDetails;
 
-    // 🔥 Thêm danh sách bước nấu
     @Valid
     @NotEmpty(message = "Phải có ít nhất 1 bước nấu ăn")
     List<RecipeStepRequest> steps;
 
-    // 🔥 Thêm tag + category
     List<UUID> tagIds;
     List<UUID> categoryIds;
     private List<CategoryRequest> newCategories;
@@ -60,8 +56,6 @@ public class RecipeRequest {
     private List<IngredientRequest> newIngredients;
 
     Boolean isPublished;
-    Boolean isFeatured;
-
     String notes;
     String nutritionInfo;
 

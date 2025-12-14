@@ -162,27 +162,21 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
         }
 
         if (request.getApproved()) {
-            // ========== PHÊ DUYỆT CÔNG THỨC ==========
             recipe.setStatus(RecipeStatus.APPROVED);
             recipe.setIsPublished(true);
             log.info("Công thức {} đã được phê duyệt", recipeId);
 
-            // LOG ACTIVITY: Admin duyệt recipe
             activityLogService.logRecipeActivity(recipe.getUserId(), recipeId, "APPROVE");
 
-            // ========== 🔔 THÔNG BÁO CHO CHỦ CÔNG THỨC ==========
             notificationService.createRecipeApprovedNotification(
                     recipe.getUserId(),
                     recipeId,
                     recipe.getTitle()
             );
 
-            // ========== 🔔 THÔNG BÁO CHO FOLLOWERS ==========
-            // Lấy danh sách followers của chủ công thức
             List<UUID> followerIds = followRepository.findAllFollowerIdsByUser(recipe.getUserId());
 
             if (!followerIds.isEmpty()) {
-                // Lấy thông tin chủ công thức
                 User recipeOwner = userService.getUserById(recipe.getUserId())
                         .orElse(null);
 
