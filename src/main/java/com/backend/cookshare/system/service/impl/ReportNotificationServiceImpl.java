@@ -60,26 +60,39 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
     @Override
     public void notifyAdminsNewReport(Report report, String reporterUsername) {
         try {
-            List<String> admins = queryRepository.findAdminUsernames();
-            if (admins.isEmpty()) {
-                return;
-            }
+            List<UsernameProjection> admins = queryRepository.findAdminUsers();
+            if (admins.isEmpty()) return;
 
             var target = targetResolver.resolve(report);
 
-            NotificationMessage msg = messageBuilder.buildNewReportMessage(
-                    report,
-                    reporterUsername,
-                    target.type(),
-                    target.name()
-            );
+            for (UsernameProjection admin : admins) {
 
-            broadcastToUsers(admins, msg);
+                // 1️⃣ Build message
+                NotificationMessage msg = messageBuilder.buildNewReportMessage(
+                        report,
+                        reporterUsername,
+                        target.type(),
+                        target.name()
+                );
+
+                // 2️⃣ Lưu DB cho từng admin
+                persistenceService.saveNotification(
+                        admin.getUserId(),
+                        msg.getTitle(),
+                        msg.getMessage(),
+                        NotificationType.REPORT,
+                        report.getReportId()
+                );
+
+                // 3️⃣ Gửi WebSocket
+                sendToUser(admin.getUsername(), msg);
+            }
 
         } catch (Exception e) {
             log.error("Không gửi được thông báo báo cáo mới", e);
         }
     }
+
 
     @Override
     public void notifyReporterReviewComplete(Report report, String reporterUsername, UUID reporterId) {
