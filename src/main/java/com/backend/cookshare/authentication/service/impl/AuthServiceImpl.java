@@ -61,27 +61,35 @@ public class AuthServiceImpl implements AuthService {
 
         // Kiểm tra tài khoản có bị khóa không
         if (!user.getIsActive()) {
-            // Kiểm tra xem đã qua 30 ngày kể từ khi bị ban chưa
-            if (user.getBannedAt() != null) {
-                LocalDateTime bannedAt = user.getBannedAt();
-                LocalDateTime now = LocalDateTime.now();
-                long daysSinceBan = java.time.Duration.between(bannedAt, now).toDays();
+            LocalDateTime now = LocalDateTime.now();
 
-                if (daysSinceBan >= 30) {
-                    // Tự động unban sau 30 ngày
-                    log.info("Auto-unbanning user {} after {} days", user.getUsername(), daysSinceBan);
+            // Trường hợp 1: Tạm khóa (có suspendedUntil)
+            if (user.getSuspendedUntil() != null) {
+                if (now.isAfter(user.getSuspendedUntil())) {
+                    // Đã hết thời gian tạm khóa → tự động mở khóa
+                    log.info("Auto-unsuspending user {} - suspension period ended", user.getUsername());
                     user.setIsActive(true);
-                    user.setBannedAt(null);
+                    user.setSuspendedUntil(null);
                     userService.updateUser(user);
                 } else {
-                    long daysRemaining = 30 - daysSinceBan;
-                    log.warn("Login attempt for banned user: {} (banned {} days ago, {} days remaining)",
-                            user.getUsername(), daysSinceBan, daysRemaining);
-                    String message = String.format("Tài khoản của bạn đã bị khóa. Còn %d ngày nữa sẽ tự động mở khóa.",
+                    // Vẫn trong thời gian tạm khóa
+                    long daysRemaining = java.time.Duration.between(now, user.getSuspendedUntil()).toDays() + 1;
+                    log.warn("Login attempt for suspended user: {} ({} days remaining)",
+                            user.getUsername(), daysRemaining);
+                    String message = String.format("Tài khoản của bạn đã bị tạm khóa. Còn %d ngày nữa sẽ tự động mở khóa.",
                             daysRemaining);
                     throw new CustomException(ErrorCode.USER_NOT_ACTIVE, message);
                 }
-            } else {
+            }
+            // Trường hợp 2: Cấm vĩnh viễn (có bannedAt nhưng không có suspendedUntil)
+            else if (user.getBannedAt() != null) {
+                log.warn("Login attempt for permanently banned user: {} (banned at {})",
+                        user.getUsername(), user.getBannedAt());
+                throw new CustomException(ErrorCode.USER_NOT_ACTIVE, 
+                        "Tài khoản của bạn đã bị cấm vĩnh viễn do vi phạm nghiêm trọng chính sách cộng đồng.");
+            }
+            // Trường hợp 3: Tài khoản không hoạt động vì lý do khác
+            else {
                 log.warn("Login attempt for inactive user: {}", user.getUsername());
                 throw new CustomException(ErrorCode.USER_NOT_ACTIVE);
             }

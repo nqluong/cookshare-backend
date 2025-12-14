@@ -70,10 +70,10 @@ public class ReportServiceImpl implements ReportService {
         String username = getCurrentUsername();
         UUID reporterId = getCurrentUserId();
 
-        // Validate through dedicated validator
+        // Xác thực yêu cầu qua validator
         validator.validateCreateRequest(request, reporterId);
 
-        // Create report entity
+        // Tạo entity báo cáo
         Report report = Report.builder()
                 .reporterId(reporterId)
                 .reportedId(request.getReportedId())
@@ -87,22 +87,27 @@ public class ReportServiceImpl implements ReportService {
 
         report = reportRepository.save(report);
 
-        // Notify admins
+        // Thông báo cho admins
         notificationService.notifyAdminsNewReport(report, username);
 
-        // Check auto-moderation thresholds
-        autoModerator.checkAutoModeration(request.getReportedId(), request.getRecipeId());
+        // Kiểm tra ngưỡng tự động xử lý (chỉ cho recipe)
+        boolean autoActionTaken = autoModerator.checkAutoModeration(request.getRecipeId());
 
-        // Update pending count
+        // Cập nhật số lượng báo cáo đang chờ (luôn broadcast vì có báo cáo mới hoặc auto-resolved)
         broadcastPendingCountUpdate();
 
-        log.info("Báo cáo {} đã được tạo bởi người dùng {}", report.getReportId(), username);
+        if (autoActionTaken) {
+            log.info("Báo cáo {} đã được tạo và kích hoạt auto-moderation bởi người dùng {}", 
+                    report.getReportId(), username);
+        } else {
+            log.info("Báo cáo {} đã được tạo bởi người dùng {}", report.getReportId(), username);
+        }
 
         return mapper.toResponse(report);
     }
 
     /**
-     * Admin xem danh sách báo cáo với filter
+     * Admin xem danh sách báo cáo với bộ lọc
      */
     @Override
     @Transactional(readOnly = true)
@@ -161,16 +166,16 @@ public class ReportServiceImpl implements ReportService {
 
         report = reportRepository.save(report);
 
-        // Execute the action
+        // Thực thi hành động
         actionExecutor.execute(report);
 
-        // Sync all related reports
+        // Đồng bộ tất cả báo cáo liên quan
         synchronizer.syncRelatedReports(report);
 
-        // Notify all reporters (async)
+        // Thông báo cho tất cả người báo cáo (bất đồng bộ)
         notificationOrchestrator.notifyAllReportersAsync(report);
 
-        // Update pending count
+        // Cập nhật số lượng đang chờ
         broadcastPendingCountUpdate();
 
         log.info("Báo cáo {} đã được xem xét bởi quản trị viên {} với hành động {}: {}",
@@ -219,14 +224,6 @@ public class ReportServiceImpl implements ReportService {
                         ReportCountProjection::getReportType,
                         ReportCountProjection::getCount
                 ));
-
-//        List<TopReportedProjection> topUsersProjections =
-//                reportRepository.findTopReportedUsers(PageRequest.of(0, 10));
-//        List<TopReportedItem> topUsers = mapper.toTopReportedUsers(topUsersProjections);
-//
-//        List<TopReportedProjection> topRecipesProjections =
-//                reportRepository.findTopReportedRecipes(PageRequest.of(0, 10));
-//        List<TopReportedItem> topRecipes = mapper.toTopReportedRecipes(topRecipesProjections);
 
         return ReportStatisticsResponse.builder()
                 .totalReports(total)
@@ -283,7 +280,7 @@ public class ReportServiceImpl implements ReportService {
         // Đồng bộ tất cả báo cáo liên quan
         synchronizer.syncRelatedReports(representativeReport);
 
-        // Thông báo cho tất cả người báo cáo bất đồng bộ
+        // Thông báo cho tất cả người báo cáo (bất đồng bộ)
         notificationOrchestrator.notifyAllReportersAsync(representativeReport);
 
         // Cập nhật số lượng đang chờ

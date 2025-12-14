@@ -1,6 +1,7 @@
 package com.backend.cookshare.system.service;
 
 import com.backend.cookshare.system.entity.Report;
+import com.backend.cookshare.system.enums.ReportType;
 
 import java.util.UUID;
 
@@ -65,4 +66,14 @@ public interface ReportNotificationService {
      * Thông báo tự động gỡ recipe
      */
     void notifyAutoUnpublishRecipe(UUID recipeId, UUID authorId, String authorUsername, String recipeTitle, long reportCount);
+
+    /**
+     * Thông báo tự động xóa nội dung
+     */
+    void notifyAutoContentRemoved(UUID recipeId, UUID authorId, String authorUsername, String recipeTitle, long reportCount, ReportType reportType);
+
+    /**
+     * Thông báo tự động yêu cầu chỉnh sửa
+     */
+    void notifyAutoRecipeEditRequired(UUID recipeId, UUID authorId, String authorUsername, String recipeTitle, long reportCount, ReportType reportType);
 }
