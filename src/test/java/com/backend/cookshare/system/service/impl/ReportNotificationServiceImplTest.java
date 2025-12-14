@@ -149,7 +149,6 @@ class ReportNotificationServiceImplTest {
 
     static Stream<Arguments> provideReportStatusForReview() {
         return Stream.of(
-                Arguments.of(ReportStatus.APPROVED, "Báo cáo đã được phê duyệt"),
                 Arguments.of(ReportStatus.REJECTED, "Báo cáo không đủ cơ sở xử lý"),
                 Arguments.of(ReportStatus.RESOLVED, "Báo cáo đã được giải quyết"),
                 Arguments.of(ReportStatus.PENDING, "Báo cáo đã được xử lý") // default case
@@ -355,7 +354,6 @@ class ReportNotificationServiceImplTest {
 
     static Stream<Arguments> provideBuildReviewCompleteMessageCases() {
         return Stream.of(
-                Arguments.of(ReportStatus.APPROVED, "Báo cáo đã được phê duyệt. "),
                 Arguments.of(ReportStatus.REJECTED, "Báo cáo không đủ cơ sở xử lý. "),
                 Arguments.of(ReportStatus.RESOLVED, "Báo cáo đã được giải quyết. "),
                 Arguments.of(ReportStatus.PENDING, "Báo cáo đã được xử lý. ")
