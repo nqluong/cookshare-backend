@@ -22,20 +22,30 @@ public class ReportSynchronizer {
             return;
         }
 
-        relatedReports.forEach(r -> {
-            if (!r.getReportId().equals(reviewedReport.getReportId())) {
-                r.setStatus(reviewedReport.getStatus());
-                r.setActionTaken(reviewedReport.getActionTaken());
-                r.setActionDescription(reviewedReport.getActionDescription());
-                r.setReviewedBy(reviewedReport.getReviewedBy());
-                r.setReviewedAt(reviewedReport.getReviewedAt());
-            }
+        // Chỉ sync những báo cáo PENDING (chưa được xử lý)
+        // Không ghi đè lên những báo cáo đã được xử lý trước đó (VD: NO_ACTION)
+        List<Report> pendingReports = relatedReports.stream()
+                .filter(r -> !r.getReportId().equals(reviewedReport.getReportId()))
+                .filter(r -> r.getStatus() == com.backend.cookshare.system.enums.ReportStatus.PENDING)
+                .toList();
+
+        if (pendingReports.isEmpty()) {
+            log.info("Không có báo cáo PENDING nào cần sync cho báo cáo {}", reviewedReport.getReportId());
+            return;
+        }
+
+        pendingReports.forEach(r -> {
+            r.setStatus(reviewedReport.getStatus());
+            r.setActionTaken(reviewedReport.getActionTaken());
+            r.setActionDescription(reviewedReport.getActionDescription());
+            r.setReviewedBy(reviewedReport.getReviewedBy());
+            r.setReviewedAt(reviewedReport.getReviewedAt());
         });
 
-        reportRepository.saveAll(relatedReports);
+        reportRepository.saveAll(pendingReports);
 
-        log.info("Synced {} related reports for report {}",
-                relatedReports.size() - 1, reviewedReport.getReportId());
+        log.info("Đã sync {} báo cáo PENDING liên quan cho báo cáo {}", 
+                pendingReports.size(), reviewedReport.getReportId());
     }
 
     public List<Report> findRelatedReports(Report report) {

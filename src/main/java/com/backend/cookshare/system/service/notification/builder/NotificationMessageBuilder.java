@@ -185,6 +185,51 @@ public class NotificationMessageBuilder {
                 .build();
     }
 
+    public NotificationMessage buildAutoContentRemovedMessage(
+            UUID recipeId,
+            String recipeTitle,
+            long reportCount,
+            ReportType reportType) {
+
+        return NotificationMessage.builder()
+                .type("RECIPE_AUTO_REMOVED")
+                .title("Nội dung tự động bị xóa")
+                .message(String.format("Công thức '%s' của bạn đã tự động bị xóa do có %d báo cáo về %s",
+                        recipeTitle, reportCount, getReportTypeVietnamese(reportType)))
+                .data(Map.of(
+                        "recipeId", recipeId.toString(),
+                        "recipeTitle", recipeTitle,
+                        "reportCount", reportCount,
+                        "reportType", reportType.toString(),
+                        "action", "auto_removed"
+                ))
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    public NotificationMessage buildAutoRecipeEditRequiredMessage(
+            UUID recipeId,
+            String recipeTitle,
+            long reportCount,
+            ReportType reportType) {
+
+        return NotificationMessage.builder()
+                .type("RECIPE_AUTO_EDIT_REQUIRED")
+                .title("Yêu cầu chỉnh sửa công thức")
+                .message(String.format("Công thức '%s' của bạn cần chỉnh sửa do có %d báo cáo về %s. " +
+                        "Vui lòng xem xét và cập nhật nội dung.",
+                        recipeTitle, reportCount, getReportTypeVietnamese(reportType)))
+                .data(Map.of(
+                        "recipeId", recipeId.toString(),
+                        "recipeTitle", recipeTitle,
+                        "reportCount", reportCount,
+                        "reportType", reportType.toString(),
+                        "action", "auto_edit_required"
+                ))
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
     private String getReportTypeVietnamese(ReportType reportType) {
         return switch (reportType) {
             case SPAM -> "spam";

@@ -131,13 +131,12 @@ public interface ReportQueryRepository extends JpaRepository<Report, UUID> {
     """)
     void suspendUser(@Param("userId") UUID userId, @Param("days") int days);
 
-    /**
-     * Vô hiệu hóa user vĩnh viễn
-     */
+
     @Modifying
     @Query("""
         UPDATE User u 
         SET u.isActive = false,
+            u.suspendedUntil = null,
             u.bannedAt = CURRENT_TIMESTAMP,
             u.updatedAt = CURRENT_TIMESTAMP
         WHERE u.userId = :userId
@@ -151,11 +150,31 @@ public interface ReportQueryRepository extends JpaRepository<Report, UUID> {
     @Query("""
         UPDATE Recipe r 
         SET r.isPublished = false,
+            r.status = 'BAN',
             r.unpublishedAt = CURRENT_TIMESTAMP,
             r.updatedAt = CURRENT_TIMESTAMP
         WHERE r.recipeId = :recipeId
     """)
     void unpublishRecipe(@Param("recipeId") UUID recipeId);
+
+    /**
+     * Xóa công thức hoàn toàn
+     */
+    @Modifying
+    @Query("DELETE FROM Recipe r WHERE r.recipeId = :recipeId")
+    void deleteRecipe(@Param("recipeId") UUID recipeId);
+
+    /**
+     * Đánh dấu công thức cần chỉnh sửa (unpublish tạm thời)
+     */
+    @Modifying
+    @Query("""
+        UPDATE Recipe r 
+        SET r.isPublished = false,
+            r.updatedAt = CURRENT_TIMESTAMP
+        WHERE r.recipeId = :recipeId
+    """)
+    void markRecipeNeedsEdit(@Param("recipeId") UUID recipeId);
 
 
     /**
