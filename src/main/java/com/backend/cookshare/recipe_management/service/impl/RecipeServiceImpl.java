@@ -88,7 +88,6 @@ public class RecipeServiceImpl implements RecipeService {
         return createRecipe(request);
     }
 
-
     @Override
     @Transactional
     public RecipeResponse createRecipe(RecipeRequest request) {
@@ -529,14 +528,20 @@ public class RecipeServiceImpl implements RecipeService {
     }
 
     @Override
-    public List<RecipeResponse> getAllRecipesByUserId(UUID userId, UUID currentUserId) {
+    public List<RecipeResponse> getAllRecipesByUserId(UUID userId, UUID currentUserId, boolean includeAll) {
         List<Recipe> recipes;
 
         // Nếu là chủ sở hữu: hiển tất cả (cả công khai và riêng tư)
         if (currentUserId != null && currentUserId.equals(userId)) {
-            recipes = recipeRepository.findByUserIdAndStatus(userId, RecipeStatus.APPROVED);
+            if (includeAll) {
+                // Lấy tất cả recipes (bao gồm cả PENDING và APPROVED)
+                recipes = recipeRepository.findByUserId(userId);
+            } else {
+                // Chỉ lấy recipes đã được APPROVED
+                recipes = recipeRepository.findByUserIdAndStatus(userId, RecipeStatus.APPROVED);
+            }
         } else {
-            // Nếu là người khác: chỉ hiển công khai
+            // Nếu là người khác: chỉ hiển công khai và đã APPROVED
             recipes = recipeRepository.findByUserIdAndStatusAndIsPublished(userId, RecipeStatus.APPROVED, true);
         }
 
@@ -688,7 +693,6 @@ public class RecipeServiceImpl implements RecipeService {
                     .forEach(categoryId -> recipeCategoryRepository.insertRecipeCategory(recipeId, categoryId));
         }
     }
-
 
     private UUID getCurrentUserIdOrNull() {
         try {
