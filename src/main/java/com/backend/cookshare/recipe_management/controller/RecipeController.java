@@ -30,8 +30,7 @@ public class RecipeController {
     public ResponseEntity<RecipeResponse> createRecipe(
             @RequestPart("data") String data,
             @RequestPart(value = "image", required = false) MultipartFile image,
-            @RequestPart(value = "stepImages", required = false) List<MultipartFile> stepImages
-    ) throws IOException {
+            @RequestPart(value = "stepImages", required = false) List<MultipartFile> stepImages) throws IOException {
         RecipeRequest request = objectMapper.readValue(data, RecipeRequest.class);
         RecipeResponse response = recipeService.createRecipeWithFiles(request, image, stepImages);
         return ResponseEntity.ok(response);
@@ -44,8 +43,7 @@ public class RecipeController {
             @PathVariable UUID id,
             @RequestPart("data") String data,
             @RequestPart(value = "image", required = false) MultipartFile image,
-            @RequestPart(value = "stepImages", required = false) List<MultipartFile> stepImages
-    ) throws IOException {
+            @RequestPart(value = "stepImages", required = false) List<MultipartFile> stepImages) throws IOException {
         RecipeRequest request = objectMapper.readValue(data, RecipeRequest.class);
         RecipeResponse response = recipeService.updateRecipe(id, request, image, stepImages);
         return ResponseEntity.ok(response);
@@ -64,8 +62,10 @@ public class RecipeController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<RecipeResponse>> getAllRecipesByUser(@PathVariable UUID userId) {
-        return ResponseEntity.ok(recipeService.getAllRecipesByUserId(userId));
+    public ResponseEntity<List<RecipeResponse>> getAllRecipesByUser(
+            @PathVariable UUID userId,
+            @RequestParam(required = false) UUID currentUserId) {
+        return ResponseEntity.ok(recipeService.getAllRecipesByUserId(userId, currentUserId));
     }
 
     // ================== DELETE ==================
@@ -74,5 +74,12 @@ public class RecipeController {
     public ResponseEntity<Void> deleteRecipe(@PathVariable UUID id) {
         recipeService.deleteRecipe(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ================== TOGGLE PRIVACY ==================
+
+    @PutMapping("/{id}/toggle-privacy")
+    public ResponseEntity<RecipeResponse> togglePrivacy(@PathVariable UUID id) {
+        return ResponseEntity.ok(recipeService.togglePrivacy(id));
     }
 }
