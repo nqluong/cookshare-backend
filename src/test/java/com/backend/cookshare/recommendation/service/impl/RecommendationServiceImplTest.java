@@ -77,7 +77,6 @@ class RecommendationServiceImplTest {
         recipe.setLikeCount(30);
         recipe.setAverageRating(new BigDecimal("4.5"));
         recipe.setRatingCount(20);
-        recipe.setIsFeatured(true);
         recipe.setIsPublished(true);
         recipe.setCreatedAt(LocalDateTime.now());
         recipe.setUpdatedAt(LocalDateTime.now());

@@ -37,7 +37,6 @@ public class RecipeSummaryResponse {
     private BigDecimal averageRating;
     private Integer ratingCount;
 
-    private Boolean isFeatured;
     private Boolean isPublished;
 
     private LocalDateTime createdAt;

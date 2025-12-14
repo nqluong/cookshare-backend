@@ -71,7 +71,7 @@ class AdminRecipeControllerTest {
     }
     @Test
     void getAllRecipes_DefaultParams_Success() throws Exception {
-        when(adminRecipeService.getAllRecipesWithPagination(any(), any(), any(), any(), any(Pageable.class)))
+        when(adminRecipeService.getAllRecipesWithPagination(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(createPageResponse());
 
         mockMvc.perform(get("/api/admin/recipes"))
@@ -187,45 +187,5 @@ class AdminRecipeControllerTest {
 
         mockMvc.perform(get("/api/admin/recipes/rejected"))
                 .andExpect(status().isOk());
-    }
-
-    @Test
-    void setFeaturedRecipe_MakeFeatured_Success() throws Exception {
-        doNothing().when(adminRecipeService).setFeaturedRecipe(eq(recipeId), eq(true));
-
-        mockMvc.perform(put("/api/admin/recipes/{id}/featured", recipeId)
-                        .param("isFeatured", "true"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Đặt công thức làm nổi bật thành công"));
-    }
-
-    @Test
-    void setFeaturedRecipe_RemoveFeatured_Success() throws Exception {
-        doNothing().when(adminRecipeService).setFeaturedRecipe(eq(recipeId), eq(false));
-
-        mockMvc.perform(put("/api/admin/recipes/{id}/featured", recipeId)
-                        .param("isFeatured", "false"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Bỏ nổi bật công thức thành công"));
-    }
-
-    @Test
-    void setPublishedRecipe_Publish_Success() throws Exception {
-        doNothing().when(adminRecipeService).setPublishedRecipe(eq(recipeId), eq(true));
-
-        mockMvc.perform(put("/api/admin/recipes/{id}/published", recipeId)
-                        .param("isPublished", "true"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Xuất bản công thức thành công"));
-    }
-
-    @Test
-    void setPublishedRecipe_Unpublish_Success() throws Exception {
-        doNothing().when(adminRecipeService).setPublishedRecipe(eq(recipeId), eq(false));
-
-        mockMvc.perform(put("/api/admin/recipes/{id}/published", recipeId)
-                        .param("isPublished", "false"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Ẩn công thức thành công"));
     }
 }

@@ -16,15 +16,13 @@ public interface AdminRecipeService {
      * Lấy danh sách tất cả công thức với phân trang và tìm kiếm
      * @param search Từ khóa tìm kiếm (có thể null)
      * @param isPublished Trạng thái xuất bản (null: tất cả, true: đã xuất bản, false: chưa xuất bản)
-     * @param isFeatured Có phải công thức nổi bật không (null: tất cả, true: nổi bật, false: không nổi bật)
      * @param status Trạng thái phê duyệt (null: tất cả, PENDING: chờ phê duyệt, APPROVED: đã phê duyệt, REJECTED: đã từ chối)
      * @param pageable Đối tượng phân trang và sắp xếp
      * @return PageResponse chứa danh sách AdminRecipeListResponseDTO
      */
     PageResponse<AdminRecipeListResponseDTO> getAllRecipesWithPagination(
             String search, 
-            Boolean isPublished, 
-            Boolean isFeatured,
+            Boolean isPublished,
             RecipeStatus status,
             Pageable pageable);
     
@@ -87,14 +85,7 @@ public interface AdminRecipeService {
      * @return PageResponse chứa danh sách công thức bị từ chối
      */
     PageResponse<AdminRecipeListResponseDTO> getRejectedRecipes(String search, Pageable pageable);
-    
-    /**
-     * Đặt công thức làm nổi bật hoặc bỏ nổi bật
-     * @param recipeId ID của công thức
-     * @param isFeatured Có phải nổi bật không
-     */
-    void setFeaturedRecipe(UUID recipeId, Boolean isFeatured);
-    
+
     /**
      * Xuất bản hoặc ẩn công thức
      * @param recipeId ID của công thức

@@ -19,7 +19,7 @@ import java.util.UUID;
 @Repository
 public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecificationExecutor<Recipe> {
         // Featured recipes
-        @Query("SELECT r FROM Recipe r WHERE r.isPublished = true AND r.isFeatured = true AND r.status = 'APPROVED' ORDER BY r.updatedAt DESC")
+        @Query("SELECT r FROM Recipe r WHERE r.isPublished = true  AND r.status = 'APPROVED' ORDER BY r.updatedAt DESC")
         Page<Recipe> findFeaturedRecipes(Pageable pageable);
 
         // Popular recipes - using custom scoring
@@ -50,7 +50,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
         long countPublishedRecipes();
 
         // Count featured recipes for pagination
-        @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = true AND r.isFeatured = true AND r.status = 'APPROVED'")
+        @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = true AND r.status = 'APPROVED'")
         long countFeaturedRecipes();
 
         @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = true AND r.ratingCount >= :minRatingCount")
@@ -62,7 +62,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
 
         List<Recipe> findByUserIdAndStatusAndIsPublished(UUID userId, RecipeStatus status, Boolean isPublished);
 
-        @Query("SELECT r.userId FROM Recipe r WHERE r.id = :recipeId")
+        @Query("SELECT r.userId FROM Recipe r WHERE r.recipeId = :recipeId")
         UUID findUserIdByRecipeId(@Param("recipeId") UUID recipeId);
 
         // Tong so luot thich cua tat ca cac cong thuc
@@ -77,12 +77,10 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
                         "r.description LIKE %:search% OR " +
                         "r.instructions LIKE %:search%) AND " +
                         "(:isPublished IS NULL OR r.isPublished = :isPublished) AND " +
-                        "(:isFeatured IS NULL OR r.isFeatured = :isFeatured) AND " +
                         "(:status IS NULL OR r.status = :status)")
         Page<Recipe> findAllWithAdminFilters(
                         @Param("search") String search,
                         @Param("isPublished") Boolean isPublished,
-                        @Param("isFeatured") Boolean isFeatured,
                         @Param("status") RecipeStatus status,
                         Pageable pageable);
 
@@ -90,21 +88,6 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
          * Lấy danh sách công thức theo trạng thái
          */
         Page<Recipe> findByStatusOrderByCreatedAtDesc(RecipeStatus status, Pageable pageable);
-
-        /**
-         * Lấy danh sách công thức chờ phê duyệt
-         */
-        Page<Recipe> findByStatusAndIsPublishedFalseOrderByCreatedAtDesc(RecipeStatus status, Pageable pageable);
-
-        /**
-         * Lấy danh sách công thức đã được phê duyệt
-         */
-        Page<Recipe> findByStatusAndIsPublishedTrueOrderByCreatedAtDesc(RecipeStatus status, Pageable pageable);
-
-        /**
-         * Lấy danh sách công thức nổi bật
-         */
-        Page<Recipe> findByIsFeaturedTrueOrderByCreatedAtDesc(Pageable pageable);
 
         @Query("SELECT r FROM Recipe r WHERE r.isPublished = true ORDER BY r.recipeId")
         List<Recipe> findAllPublishedRecipes();
@@ -117,9 +100,6 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecif
 
         @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isPublished = :isPublished")
         long countByIsPublished(@Param("isPublished") Boolean isPublished);
-
-        @Query("SELECT COUNT(r) FROM Recipe r WHERE r.isFeatured = :isFeatured")
-        long countByIsFeatured(@Param("isFeatured") Boolean isFeatured);
 
         @Query("SELECT COUNT(r) FROM Recipe r WHERE r.status = 'PENDING'")
         long countPendingRecipes();

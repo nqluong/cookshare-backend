@@ -1,8 +1,6 @@
 package com.backend.cookshare.recipe_management.mapper;
 
-import com.backend.cookshare.interaction.dto.response.RecipeLikeResponse;
 import com.backend.cookshare.interaction.dto.response.RecipeSummaryResponse;
-import com.backend.cookshare.interaction.entity.RecipeLike;
 import com.backend.cookshare.recipe_management.dto.request.RecipeRequest;
 import com.backend.cookshare.recipe_management.dto.request.RecipeStepRequest;
 import com.backend.cookshare.recipe_management.dto.response.RecipeIngredientResponse;
@@ -71,7 +69,6 @@ public interface RecipeMapper {
                 .likeCount(recipe.getLikeCount())
                 .averageRating(recipe.getAverageRating())
                 .ratingCount(recipe.getRatingCount())
-                .isFeatured(recipe.getIsFeatured())
                 .isPublished(recipe.getIsPublished())
                 .createdAt(recipe.getCreatedAt())
                 .updatedAt(recipe.getUpdatedAt())

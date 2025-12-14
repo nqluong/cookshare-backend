@@ -94,10 +94,6 @@ public class Recipe {
     @Builder.Default
     private Boolean isPublished = true;
 
-    @Column(name = "is_featured")
-    @Builder.Default
-    private Boolean isFeatured = false;
-
     @Column(name = "meta_keywords", length = 255)
     private String metaKeywords;
 

@@ -365,7 +365,6 @@ public class RecommendationServiceImpl implements RecommendationService {
                         .likeCount(recipe.getLikeCount())
                         .averageRating(recipe.getAverageRating())
                         .ratingCount(recipe.getRatingCount())
-                        .isFeatured(recipe.getIsFeatured())
                         .isPublished(recipe.getIsPublished())
                         .createdAt(recipe.getCreatedAt())
                         .updatedAt(recipe.getUpdatedAt())

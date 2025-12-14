@@ -51,12 +51,10 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional(readOnly = true)
     public PageResponse<AdminRecipeListResponseDTO> getAllRecipesWithPagination(
-            String search, Boolean isPublished, Boolean isFeatured, RecipeStatus status, Pageable pageable) {
+            String search, Boolean isPublished, RecipeStatus status, Pageable pageable) {
 
-        log.info("Admin đang lấy danh sách công thức với tìm kiếm: {}, xuất bản: {}, nổi bật: {}, trạng thái: {}, trang: {}, kích thước: {}",
-                search, isPublished, isFeatured, status, pageable.getPageNumber(), pageable.getPageSize());
 
-        Page<Recipe> recipePage = recipeRepository.findAllWithAdminFilters(search, isPublished, isFeatured, status, pageable);
+        Page<Recipe> recipePage = recipeRepository.findAllWithAdminFilters(search, isPublished, status, pageable);
 
         return pageMapper.toPageResponse(recipePage, this::mapToListResponseDTO);
     }
@@ -94,7 +92,6 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
                     .averageRating(recipe.getAverageRating())
                     .ratingCount(recipe.getRatingCount())
                     .isPublished(recipe.getIsPublished())
-                    .isFeatured(recipe.getIsFeatured())
                     .status(recipe.getStatus())
                     .metaKeywords(recipe.getMetaKeywords())
                     .seasonalTags(recipe.getSeasonalTags())
@@ -137,7 +134,6 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
         if (request.getNotes() != null) recipe.setNotes(request.getNotes());
         if (request.getNutritionInfo() != null) recipe.setNutritionInfo(request.getNutritionInfo());
         if (request.getIsPublished() != null) recipe.setIsPublished(request.getIsPublished());
-        if (request.getIsFeatured() != null) recipe.setIsFeatured(request.getIsFeatured());
         if (request.getMetaKeywords() != null) recipe.setMetaKeywords(request.getMetaKeywords());
         if (request.getSeasonalTags() != null) recipe.setSeasonalTags(request.getSeasonalTags());
         if (request.getAverageRating() != null) recipe.setAverageRating(request.getAverageRating());
@@ -248,7 +244,7 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
         log.info("Admin đang lấy danh sách công thức chờ phê duyệt - trang: {}, kích thước: {}, tìm kiếm: {}",
                 pageable.getPageNumber(), pageable.getPageSize(), search);
 
-        return getAllRecipesWithPagination(search, null, null, RecipeStatus.PENDING, pageable);
+        return getAllRecipesWithPagination(search, null, RecipeStatus.PENDING, pageable);
     }
 
     @Override
@@ -256,7 +252,7 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
         log.info("Admin đang lấy danh sách công thức đã được phê duyệt - trang: {}, kích thước: {}, tìm kiếm: {}",
                 pageable.getPageNumber(), pageable.getPageSize(), search);
 
-        return getAllRecipesWithPagination(search, null, null, RecipeStatus.APPROVED, pageable);
+        return getAllRecipesWithPagination(search, null, RecipeStatus.APPROVED, pageable);
     }
 
     @Override
@@ -264,25 +260,7 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
         log.info("Admin đang lấy danh sách công thức bị từ chối - trang: {}, kích thước: {}, tìm kiếm: {}",
                 pageable.getPageNumber(), pageable.getPageSize(), search);
 
-        return getAllRecipesWithPagination(search, null, null, RecipeStatus.REJECTED, pageable);
-    }
-
-    @Override
-    public void setFeaturedRecipe(UUID recipeId, Boolean isFeatured) {
-        log.info("Admin đang đặt công thức {} làm nổi bật: {}", recipeId, isFeatured);
-
-        Recipe recipe = recipeRepository.findById(recipeId)
-                .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
-
-        if (isFeatured && recipe.getStatus() != RecipeStatus.APPROVED) {
-            throw new CustomException(ErrorCode.RECIPE_NOT_APPROVED);
-        }
-
-        recipe.setIsFeatured(isFeatured);
-        recipe.setUpdatedAt(LocalDateTime.now());
-        recipeRepository.save(recipe);
-
-        log.info("Công thức {} đã được đặt làm nổi bật: {}", recipeId, isFeatured);
+        return getAllRecipesWithPagination(search, null, RecipeStatus.REJECTED, pageable);
     }
 
     @Override
@@ -323,7 +301,6 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
                 .averageRating(recipe.getAverageRating())
                 .ratingCount(recipe.getRatingCount())
                 .isPublished(recipe.getIsPublished())
-                .isFeatured(recipe.getIsFeatured())
                 .status(recipe.getStatus())
                 .metaKeywords(recipe.getMetaKeywords())
                 .seasonalTags(recipe.getSeasonalTags())
