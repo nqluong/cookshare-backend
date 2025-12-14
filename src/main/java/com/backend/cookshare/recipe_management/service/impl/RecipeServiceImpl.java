@@ -60,6 +60,7 @@ public class RecipeServiceImpl implements RecipeService {
     private final NotificationService notificationService;
     private final com.backend.cookshare.authentication.util.SecurityUtil securityUtil;
     private final com.backend.cookshare.system.repository.ReportQueryRepository reportQueryRepository;
+    private final com.backend.cookshare.authentication.repository.UserRepository userRepository;
 
     // ================= CREATE WITH BATCH SUPPORT =================
 
@@ -161,14 +162,30 @@ public class RecipeServiceImpl implements RecipeService {
         UUID recipeId = savedRecipe.getRecipeId();
 
         saveRecipeRelations(recipeId, request);
-        activityLogService.logRecipeActivity(savedRecipe.getUserId(), recipeId, "CREATE");
+        
+        // Log activity và update stats bất đồng bộ (không block response)
+        postRecipeCreationAsync(savedRecipe.getUserId(), recipeId);
 
         log.info("✅ Recipe {} tạo thành công với tất cả dữ liệu mới", recipeId);
 
         return loadRecipeResponse(savedRecipe);
     }
 
-    // ================= HELPER: TẠO CATEGORY NẾU CHƯA TỒN TẠI =================
+    @Async
+    public void postRecipeCreationAsync(UUID userId, UUID recipeId) {
+        try {
+            // Log activity
+            activityLogService.logRecipeActivityAsync(userId, recipeId, "CREATE");
+
+            // Tăng recipe_count
+            userRepository.incrementRecipeCount(userId);
+            
+            log.debug("Post-creation tasks completed for recipe {}", recipeId);
+        } catch (Exception e) {
+            log.warn("Error in post-creation tasks for recipe {}: {}", recipeId, e.getMessage());
+        }
+    }
+
 
     private Category createCategoryIfNotExists(CategoryRequest request) {
         // Kiểm tra đã tồn tại chưa (theo tên)
@@ -457,7 +474,8 @@ public class RecipeServiceImpl implements RecipeService {
 
         saveRecipeRelations(id, request);
 
-        activityLogService.logRecipeActivity(updatedRecipe.getUserId(), id, "UPDATE");
+        // Log activity bất đồng bộ
+        activityLogService.logRecipeActivityAsync(updatedRecipe.getUserId(), id, "UPDATE");
 
         log.info("✅ Recipe {} cập nhật thành công", id);
 
@@ -515,8 +533,24 @@ public class RecipeServiceImpl implements RecipeService {
         recipeTagRepository.deleteAllByRecipeId(id);
         recipeCategoryRepository.deleteAllByRecipeId(id);
 
-        activityLogService.logRecipeActivity(recipe.getUserId(), id, "DELETE");
         recipeRepository.deleteById(id);
+        
+        postRecipeDeletionAsync(recipe.getUserId(), id);
+    }
+
+    @Async
+    public void postRecipeDeletionAsync(UUID userId, UUID recipeId) {
+        try {
+            // Log activity
+            activityLogService.logRecipeActivityAsync(userId, recipeId, "DELETE");
+            
+            // Giảm recipe_count
+            userRepository.decrementRecipeCount(userId);
+            
+            log.debug("Post-deletion tasks completed for recipe {}", recipeId);
+        } catch (Exception e) {
+            log.warn("Error in post-deletion tasks for recipe {}: {}", recipeId, e.getMessage());
+        }
     }
 
     @Override

@@ -203,10 +203,15 @@ public class ReportServiceImpl implements ReportService {
     @Override
     @Transactional(readOnly = true)
     public ReportStatisticsResponse getStatistics() {
+        // Thống kê theo reports (đếm từng báo cáo riêng lẻ)
         long total = reportRepository.count();
         long pending = reportRepository.countByStatus(ReportStatus.PENDING);
         long resolved = reportRepository.countByStatus(ReportStatus.RESOLVED);
         long rejected = reportRepository.countByStatus(ReportStatus.REJECTED);
+
+        // Thống kê theo recipes (đếm số recipes bị báo cáo - để khớp với grouped list)
+        long totalReportedRecipes = reportRepository.countDistinctRecipeIds();
+        long recipesWithPendingReports = reportRepository.countDistinctRecipesByStatus(ReportStatus.PENDING);
 
         List<ReportCountProjection> typeProjections = reportRepository.countReportsByType();
         Map<ReportType, Long> reportsByType = typeProjections.stream()
@@ -228,6 +233,8 @@ public class ReportServiceImpl implements ReportService {
                 .pendingReports(pending)
                 .resolvedReports(resolved)
                 .rejectedReports(rejected)
+                .totalReportedRecipes(totalReportedRecipes)
+                .recipesWithPendingReports(recipesWithPendingReports)
                 .reportsByType(reportsByType)
                 .topReportedUsers(null)
                 .topReportedRecipes(null)

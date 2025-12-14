@@ -13,13 +13,26 @@ import java.util.UUID;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ReportDetailInGroupResponse {
+     // Reporter info
      UUID reportId;
      UUID reporterId;
      String reporterUsername;
      String reporterFullName;
      String reporterAvatar;
+     
+     // Report info
      ReportType reportType;
      String reason;
      String description;
+     String status;
      LocalDateTime createdAt;
+     
+     // Review info (nếu đã xử lý)
+     String actionTaken;
+     String actionDescription;
+     String adminNote;
+     UUID reviewedBy;
+     String reviewerUsername;
+     String reviewerFullName;
+     LocalDateTime reviewedAt;
 }

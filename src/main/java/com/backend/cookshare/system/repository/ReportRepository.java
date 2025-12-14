@@ -60,7 +60,7 @@ public interface ReportRepository extends JpaRepository<Report, UUID> {
     @Query("SELECT COUNT(r) FROM Report r WHERE r.recipeId = :recipeId AND r.status = 'PENDING'")
     long countPendingReportsByRecipeId(@Param("recipeId") UUID recipeId);
 
-    // Lấy danh sách report với filter động
+    // Lấy danh sách report với filter động - JOIN tất cả thông tin liên quan
     @Query(value = """
         SELECT r.report_id as reportId,
                r.reporter_id as reporterId,
@@ -70,11 +70,48 @@ public interface ReportRepository extends JpaRepository<Report, UUID> {
                r.reason as reason,
                r.description as description,
                r.status as status,
+               r.action_taken as actionTaken,
+               r.action_description as actionDescription,
                r.admin_note as adminNote,
                r.reviewed_by as reviewedBy,
                r.reviewed_at as reviewedAt,
-               r.created_at as createdAt
+               r.created_at as createdAt,
+               r.reporters_notified as reportersNotified,
+               
+               reporter.user_id as reporterUserId,
+               reporter.username as reporterUsername,
+               reporter.full_name as reporterFullName,
+               reporter.avatar_url as reporterAvatarUrl,
+               
+               reported_user.user_id as reportedUserId,
+               reported_user.username as reportedUsername,
+               reported_user.email as reportedEmail,
+               reported_user.avatar_url as reportedAvatarUrl,
+               reported_user.role as reportedRole,
+               reported_user.is_active as reportedIsActive,
+               
+               recipe.recipe_id as reportedRecipeId,
+               recipe.title as reportedRecipeTitle,
+               recipe.slug as reportedRecipeSlug,
+               recipe.featured_image as reportedRecipeFeaturedImage,
+               recipe.status as reportedRecipeStatus,
+               recipe.is_published as reportedRecipeIsPublished,
+               recipe.view_count as reportedRecipeViewCount,
+               recipe.user_id as reportedRecipeUserId,
+               recipe_author.username as reportedRecipeAuthorUsername,
+               
+               reviewer.user_id as reviewerUserId,
+               reviewer.username as reviewerUsername,
+               reviewer.full_name as reviewerFullName,
+               reviewer.avatar_url as reviewerAvatarUrl
+               
         FROM reports r
+        LEFT JOIN users reporter ON r.reporter_id = reporter.user_id
+        LEFT JOIN users reported_user ON r.reported_id = reported_user.user_id
+        LEFT JOIN recipes recipe ON r.recipe_id = recipe.recipe_id
+        LEFT JOIN users recipe_author ON recipe.user_id = recipe_author.user_id
+        LEFT JOIN users reviewer ON r.reviewed_by = reviewer.user_id
+        
         WHERE (CAST(:reportType AS VARCHAR) IS NULL OR r.report_type = CAST(:reportType AS VARCHAR))
         AND (CAST(:status AS VARCHAR) IS NULL OR r.status = CAST(:status AS VARCHAR))
         AND (CAST(:reporterId AS UUID) IS NULL OR r.reporter_id = CAST(:reporterId AS UUID))
@@ -94,23 +131,59 @@ public interface ReportRepository extends JpaRepository<Report, UUID> {
             Pageable pageable
     );
 
-    // Lấy report projection theo ID
+    // Lấy report projection theo ID - JOIN tất cả thông tin liên quan
     @Query(value = """
-        SELECT r.reportId as reportId,
-               r.reporterId as reporterId,
-               r.reportedId as reportedId,
-               r.recipeId as recipeId,
-               r.reportType as reportType,
+        SELECT r.report_id as reportId,
+               r.reporter_id as reporterId,
+               r.reported_id as reportedId,
+               r.recipe_id as recipeId,
+               r.report_type as reportType,
                r.reason as reason,
                r.description as description,
                r.status as status,
-               r.adminNote as adminNote,
-               r.reviewedBy as reviewedBy,
-               r.reviewedAt as reviewedAt,
-               r.createdAt as createdAt
-        FROM Report r
-        WHERE r.reportId = :reportId
-    """)
+               r.action_taken as actionTaken,
+               r.action_description as actionDescription,
+               r.admin_note as adminNote,
+               r.reviewed_by as reviewedBy,
+               r.reviewed_at as reviewedAt,
+               r.created_at as createdAt,
+               r.reporters_notified as reportersNotified,
+               
+               reporter.user_id as reporterUserId,
+               reporter.username as reporterUsername,
+               reporter.full_name as reporterFullName,
+               reporter.avatar_url as reporterAvatarUrl,
+               
+               reported_user.user_id as reportedUserId,
+               reported_user.username as reportedUsername,
+               reported_user.email as reportedEmail,
+               reported_user.avatar_url as reportedAvatarUrl,
+               reported_user.role as reportedRole,
+               reported_user.is_active as reportedIsActive,
+               
+               recipe.recipe_id as reportedRecipeId,
+               recipe.title as reportedRecipeTitle,
+               recipe.slug as reportedRecipeSlug,
+               recipe.featured_image as reportedRecipeFeaturedImage,
+               recipe.status as reportedRecipeStatus,
+               recipe.is_published as reportedRecipeIsPublished,
+               recipe.view_count as reportedRecipeViewCount,
+               recipe.user_id as reportedRecipeUserId,
+               recipe_author.username as reportedRecipeAuthorUsername,
+               
+               reviewer.user_id as reviewerUserId,
+               reviewer.username as reviewerUsername,
+               reviewer.avatar_url as reviewerAvatarUrl
+               
+        FROM reports r
+        LEFT JOIN users reporter ON r.reporter_id = reporter.user_id
+        LEFT JOIN users reported_user ON r.reported_id = reported_user.user_id
+        LEFT JOIN recipes recipe ON r.recipe_id = recipe.recipe_id
+        LEFT JOIN users recipe_author ON recipe.user_id = recipe_author.user_id
+        LEFT JOIN users reviewer ON r.reviewed_by = reviewer.user_id
+        
+        WHERE r.report_id = :reportId
+    """, nativeQuery = true)
     Optional<ReportProjection> findProjectionById(@Param("reportId") UUID reportId);
 
 
@@ -207,4 +280,10 @@ public interface ReportRepository extends JpaRepository<Report, UUID> {
         ) as recipes
     """, nativeQuery = true)
     long countRecipesWithReportCountLessThan(@Param("count") Long count);
+
+    /**
+     * Đếm số recipes bị báo cáo (distinct) theo status
+     */
+    @Query("SELECT COUNT(DISTINCT r.recipeId) FROM Report r WHERE r.recipeId IS NOT NULL AND r.status = :status")
+    long countDistinctRecipesByStatus(@Param("status") ReportStatus status);
 }
