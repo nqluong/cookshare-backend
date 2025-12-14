@@ -78,35 +78,112 @@ public class SearchServiceImpl implements SearchService {
 
    @Override
     public PageResponse<SearchReponse> searchRecipesByIngredient(String title, List<String> ingredientNames, Pageable pageable) {
-       if (title== null || title.trim().isEmpty()) {
+       // Ít nhất phải có title hoặc ingredients
+       boolean hasTitle = title != null && !title.trim().isEmpty();
+       boolean hasIngredients = ingredientNames != null && !ingredientNames.isEmpty();
+
+       if (!hasTitle && !hasIngredients) {
            throw new CustomException(ErrorCode.SEARCH_QUERY_EMPTY);
        }
-       if(title.trim().length() < 2) {
-           throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_SHORT);
+
+       // Validate title nếu có
+       if (hasTitle) {
+           if(title.trim().length() < 2) {
+               throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_SHORT);
+           }
+           if(title.trim().length() > 80) {
+               throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_LONG);
+           }
+           if (!title.trim().matches("^[\\p{L}\\p{N}\\s\\-']+$")) {
+               throw new CustomException(ErrorCode.INVALID_CHARACTERS);
+           }
        }
-       if(title.trim().length() > 80) {
-           throw new CustomException(ErrorCode.SEARCH_QUERY_TOO_LONG);
+
+       Page<Recipe> recipePage;
+
+       // Bước 1: Tìm kiếm với logic AND (phải có TẤT CẢ nguyên liệu)
+       if (hasIngredients) {
+           Specification<Recipe> specAll = RecipeSpecification.hasRecipesByIngredients(title, ingredientNames);
+           recipePage = recipeRepository.findAll(specAll, pageable);
+
+           // Bước 2: Nếu không tìm thấy kết quả, tìm theo logic OR và sắp xếp theo số lượng khớp
+           if (recipePage.isEmpty()) {
+               log.info("Không tìm thấy recipe có tất cả nguyên liệu, chuyển sang tìm theo bất kỳ nguyên liệu nào");
+               recipePage = searchByAnyIngredientsWithMatchCount(title, ingredientNames, pageable);
+           } else {
+               log.info("Tìm thấy {} recipe có tất cả nguyên liệu", recipePage.getTotalElements());
+           }
+       } else {
+           // Nếu chỉ có title, tìm theo title thôi
+           Specification<Recipe> spec = RecipeSpecification.hasRecipesByIngredients(title, null);
+           recipePage = recipeRepository.findAll(spec, pageable);
        }
-       if (!title.trim().matches("^[\\p{L}\\p{N}\\s\\-']+$")) {
-           throw new CustomException(ErrorCode.INVALID_CHARACTERS);
-       }
-       Specification<Recipe> spec = RecipeSpecification.hasRecipesByIngredients(title, ingredientNames);
-       Page<Recipe> recipePage = recipeRepository.findAll(spec, pageable);
 
        List<SearchReponse> content = recipePage.getContent().stream()
                .map(searchMapper::toSearchRecipeResponse)
-               .peek(r -> {
-                   r.setFeaturedImage(firebaseStorageService.convertPathToFirebaseUrl(r.getFeaturedImage()));
-               })
+               .peek(r -> r.setFeaturedImage(firebaseStorageService.convertPathToFirebaseUrl(r.getFeaturedImage())))
                .toList();
+
        if(!content.isEmpty()) {
            var context=SecurityContextHolder.getContext();
            String name= context.getAuthentication().getName();
            log.info("name: {}", name);
-           saveSearchHistoryAsync(title,"ingredient", recipePage.getTotalElements());
-
+           // Lưu query search: nếu có cả title và ingredients thì kết hợp, không thì lấy cái có
+           String searchQuery = hasTitle ? title : String.join(", ", ingredientNames);
+           saveSearchHistoryAsync(searchQuery, "ingredient", recipePage.getTotalElements());
        }
        return buildPageResponse(recipePage, content);
+    }
+
+    /**
+     * Tìm kiếm recipe theo bất kỳ nguyên liệu nào và đếm số lượng nguyên liệu khớp để sắp xếp
+     */
+    private Page<Recipe> searchByAnyIngredientsWithMatchCount(String title, List<String> ingredientNames, Pageable pageable) {
+        // Lọc các ingredient hợp lệ
+        List<String> validIngredients = ingredientNames.stream()
+                .filter(name -> name != null && !name.trim().isEmpty())
+                .map(String::trim)
+                .toList();
+
+        if (validIngredients.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        // Tìm tất cả recipe có ít nhất 1 nguyên liệu
+        Specification<Recipe> specAny = RecipeSpecification.hasRecipesByAnyIngredients(title, validIngredients);
+        List<Recipe> allRecipes = recipeRepository.findAll(specAny);
+
+        // Đếm số lượng ingredient khớp cho mỗi recipe
+        List<Recipe> sortedRecipes = allRecipes.stream()
+                .sorted((r1, r2) -> {
+                    int count1 = countMatchingIngredients(r1, validIngredients);
+                    int count2 = countMatchingIngredients(r2, validIngredients);
+                    return Integer.compare(count2, count1); // Giảm dần (nhiều nhất trước)
+                })
+                .toList();
+
+        // Phân trang thủ công
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), sortedRecipes.size());
+        List<Recipe> pageContent = sortedRecipes.subList(start, end);
+
+        return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, sortedRecipes.size());
+    }
+
+    /**
+     * Đếm số lượng nguyên liệu khớp trong recipe
+     */
+    private int countMatchingIngredients(Recipe recipe, List<String> ingredientNames) {
+        int count = 0;
+        for (String searchIngredient : ingredientNames) {
+            String searchLower = searchIngredient.toLowerCase();
+            boolean found = recipe.getRecipeIngredients().stream()
+                    .anyMatch(ri -> ri.getIngredient().getName().toLowerCase().contains(searchLower));
+            if (found) {
+                count++;
+            }
+        }
+        return count;
     }
     private <T> PageResponse<T> buildPageResponse(Page<?> page, List<T> content) {
         return PageResponse.<T>builder()
