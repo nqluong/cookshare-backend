@@ -163,4 +163,16 @@ public interface ReportQueryRepository extends JpaRepository<Report, UUID> {
      */
     @Query(value = "SELECT user_id FROM users WHERE username = :username", nativeQuery = true)
     Optional<UUID> findUserIdByUsername(@Param("username") String username);
+
+    /**
+     * Lấy userId + username của admin (dùng cho notification)
+     */
+    @Query(value = """
+    SELECT u.user_id AS userId, u.username AS username
+    FROM users u
+    WHERE u.role = 'ADMIN'
+      AND u.is_active = true
+""", nativeQuery = true)
+    List<UsernameProjection> findAdminUsers();
+
 }

@@ -14,6 +14,7 @@ public enum NotificationType {
     RECIPE_STATUS,       // Trạng thái recipe thay đổi (unpublished, edit required)
 
     // Report & Moderation notifications
+    REPORT,
     REPORT_REVIEW,       // Kết quả review báo cáo (cho người báo cáo)
     REPORT_ACTION,       // Admin thực hiện action với báo cáo
 
