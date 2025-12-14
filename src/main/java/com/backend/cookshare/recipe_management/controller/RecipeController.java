@@ -64,8 +64,9 @@ public class RecipeController {
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<RecipeResponse>> getAllRecipesByUser(
             @PathVariable UUID userId,
-            @RequestParam(required = false) UUID currentUserId) {
-        return ResponseEntity.ok(recipeService.getAllRecipesByUserId(userId, currentUserId));
+            @RequestParam(required = false) UUID currentUserId,
+            @RequestParam(required = false, defaultValue = "false") boolean includeAll) {
+        return ResponseEntity.ok(recipeService.getAllRecipesByUserId(userId, currentUserId, includeAll));
     }
 
     // ================== DELETE ==================
