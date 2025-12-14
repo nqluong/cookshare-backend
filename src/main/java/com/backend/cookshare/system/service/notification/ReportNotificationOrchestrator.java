@@ -57,12 +57,24 @@ public class ReportNotificationOrchestrator {
             return;
         }
 
-        List<UUID> reporterIds = relatedReports.stream()
+        // Chỉ lấy những báo cáo CHƯA được thông báo trước đó
+        // Tránh gửi lại thông báo cho những người đã được xử lý với NO_ACTION hoặc action khác
+        List<Report> unnotifiedReports = relatedReports.stream()
+                .filter(r -> !Boolean.TRUE.equals(r.getReportersNotified()))
+                .collect(Collectors.toList());
+
+        if (unnotifiedReports.isEmpty()) {
+            log.info("Tất cả người báo cáo đã được thông báo trước đó cho báo cáo {}", 
+                    reviewedReport.getReportId());
+            return;
+        }
+
+        List<UUID> reporterIds = unnotifiedReports.stream()
                 .map(Report::getReporterId)
                 .distinct()
                 .collect(Collectors.toList());
 
-        log.info("Đang thông báo {} người báo cáo về kết quả xem xét báo cáo {}",
+        log.info("Đang thông báo {} người báo cáo (chưa được thông báo) về kết quả xem xét báo cáo {}",
                 reporterIds.size(), reviewedReport.getReportId());
 
         List<UsernameProjection> reporters = reportQueryRepository.findUsernamesByIds(reporterIds);
@@ -80,9 +92,10 @@ public class ReportNotificationOrchestrator {
             }
         }
 
-        markReportsAsNotified(relatedReports);
+        // Chỉ đánh dấu những báo cáo chưa được thông báo
+        markReportsAsNotified(unnotifiedReports);
 
-        log.info("Đã thông báo thành công {} người báo cáo", reporters.size());
+        log.info("Đã thông báo thành công {} người báo cáo mới", reporters.size());
     }
 
     private void markReportsAsNotified(List<Report> reports) {

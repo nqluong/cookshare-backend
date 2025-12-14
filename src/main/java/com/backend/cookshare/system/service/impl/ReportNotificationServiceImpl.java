@@ -5,6 +5,7 @@ import com.backend.cookshare.common.exception.ErrorCode;
 import com.backend.cookshare.system.dto.request.NotificationMessage;
 import com.backend.cookshare.system.dto.response.RecipeInfo;
 import com.backend.cookshare.system.entity.Report;
+import com.backend.cookshare.system.enums.ReportType;
 import com.backend.cookshare.system.repository.ReportQueryRepository;
 import com.backend.cookshare.system.repository.projection.UsernameProjection;
 import com.backend.cookshare.system.service.ReportNotificationService;
@@ -67,7 +68,7 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
 
             for (UsernameProjection admin : admins) {
 
-                // 1️⃣ Build message
+                // Build message
                 NotificationMessage msg = messageBuilder.buildNewReportMessage(
                         report,
                         reporterUsername,
@@ -75,7 +76,7 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
                         target.name()
                 );
 
-                // 2️⃣ Lưu DB cho từng admin
+                // Lưu DB cho từng admin
                 persistenceService.saveNotification(
                         admin.getUserId(),
                         msg.getTitle(),
@@ -84,7 +85,7 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
                         report.getReportId()
                 );
 
-                // 3️⃣ Gửi WebSocket
+                // Gửi WebSocket
                 sendToUser(admin.getUsername(), msg);
             }
 
@@ -321,6 +322,54 @@ public class ReportNotificationServiceImpl implements ReportNotificationService 
 
         } catch (Exception e) {
             log.error("Không notify auto unpublish recipe", e);
+        }
+    }
+
+    @Override
+    public void notifyAutoContentRemoved(UUID recipeId, UUID authorId, String authorUsername, 
+                                        String recipeTitle, long reportCount, 
+                                        ReportType reportType) {
+        try {
+            NotificationMessage msg = messageBuilder.buildAutoContentRemovedMessage(
+                    recipeId, recipeTitle, reportCount, reportType
+            );
+
+            persistenceService.saveNotification(
+                    authorId,
+                    msg.getTitle(),
+                    msg.getMessage(),
+                    NotificationType.RECIPE_STATUS,
+                    null
+            );
+
+            sendToUser(authorUsername, msg);
+
+        } catch (Exception e) {
+            log.error("Không notify auto content removed", e);
+        }
+    }
+
+    @Override
+    public void notifyAutoRecipeEditRequired(UUID recipeId, UUID authorId, String authorUsername, 
+                                            String recipeTitle, long reportCount, 
+                                            ReportType reportType) {
+        try {
+            NotificationMessage msg = messageBuilder.buildAutoRecipeEditRequiredMessage(
+                    recipeId, recipeTitle, reportCount, reportType
+            );
+
+            persistenceService.saveNotification(
+                    authorId,
+                    msg.getTitle(),
+                    msg.getMessage(),
+                    NotificationType.RECIPE_STATUS,
+                    null
+            );
+
+            sendToUser(authorUsername, msg);
+
+        } catch (Exception e) {
+            log.error("Không notify auto recipe edit required", e);
         }
     }
 
