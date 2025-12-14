@@ -7,13 +7,10 @@ import com.backend.cookshare.common.dto.PageResponse;
 import com.backend.cookshare.common.exception.CustomException;
 import com.backend.cookshare.common.exception.ErrorCode;
 import com.backend.cookshare.common.mapper.PageMapper;
-import com.backend.cookshare.interaction.dto.response.RecipeLikeResponse;
 import com.backend.cookshare.recipe_management.entity.Recipe;
 import com.backend.cookshare.recipe_management.mapper.RecipeMapper;
 import com.backend.cookshare.recipe_management.repository.RecipeRepository;
-import com.backend.cookshare.user.dto.FollowResponse;
-import com.backend.cookshare.user.dto.RecipeByFollowingResponse;
-import com.backend.cookshare.user.dto.UserFollowDto;
+import com.backend.cookshare.user.dto.*;
 import com.backend.cookshare.user.entity.Follow;
 import com.backend.cookshare.user.repository.FollowRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,10 +18,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -40,8 +39,8 @@ public class FollowService {
     private final RecipeRepository recipeRepository;
     private final RecipeMapper recipeMapper;
     private final FirebaseStorageService firebaseStorageService;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    //Xử lý hành động follow một người dùng khác.
     @Transactional
     public FollowResponse followUser(UUID followerId, UUID followingId) {
         log.info("User {} attempting to follow user {}", followerId, followingId);
@@ -87,8 +86,9 @@ public class FollowService {
         userRepository.save(following);
         userRepository.save(follower);
 
-        // ========== 🔔 TẠO FOLLOW NOTIFICATION ==========
         notificationService.createFollowNotification(followingId, followerId);
+
+        sendFollowWebSocketMessage("FOLLOW", follower, following);
 
         log.info("User {} successfully followed user {}", followerId, followingId);
 
@@ -102,7 +102,6 @@ public class FollowService {
                 .build();
     }
 
-    //Xử lý hành động hủy follow một người dùng.
     @Transactional
     public void unfollowUser(UUID followerId, UUID followingId) {
         log.info("User {} attempting to unfollow user {}", followerId, followingId);
@@ -112,6 +111,7 @@ public class FollowService {
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOLLOWING));
 
         notificationService.deleteFollowNotification(followingId, followerId);
+
         // Xóa quan hệ follow
         followRepository.delete(follow);
 
@@ -127,10 +127,44 @@ public class FollowService {
         userRepository.save(following);
         userRepository.save(follower);
 
+        sendFollowWebSocketMessage("UNFOLLOW", follower, following);
+
         log.info("User {} successfully unfollowed user {}", followerId, followingId);
     }
 
-    //Lấy danh sách follower của một người dùng theo phân trang.
+    private void sendFollowWebSocketMessage(
+            String action,
+            User follower,
+            User following
+    ) {
+        try {
+            FollowWebSocketMessage message = FollowWebSocketMessage.builder()
+                    .action(action)
+                    .followerId(follower.getUserId())
+                    .followingId(following.getUserId())
+                    .followerUsername(follower.getUsername())
+                    .followerFullName(follower.getFullName())
+                    .followerAvatarUrl(follower.getAvatarUrl())
+                    .followingCount(follower.getFollowingCount())
+                    .followerCount(following.getFollowerCount())
+                    .timestamp(LocalDateTime.now())
+                    .build();
+
+            messagingTemplate.convertAndSendToUser(
+                    following.getUserId().toString(),
+                    "/queue/follow",
+                    message
+            );
+
+            log.info("WebSocket {} sent: follower={}, following={}",
+                    action, follower.getUserId(), following.getUserId());
+
+        } catch (Exception e) {
+            log.error("Failed to send follow WS", e);
+        }
+    }
+
+
     @Transactional(readOnly = true)
     public PageResponse<UserFollowDto> getFollowers(UUID userId, int page, int size) {
         log.info("Getting followers for user {}", userId);
@@ -152,7 +186,6 @@ public class FollowService {
         return pageMapper.toPageResponse(followers, followerIds);
     }
 
-    //Lấy danh sách người dùng mà một người dùng đang follow theo phân trang.
     @Transactional(readOnly = true)
     public PageResponse<UserFollowDto> getFollowing(UUID userId, int page, int size) {
         log.info("Getting following for user {}", userId);
@@ -174,13 +207,11 @@ public class FollowService {
         return pageMapper.toPageResponse(following, followingIds);
     }
 
-    //Kiểm tra trạng thái follow giữa hai người dùng.
     @Transactional(readOnly = true)
     public boolean isFollowing(UUID followerId, UUID followingId) {
         return followRepository.existsByFollowerIdAndFollowingId(followerId, followingId);
     }
 
-    //Chuyển đổi đối tượng User thành UserFollowDto.
     private UserFollowDto mapToUserFollowDto(User user, UUID currentUserId) {
         return UserFollowDto.builder()
                 .userId(user.getUserId())
@@ -199,7 +230,6 @@ public class FollowService {
     public PageResponse<RecipeByFollowingResponse> getRecipesByFollowing(int page, int size) {
         User currentUser = getCurrentUser();
         Pageable pageable = PageRequest.of(page, size);
-        // Lấy danh sách ID người mà user đang follow
         List<UUID> followingIds = followRepository.findAllFollowingIdsByUser(currentUser.getUserId());
         Page<Recipe> recipes = recipeRepository.findRecipesByFollowingIds(followingIds, pageable);
         Page<RecipeByFollowingResponse> responsePage = recipes.map(recipe -> {
@@ -218,14 +248,11 @@ public class FollowService {
                 .totalElements(responsePage.getTotalElements())
                 .content(responsePage.getContent())
                 .build();
-
     }
-
 
     private User getCurrentUser() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
     }
-
 }
