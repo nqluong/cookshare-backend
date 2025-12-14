@@ -20,6 +20,8 @@ public interface RecommendationService {
      * Mỗi người dùng có thể có gợi ý giống hoặc khác nhau dựa trên userId
      */
     List<RecipeRecommendationResponse> getDailyRecommendations(UUID userId);
+
+    List<RecipeRecommendationResponse> getDailyRecommendations(String userName);
     /**
      * Lấy danh sách công thức nổi bật (được admin đánh dấu)
      * Chỉ lấy các công thức đã được xuất bản và đánh dấu isFeatured = true
