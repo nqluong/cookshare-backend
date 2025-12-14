@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,6 +34,19 @@ public class RecommendationController {
                 .code(HttpStatus.OK.value())
                 .message("Lấy danh sách gợi ý thành công")
                 .data(response)
+                .build());
+    }
+
+    @GetMapping("/daily")
+    public ResponseEntity<ApiResponse<List<RecipeRecommendationResponse>>> getDailyRecommendations() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        List<RecipeRecommendationResponse> recipes = recommendationService.getDailyRecommendations(username);
+
+        return ResponseEntity.ok(ApiResponse.<List<RecipeRecommendationResponse>>builder()
+                .success(true)
+                .code(HttpStatus.OK.value())
+                .message("Lấy danh sách công thức nổi bật thành công")
+                .data(recipes)
                 .build());
     }
 

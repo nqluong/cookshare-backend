@@ -101,6 +101,45 @@ public class RecommendationServiceImpl implements RecommendationService {
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "Không thể lấy danh sách gợi ý công thức");
         }
     }
+
+    @Override
+    public List<RecipeRecommendationResponse> getDailyRecommendations(String userName) {
+        User user= userRepository.findByUsername(userName)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        try {
+            // Lấy ngày hiện tại (chỉ lấy ngày, không tính giờ)
+            LocalDate today = LocalDate.now();
+
+            // Tạo seed dựa trên ngày và userId để đảm bảo tính đa dạng
+            long seed = generateDailySeed(today, user.getUserId());
+
+            // Lấy tất cả công thức đã publish
+            List<Recipe> allPublishedRecipes = recipeRepository.findAllPublishedRecipes();
+
+            if (allPublishedRecipes.isEmpty()) {
+                log.warn("Không có công thức nào được publish");
+                return List.of();
+            }
+
+            // Shuffle danh sách với seed để đảm bảo mỗi ngày có thứ tự khác nhau
+            List<Recipe> shuffledRecipes = shuffleWithSeed(allPublishedRecipes, seed);
+
+            // Lấy 3 công thức đầu tiên sau khi shuffle
+            List<Recipe> selectedRecipes = shuffledRecipes.stream()
+                    .limit(3)
+                    .collect(Collectors.toList());
+
+            log.info("Đã chọn {} công thức cho gợi ý hàng ngày", selectedRecipes.size());
+
+            return convertToRecommendationResponses(selectedRecipes);
+
+        } catch (Exception e) {
+            log.error("Lỗi khi lấy gợi ý công thức theo ngày: {}", e.getMessage(), e);
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR,
+                    "Không thể lấy danh sách gợi ý công thức theo ngày");
+        }
+    }
+
     @Override
     public List<RecipeRecommendationResponse> getDailyRecommendations(UUID userId) {
         log.info("Lấy gợi ý công thức theo ngày cho user: {}", userId);

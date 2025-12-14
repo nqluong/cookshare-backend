@@ -202,7 +202,7 @@ class ReportGroupServiceImplTest {
         when(p1.getReporterId()).thenReturn(UUID.randomUUID());
         when(p1.getReporterUsername()).thenReturn("reporter1");
         when(p1.getReporterFullName()).thenReturn("Reporter One");
-        when(p1.getReporterAvatar()).thenReturn("avatar1.jpg");
+//        when(p1.getReporterAvatar()).thenReturn("avatar1.jpg");
         when(p1.getReportType()).thenReturn(ReportType.SPAM.name());
         when(p1.getReason()).thenReturn("Spam reason");
         when(p1.getDescription()).thenReturn("Desc");
@@ -213,7 +213,7 @@ class ReportGroupServiceImplTest {
         when(p2.getReporterId()).thenReturn(UUID.randomUUID());
         when(p2.getReporterUsername()).thenReturn("reporter2");
         when(p2.getReporterFullName()).thenReturn("Reporter Two");
-        when(p2.getReporterAvatar()).thenReturn("avatar2.jpg");
+//        when(p2.getReporterAvatar()).thenReturn("avatar2.jpg");
         when(p2.getReportType()).thenReturn(ReportType.INAPPROPRIATE.name());
         when(p2.getReason()).thenReturn("Inappropriate");
         when(p2.getDescription()).thenReturn("Bad content");
@@ -227,7 +227,7 @@ class ReportGroupServiceImplTest {
             when(p.getAuthorId()).thenReturn(UUID.randomUUID());
             when(p.getAuthorUsername()).thenReturn("author");
             when(p.getAuthorFullName()).thenReturn("Author Name");
-            when(p.getAuthorAvatar()).thenReturn("author_avatar.jpg");
+//            when(p.getAuthorAvatar()).thenReturn("author_avatar.jpg");
         }
 
         Map<ReportType, Long> breakdown = Map.of(
