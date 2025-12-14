@@ -77,7 +77,6 @@ class AdminRecipeServiceImplTest {
                 .featuredImage("recipes/banh-mi.jpg")
                 .status(RecipeStatus.PENDING)
                 .isPublished(false)
-                .isFeatured(false)
                 .viewCount(100)
                 .createdAt(LocalDateTime.now().minusDays(2))
                 .updatedAt(LocalDateTime.now())
@@ -225,25 +224,6 @@ class AdminRecipeServiceImplTest {
         verify(recipeRepository).delete(recipe);
     }
 
-    @Test
-    void setFeaturedRecipe_WhenApprovedRecipe_ShouldAllow() {
-        recipe.setStatus(RecipeStatus.APPROVED);
-        when(recipeRepository.findById(recipeId)).thenReturn(Optional.of(recipe));
-
-        adminRecipeService.setFeaturedRecipe(recipeId, true);
-
-        verify(recipeRepository).save(argThat(r -> r.getIsFeatured()));
-    }
-
-    @Test
-    void setFeaturedRecipe_WhenNotApproved_ShouldThrowException() {
-        when(recipeRepository.findById(recipeId)).thenReturn(Optional.of(recipe));
-
-        CustomException ex = assertThrows(CustomException.class,
-                () -> adminRecipeService.setFeaturedRecipe(recipeId, true));
-
-        assertEquals(ErrorCode.RECIPE_NOT_APPROVED, ex.getErrorCode());
-    }
 
     @Test
     void setPublishedRecipe_WhenApprovedRecipe_ShouldAllow() {

@@ -62,7 +62,7 @@ public class AdminRecipeController {
         
         Pageable pageable = PageRequest.of(page, size, sort);
         PageResponse<AdminRecipeListResponseDTO> pageResponse = adminRecipeService.getAllRecipesWithPagination(
-                search, isPublished, isFeatured, status, pageable);
+                search, isPublished, status, pageable);
 
         ApiResponse<PageResponse<AdminRecipeListResponseDTO>> response = ApiResponse.<PageResponse<AdminRecipeListResponseDTO>>builder()
                 .success(true)
@@ -295,30 +295,6 @@ public class AdminRecipeController {
                 .code(HttpStatus.OK.value())
                 .message("Lấy danh sách công thức bị từ chối thành công")
                 .data(pageResponse)
-                .build();
-
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * PUT /api/admin/recipes/{id}/featured - Đặt công thức làm nổi bật hoặc bỏ nổi bật
-     * @param id ID của công thức
-     * @param isFeatured Có phải nổi bật không
-     * @return Phản hồi thành công
-     */
-    @PutMapping("/{id}/featured")
-    public ResponseEntity<ApiResponse<Void>> setFeaturedRecipe(
-            @PathVariable UUID id,
-            @RequestParam Boolean isFeatured) {
-        
-        log.info("Admin đang đặt công thức {} làm nổi bật: {}", id, isFeatured);
-        
-        adminRecipeService.setFeaturedRecipe(id, isFeatured);
-
-        ApiResponse<Void> response = ApiResponse.<Void>builder()
-                .success(true)
-                .code(HttpStatus.OK.value())
-                .message(isFeatured ? "Đặt công thức làm nổi bật thành công" : "Bỏ nổi bật công thức thành công")
                 .build();
 
         return ResponseEntity.ok(response);

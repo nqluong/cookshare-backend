@@ -97,7 +97,6 @@ public class RecipeLikeMapperTest {
                 .likeCount(12)
                 .averageRating(BigDecimal.valueOf(4.5))
                 .ratingCount(30)
-                .isFeatured(true)
                 .isPublished(true)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
