@@ -16,6 +16,7 @@ public enum ErrorCode {
     METHOD_NOT_ALLOWED(1005, "Phương thức HTTP không được hỗ trợ", HttpStatus.METHOD_NOT_ALLOWED),
     NOT_FOUND(1006, "Không tìm thấy dữ liệu yêu cầu", HttpStatus.NOT_FOUND),
     REQUEST_TIMEOUT(1007, "Yêu cầu timeout", HttpStatus.REQUEST_TIMEOUT),
+    RECIPE_APPROVAL(1008, "Công thức đã được duyệt bạn không thể chỉnh sửa", HttpStatus.BAD_REQUEST),
 
     TAG_NOT_FOUND(1101, "Không tìm thấy thẻ (Tag)", HttpStatus.NOT_FOUND),
     TAG_ALREADY_EXISTS(1102, "Thẻ (Tag) đã tồn tại", HttpStatus.CONFLICT),

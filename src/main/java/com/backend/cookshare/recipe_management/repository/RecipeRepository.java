@@ -18,6 +18,9 @@ import java.util.UUID;
 
 @Repository
 public interface RecipeRepository extends JpaRepository<Recipe, UUID>, JpaSpecificationExecutor<Recipe> {
+
+        @Query("SELECT r FROM Recipe r WHERE r.recipeId = :id AND r.status = 'PENDING'")
+        Optional<Recipe> findRecipeEdit(UUID id);
         // Featured recipes
         @Query("SELECT r FROM Recipe r WHERE r.isPublished = true  AND r.status = 'APPROVED' ORDER BY r.updatedAt DESC")
         Page<Recipe> findFeaturedRecipes(Pageable pageable);

@@ -252,10 +252,10 @@ public class RecipeServiceImpl implements RecipeService {
     @Transactional
     public RecipeResponse updateRecipe(UUID id, RecipeRequest request,
             MultipartFile image, List<MultipartFile> stepImages) {
-        Recipe recipe = recipeRepository.findById(id)
+        Recipe recipe = recipeRepository.findRecipeEdit(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND, "Không tìm thấy recipe id: " + id));
 
-        log.info("🔄 Bắt đầu cập nhật recipe: {}", id);
+        log.info("Bắt đầu cập nhật recipe: {}", id);
 
         // ========== LẤY DỮ LIỆU CŨ ==========
 
@@ -338,10 +338,10 @@ public class RecipeServiceImpl implements RecipeService {
 
                 if (newStepImages.containsKey(stepNumber)) {
                     step.setImageUrl(newStepImages.get(stepNumber));
-                    log.info("🆕 Step {} dùng ảnh mới", stepNumber);
+                    log.info("Step {} dùng ảnh mới", stepNumber);
                 } else if (step.getImageUrl() == null && oldStepImages.containsKey(stepNumber)) {
                     step.setImageUrl(oldStepImages.get(stepNumber));
-                    log.info("↩️ Step {} giữ ảnh cũ", stepNumber);
+                    log.info("Step {} giữ ảnh cũ", stepNumber);
                 }
             }
         }
@@ -350,7 +350,7 @@ public class RecipeServiceImpl implements RecipeService {
 
         List<UUID> finalCategoryIds = new ArrayList<>();
         if (request.getNewCategories() != null && !request.getNewCategories().isEmpty()) {
-            log.info("📁 Tạo {} categories mới", request.getNewCategories().size());
+            log.info(" Tạo {} categories mới", request.getNewCategories().size());
             for (CategoryRequest catReq : request.getNewCategories()) {
                 Category category = createCategoryIfNotExists(catReq);
                 finalCategoryIds.add(category.getCategoryId());
@@ -360,7 +360,7 @@ public class RecipeServiceImpl implements RecipeService {
             finalCategoryIds.addAll(request.getCategoryIds());
         } else if (finalCategoryIds.isEmpty()) {
             finalCategoryIds.addAll(oldCategoryIds);
-            log.info("↩️ Giữ lại {} categories cũ", oldCategoryIds.size());
+            log.info(" Giữ lại {} categories cũ", oldCategoryIds.size());
         }
         request.setCategoryIds(finalCategoryIds);
 
@@ -368,7 +368,7 @@ public class RecipeServiceImpl implements RecipeService {
 
         List<UUID> finalTagIds = new ArrayList<>();
         if (request.getNewTags() != null && !request.getNewTags().isEmpty()) {
-            log.info("🏷️ Tạo {} tags mới", request.getNewTags().size());
+            log.info("Tạo {} tags mới", request.getNewTags().size());
             for (TagRequest tagReq : request.getNewTags()) {
                 Tag tag = createTagIfNotExists(tagReq);
                 finalTagIds.add(tag.getTagId());
@@ -378,14 +378,14 @@ public class RecipeServiceImpl implements RecipeService {
             finalTagIds.addAll(request.getTagIds());
         } else if (finalTagIds.isEmpty()) {
             finalTagIds.addAll(oldTagIds);
-            log.info("↩️ Giữ lại {} tags cũ", oldTagIds.size());
+            log.info("Giữ lại {} tags cũ", oldTagIds.size());
         }
         request.setTagIds(finalTagIds);
 
         // ========== TẠO INGREDIENTS MỚI (nếu có) ==========
 
         if (request.getNewIngredients() != null && !request.getNewIngredients().isEmpty()) {
-            log.info("🥕 Tạo {} ingredients mới", request.getNewIngredients().size());
+            log.info("Tạo {} ingredients mới", request.getNewIngredients().size());
 
             List<UUID> createdIngredientIds = new ArrayList<>();
             for (IngredientRequest ingReq : request.getNewIngredients()) {
@@ -439,7 +439,7 @@ public class RecipeServiceImpl implements RecipeService {
                 dto.setNotes(details.get("notes"));
                 return dto;
             }).toList());
-            log.info("↩️ Giữ nguyên toàn bộ nguyên liệu cũ ({} items)", request.getIngredientDetails().size());
+            log.info("Giữ nguyên toàn bộ nguyên liệu cũ ({} items)", request.getIngredientDetails().size());
         }
 
         // ========== CẬP NHẬT THÔNG TIN RECIPE ==========
@@ -476,7 +476,7 @@ public class RecipeServiceImpl implements RecipeService {
         // Log activity bất đồng bộ
         activityLogService.logRecipeActivityAsync(updatedRecipe.getUserId(), id, "UPDATE");
 
-        log.info("✅ Recipe {} cập nhật thành công", id);
+        log.info("Recipe {} cập nhật thành công", id);
 
         return loadRecipeResponse(updatedRecipe);
     }
