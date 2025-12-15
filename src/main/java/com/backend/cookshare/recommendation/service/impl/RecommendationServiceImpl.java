@@ -13,6 +13,7 @@ import com.backend.cookshare.recommendation.dto.response.RecipeRecommendationRes
 import com.backend.cookshare.recommendation.service.RecommendationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,7 +32,6 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 @Transactional(readOnly = true)
 public class RecommendationServiceImpl implements RecommendationService {
@@ -39,14 +39,23 @@ public class RecommendationServiceImpl implements RecommendationService {
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
     private final FirebaseStorageService firebaseStorageService;
-    
-    // Thread pool for parallel processing
-    private final Executor executor = Executors.newFixedThreadPool(5);
+    private final Executor executor;
 
     private static final int DEFAULT_LIMIT = 10;
     private static final int MIN_LIMIT = 1;
     private static final int MAX_LIMIT = 50;
     private static final int MIN_RATING_COUNT = 5;
+
+    public RecommendationServiceImpl(
+            RecipeRepository recipeRepository,
+            UserRepository userRepository,
+            FirebaseStorageService firebaseStorageService,
+            @Qualifier("taskExecutor") Executor executor) {
+        this.recipeRepository = recipeRepository;
+        this.userRepository = userRepository;
+        this.firebaseStorageService = firebaseStorageService;
+        this.executor = executor;
+    }
     
     @Override
     public HomeRecommendationResponse getHomeRecommendations() {

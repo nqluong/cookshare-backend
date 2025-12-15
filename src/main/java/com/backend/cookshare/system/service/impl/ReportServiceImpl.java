@@ -166,10 +166,8 @@ public class ReportServiceImpl implements ReportService {
 
         report = reportRepository.save(report);
 
-        // Thực thi hành động
         actionExecutor.execute(report);
 
-        // Đồng bộ tất cả báo cáo liên quan
         synchronizer.syncRelatedReports(report);
 
         // Thông báo cho tất cả người báo cáo (bất đồng bộ)

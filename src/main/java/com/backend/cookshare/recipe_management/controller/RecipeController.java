@@ -24,7 +24,6 @@ public class RecipeController {
     private final RecipeService recipeService;
     private final ObjectMapper objectMapper;
 
-    // ================== CREATE ==================
 
     @PostMapping(value = "", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
     public ResponseEntity<RecipeResponse> createRecipe(
@@ -36,8 +35,6 @@ public class RecipeController {
         return ResponseEntity.ok(response);
     }
 
-    // ================== UPDATE ==================
-
     @PutMapping(value = "/{id}", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
     public ResponseEntity<RecipeResponse> updateRecipe(
             @PathVariable UUID id,
@@ -48,8 +45,6 @@ public class RecipeController {
         RecipeResponse response = recipeService.updateRecipe(id, request, image, stepImages);
         return ResponseEntity.ok(response);
     }
-
-    // ================== GET ==================
 
     @GetMapping("/{id}")
     public ResponseEntity<RecipeResponse> getRecipeById(@PathVariable UUID id) {
@@ -69,15 +64,11 @@ public class RecipeController {
         return ResponseEntity.ok(recipeService.getAllRecipesByUserId(userId, currentUserId, includeAll));
     }
 
-    // ================== DELETE ==================
-
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRecipe(@PathVariable UUID id) {
         recipeService.deleteRecipe(id);
         return ResponseEntity.noContent().build();
     }
-
-    // ================== TOGGLE PRIVACY ==================
 
     @PutMapping("/{id}/toggle-privacy")
     public ResponseEntity<RecipeResponse> togglePrivacy(@PathVariable UUID id) {

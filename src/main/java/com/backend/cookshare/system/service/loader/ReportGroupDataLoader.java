@@ -17,10 +17,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
-/**
- * Component tải dữ liệu theo lô cho các nhóm báo cáo Recipe.
- * Tối ưu hóa với batch queries để giảm số lần truy vấn database.
- */
 @Component
 @Slf4j
 public class ReportGroupDataLoader {
@@ -41,21 +37,15 @@ public class ReportGroupDataLoader {
         this.asyncExecutor = asyncExecutor;
     }
 
-    /**
-     * Tải tất cả dữ liệu bổ sung cho các nhóm báo cáo Recipe song song.
-     * Sử dụng batch queries để giảm số lần truy vấn database.
-     */
     public GroupEnrichmentData loadEnrichmentData(List<ReportGroupResponse> groups) {
         if (groups.isEmpty()) {
             return GroupEnrichmentData.empty();
         }
 
-        // Thu thập tất cả recipeIds một lần
         List<UUID> recipeIds = groups.stream()
                 .map(ReportGroupResponse::getRecipeId)
                 .collect(Collectors.toList());
 
-        // Chạy 3 batch queries song song
         CompletableFuture<Map<UUID, Map<ReportType, Long>>> breakdownsFuture =
                 CompletableFuture.supplyAsync(() -> batchLoadReportTypeBreakdowns(recipeIds), asyncExecutor);
 
@@ -74,9 +64,7 @@ public class ReportGroupDataLoader {
         );
     }
 
-    /**
-     * BATCH: Tải phân loại loại báo cáo cho TẤT CẢ Recipes trong MỘT query.
-     */
+
     public Map<UUID, Map<ReportType, Long>> batchLoadReportTypeBreakdowns(List<UUID> recipeIds) {
         if (recipeIds.isEmpty()) {
             return Collections.emptyMap();
@@ -96,10 +84,6 @@ public class ReportGroupDataLoader {
                 ));
     }
 
-    /**
-     * BATCH: Tải top reporters cho TẤT CẢ Recipes trong MỘT query.
-     * Query đã join sẵn với users table để lấy username.
-     */
     public Map<UUID, List<String>> batchLoadTopReporters(List<UUID> recipeIds) {
         if (recipeIds.isEmpty()) {
             return Collections.emptyMap();
@@ -119,9 +103,7 @@ public class ReportGroupDataLoader {
                 ));
     }
 
-    /**
-     * Tải theo lô các URL thumbnail Recipe từ Firebase.
-     */
+
     public Map<String, String> batchLoadThumbnailUrls(List<ReportGroupResponse> groups) {
         Map<String, String> result = new HashMap<>();
 
@@ -156,14 +138,8 @@ public class ReportGroupDataLoader {
         return result;
     }
 
-    /**
-     * Record chứa thông tin tác giả Recipe.
-     */
     public record RecipeAuthorInfo(UUID authorId, String authorUsername, String authorFullName) {}
 
-    /**
-     * Record chứa tất cả dữ liệu bổ sung cho các nhóm.
-     */
     public record GroupEnrichmentData(
             Map<UUID, Map<ReportType, Long>> breakdowns,
             Map<UUID, List<String>> reporters,

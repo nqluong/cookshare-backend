@@ -193,7 +193,6 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
             }
 
         } else {
-            // ========== TỪ CHỐI CÔNG THỨC ==========
             recipe.setStatus(RecipeStatus.REJECTED);
             recipe.setIsPublished(false);
             log.info("Công thức {} đã bị từ chối với lý do: {}", recipeId, request.getRejectionReason());
@@ -213,10 +212,8 @@ public class AdminRecipeServiceImpl implements AdminRecipeService {
         Recipe recipe = recipeRepository.findById(recipeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND));
 
-        // ========== XÓA TẤT CẢ THÔNG BÁO LIÊN QUAN ==========
         notificationService.deleteRecipeNotifications(recipeId);
 
-        // LOG ACTIVITY: Admin xóa recipe
         activityLogService.logRecipeActivity(recipe.getUserId(), recipeId, "DELETE");
 
         recipeRepository.delete(recipe);
