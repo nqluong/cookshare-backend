@@ -139,15 +139,18 @@ public class CollectionService {
     }
 
     // Lấy chi tiết collection
-    @Transactional(readOnly = true)
+    @Transactional
     public CollectionUserDto getCollectionDetail(UUID collectionId, UUID userId) {
         log.info("Getting collection detail: {}", collectionId);
 
         Collection collection = collectionRepository.findByCollectionIdAndUserId(collectionId, userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.COLLECTION_NOT_FOUND));
 
-        // LOG ACTIVITY: Xem collection (optional, có thể bỏ nếu không cần)
-        // activityLogService.logCollectionActivity(userId, collectionId, "VIEW");
+        // Sửa: Dùng setter thay vì gán vào getter
+        collection.setViewCount(collection.getViewCount() + 1);
+
+        // Lưu lại để update view count
+        collectionRepository.save(collection);
 
         return mapToDto(collection);
     }
