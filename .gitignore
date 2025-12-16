@@ -31,7 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
-recipe_images/
 
 # Firebase credentials
 firebase-credentials.json

@@ -253,7 +253,7 @@ public class RecipeServiceImpl implements RecipeService {
     public RecipeResponse updateRecipe(UUID id, RecipeRequest request,
             MultipartFile image, List<MultipartFile> stepImages) {
         Recipe recipe = recipeRepository.findRecipeEdit(id)
-                .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_NOT_FOUND, "Không tìm thấy recipe id: " + id));
+                .orElseThrow(() -> new CustomException(ErrorCode.RECIPE_APPROVAL));
 
         log.info("Bắt đầu cập nhật recipe: {}", id);
 
