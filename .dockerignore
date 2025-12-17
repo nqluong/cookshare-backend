@@ -1,8 +1,15 @@
 # Maven
 target/
-.mvn/
-mvnw
-mvnw.cmd
+!target/*.jar
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
 
 # IDE
 .idea/
@@ -10,35 +17,50 @@ mvnw.cmd
 *.iml
 *.ipr
 *.iws
-
-# Git
-.git/
-.gitignore
-
-# Documentation
-README.md
-*.md
-
-# Environment files (we'll use production.env values directly in Dockerfile)
-local.env
-
-# Database dumps
-*.sql
+.project
+.classpath
+.settings/
 
 # Logs
 logs/
 *.log
 
-# Node modules (if any)
-node_modules/
+# Environment files
+.env
+*.env
+!.env.example
 
-# Test files
-src/test/
-/images
+# Git
+.git/
+.gitignore
+.gitattributes
 
-# Other
+# Documentation
+*.md
+*.docx
+*.pdf
+
+# Database dumps
+*.sql
+
+# Images (if not needed in container)
+images/
+
+# Firebase credentials (will be mounted as volume)
+firebase-credentials.json
+cookshare-app-*.json
+
+# Docker
+docker-compose*.yml
+Dockerfile
+.dockerignore
+
+# OS
 .DS_Store
-*.swp
-*.swo
-*~
+Thumbs.db
 
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~

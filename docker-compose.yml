@@ -1,0 +1,130 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: cookshare-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cookshare_db}
+      POSTGRES_USER: ${POSTGRES_USER:-cookshare_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cookshare_password}
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "${DATABASE_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./Cloud_SQL_Export_2025-12-16 (08_49_10).sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - cookshare-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cookshare_user} -d ${POSTGRES_DB:-cookshare_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cookshare-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database Configuration
+      HOST: postgres
+      PORT: 5432
+      DATABASE: ${POSTGRES_DB:-cookshare_db}
+      USERNAME-DB: ${POSTGRES_USER:-cookshare_user}
+      PASSWORD-DB: ${POSTGRES_PASSWORD:-cookshare_password}
+      
+      # Admin Credentials
+      USERNAME-ADMIN: ${USERNAME_ADMIN:-admin}
+      PASSWORD-ADMIN: ${PASSWORD_ADMIN:-admin123}
+      
+      # JWT Configuration
+      JWT-SECRET: ${JWT_SECRET}
+      
+      # Email Configuration
+      USERNAME-MAIL: ${USERNAME_MAIL}
+      PASSWORD-MAIL: ${PASSWORD_MAIL}
+      
+      # OAuth2 - Google
+      GG-CLIENT-ID: ${GG_CLIENT_ID}
+      GG-CLIENT-SECRET: ${GG_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8080/login/oauth2/code/google}
+      
+      # OAuth2 - Facebook
+      FB-CLIENT-ID: ${FB_CLIENT_ID}
+      FB-CLIENT-SECRET: ${FB_CLIENT_SECRET}
+      FACEBOOK_REDIRECT_URI: ${FACEBOOK_REDIRECT_URI:-http://localhost:8080/login/oauth2/code/facebook}
+      
+      # Firebase Configuration
+      FIREBASE_STORAGE_BUCKET: ${FIREBASE_STORAGE_BUCKET}
+      FIREBASE_CREDENTIALS_PATH: /app/firebase-credentials.json
+      
+      # WebSocket Configuration
+      WEBSOCKET_ORIGINS: ${WEBSOCKET_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:4200}
+      
+      # SSL Configuration
+      SSL_ENABLED: ${SSL_ENABLED:-false}
+      SSL_KEYSTORE_PATH: ${SSL_KEYSTORE_PATH:-}
+      SSL_KEYSTORE_PASSWORD: ${SSL_KEYSTORE_PASSWORD:-}
+      SSL_KEYSTORE_TYPE: ${SSL_KEYSTORE_TYPE:-PKCS12}
+      SSL_KEY_ALIAS: ${SSL_KEY_ALIAS:-}
+      
+      # HTTP/2 Configuration
+      HTTP2_ENABLED: ${HTTP2_ENABLED:-false}
+      
+      # Timezone
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - ./firebase-credentials.json:/app/firebase-credentials.json:ro
+      - ./logs:/app/logs
+      - ./images:/app/images
+
+    networks:
+      - cookshare-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Optional: pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: cookshare-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@cookshare.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - cookshare-network
+    depends_on:
+      - postgres
+    profiles:
+      - tools  # Only start with: docker-compose --profile tools up
+
+networks:
+  cookshare-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local

@@ -34,7 +34,7 @@ build/
 
 # Firebase credentials
 firebase-credentials.json
-*.json
+cookshare-app-33834-786c04fdc1ef.json
 *.env
 
 # Logs
